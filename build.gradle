@@ -38,4 +38,7 @@ tasks.named('test') {
 
 bootJar {
     mainClass = 'com.example.demo.DemoApplication'
+    archiveBaseName.set("demo") // JAR 파일의 기본 이름
+    archiveVersion.set("")      // 버전을 제거
+    archiveFileName.set("demo.jar") // 최종 JAR 파일 이름 (선택 사항)
 }
