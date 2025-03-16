@@ -1,0 +1,56 @@
+name: Docker Build and Deploy via SSH
+
+on:
+  push:
+    branches:
+      - main # 배포할 브랜치 지정
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+  deploy-via-ssh:
+    needs: build-and-push # 이미지 빌드 후 실행
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: 'just-a-placeholder-so-we-can-disable-strict-host-key-checking'
+
+      - name: SSH into server and deploy container
+        run: |
+          ssh -o StrictHostKeyChecking=no -p {{ secrets.REMOTE_SSH_PORT }} ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} << EOF
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          
+            docker pull ghcr.io/${{ github.repository }}:${{ github.sha }}
+          
+            docker stop my-app-container || true && docker rm my-app-container || true
+          
+            docker run -d \
+              --name my-app-container \
+              -p 8888:8888 \
+              ghcr.io/${{ github.repository }}:${{ github.sha }}
+          EOF
