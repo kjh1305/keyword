@@ -2,7 +2,7 @@ FROM openjdk:17
 
 WORKDIR /app
 
-COPY demo.jar /app/demo.jar
+COPY build/libs/demo.jar demo.jar
 
 EXPOSE 8888
 
