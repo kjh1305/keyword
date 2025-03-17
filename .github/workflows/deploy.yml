@@ -56,10 +56,10 @@ jobs:
           
             docker pull ghcr.io/${{ github.repository }}:${{ github.sha }}
           
-            docker stop my-app-container || true && docker rm my-app-container || true
+            docker stop demo-app || true && docker rm demo-app || true
           
             docker run -d \
-              --name my-app-container \
+              --name demo-app \
               -p 8888:8888 \
               ghcr.io/${{ github.repository }}:${{ github.sha }}
           EOF
