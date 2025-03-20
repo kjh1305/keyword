@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.api.keyword.backup.BackupMapper">
+
+    <select id="getAllBackup" resultType="com.example.demo.api.keyword.backup.Backup">
+        SELECT *
+        FROM backup
+    </select>
+
+    <select id="getBackupByWorkIdAndExcelIndex"
+            resultType="com.example.demo.api.keyword.backup.Backup">
+        SELECT *
+        FROM backup
+        WHERE work_id = #{workId}
+          AND excel_index = #{excelIndex}
+    </select>
+
+    <select id="getBackupsByWorkId"
+            resultType="com.example.demo.api.keyword.backup.Backup">
+        SELECT *
+        FROM backup
+        WHERE work_id = #{workId}
+    </select>
+
+    <insert id="insertBackup" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO backup(work_id,
+                           status_code,
+                           product,
+                           product_no,
+                           excel_index,
+                           valid_keyword)
+        VALUES (#{workId},
+                #{statusCode},
+                #{product},
+                #{productNo},
+                #{excelIndex},
+                #{validKeyword})
+    </insert>
+
+    <update id="updateBackup">
+        UPDATE backup
+        SET valid_keyword = #{validKeyword},
+            keyword_list = #{keywordList},
+            category = #{category}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatusCode">
+        UPDATE backup
+        SET status_code = #{statusCode}
+            WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.api.keyword.rank.RankMapper">
+
+    <select id="getAllRank" resultType="com.example.demo.api.keyword.rank.Rank">
+        SELECT * FROM rank
+    </select>
+
+    <select id="getRankByCategoryId" resultType="com.example.demo.api.keyword.rank.Rank">
+        SELECT * FROM rank
+        WHERE category_id = #{categoryId}
+    </select>
+
+</mapper>

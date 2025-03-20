@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.api.keyword.work.WorkMapper">
+
+    <select id="getAllWork" resultType="com.example.demo.api.keyword.work.Work">
+        SELECT * FROM work
+        ORDER BY start_time DESC;
+    </select>
+
+    <insert id="insertWork" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO work(
+                        filename
+                        , file_hashcode
+                        , status_code
+                        ,download_name
+        ) VALUES (
+                  #{filename}
+                  ,#{fileHashcode}
+                  ,#{statusCode}
+                  ,#{downloadName}
+                )
+    </insert>
+
+    <select id="getWorkById" resultType="com.example.demo.api.keyword.work.Work">
+        SELECT * FROM work WHERE id = #{id}
+    </select>
+
+    <update id="updateWork">
+        update work
+        set status_code = #{statusCode}
+            ,download_name = #{downloadName}
+            ,end_time = #{endTime}
+        where id = #{id}
+    </update>
+
+    <update id="changeStatusCode">
+        update work
+        set status_code = 3
+        where id = #{id}
+    </update>
+
+</mapper>
