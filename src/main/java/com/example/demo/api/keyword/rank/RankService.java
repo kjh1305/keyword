@@ -15,8 +15,14 @@ public class RankService {
 
     private final RankRepository rankRepository;
 
-    public Rank getRankByCategoryId(String categoryId) throws Exception{
-        return rankRepository.getRankByCategoryId(categoryId);
+    public RankDTO getRankByCategoryId(String categoryId) throws Exception{
+        Rank rank = rankRepository.getRankByCategoryId(categoryId);
+
+        if (rank == null){
+            return null;
+        }
+
+        return RankDTO.builder().rankKeyword(rank.getRankKeyword()).build();
     }
 
 }
