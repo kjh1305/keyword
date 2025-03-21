@@ -20,13 +20,13 @@ public class CategoryController {
 
     // 카테고리명으로 Category 테이블 조회
     @GetMapping("/category")
-    public ResponseEntity<Category> getCategoryByName(@RequestParam("name") String name){
-        Category categoryByWholeName = categoryService.getCategoryByWholeName(name);
-        if (categoryByWholeName == null) {
+    public ResponseEntity<CategoryDTO> getCategoryByName(@RequestParam("name") String name){
+        CategoryDTO categoryDTO = categoryService.getCategoryByWholeName(name);
+        if (categoryDTO == null) {
             log.warn(">>>>>>> [getStatusById] No status found for name: {}", name);
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(categoryByWholeName);
+        return ResponseEntity.ok(categoryDTO);
     }
 
     // 카테고리 id로 CategoryKeyword 리스트 조회
