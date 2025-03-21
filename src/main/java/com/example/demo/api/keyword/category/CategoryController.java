@@ -8,8 +8,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @Slf4j
 @RestController
 @RequestMapping("/api/category")
@@ -28,12 +26,4 @@ public class CategoryController {
         }
         return ResponseEntity.ok(categoryDTO);
     }
-
-    // 카테고리 id로 CategoryKeyword 리스트 조회
-    @GetMapping("/category_keyword")
-    public ResponseEntity<List<CategoryKeyword>> getCategoryKeywordListByCategoryId(@RequestParam("category_id")String categoryId){
-        List<CategoryKeyword> categoryKeywordListByCategoryId = categoryService.getCategoryKeywordListByCategoryId(categoryId);
-        return ResponseEntity.ok(categoryKeywordListByCategoryId);
-    }
-
 }
