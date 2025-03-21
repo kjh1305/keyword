@@ -11,7 +11,7 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
 
-    // 카테고리명으로 Category 테이블 조회
+    // 카테고리명으로 Category 테이블 조회 return DTO
     public CategoryDTO getCategoryByWholeName(String wholeName){
         Category category = categoryRepository.getCategoryByWholeName(wholeName);
         if (category == null) {
@@ -26,6 +26,11 @@ public class CategoryService {
                 .isLast(category.getIsLast())
                 .sortOrder(category.getSortOrder())
                 .build();
+    }
+
+    // 카테고리명으로 Category 테이블 조회 return entity
+    public Category getCategoryEntityByWholeName(String wholeName) {
+        return categoryRepository.getCategoryByWholeName(wholeName);
     }
 
     // 카테고리 id로 CategoryKeyword 리스트 조회

@@ -235,7 +235,7 @@ public class WorkMessageListener {
                     }
 
 
-                    String catId = categoryService.getCategoryByWholeName(wholeCategory).getId();
+                    String catId = categoryService.getCategoryEntityByWholeName(wholeCategory).getId();
                     element.setCategory(standardKeyword);
                     backupService.updateBackup(element);
 
