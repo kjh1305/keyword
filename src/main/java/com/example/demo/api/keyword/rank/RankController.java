@@ -19,14 +19,13 @@ public class RankController {
     @GetMapping("")
     public ResponseEntity<String> getRankByCategoryId(@RequestParam("categoryId")String categoryId) throws Exception{
 
-        Rank rank = rankService.getRankByCategoryId(categoryId);
+        RankDTO rankDTO = rankService.getRankByCategoryId(categoryId);
 
-        if(rank == null){
+        if(rankDTO == null){
             log.warn(">>>>>>> [getStatusById] No status found for rank: {}", categoryId);
             return ResponseEntity.notFound().build();
         }else{
-            String rankKeyword = rank.getRankKeyword();
-            return ResponseEntity.ok(rankKeyword);
+            return ResponseEntity.ok(rankDTO.getRankKeyword());
         }
     }
 }
