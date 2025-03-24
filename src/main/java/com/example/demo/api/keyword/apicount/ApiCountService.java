@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -15,21 +16,23 @@ public class ApiCountService {
 
     private final ApiCountRepository apiCountRepository;
 
+    @Transactional
     public void updateApiCount(ApiCount apiCount){
         apiCountRepository.save(apiCount);
     }
 
     public ApiCount getApiCountById(Integer id){
-        return apiCountRepository.findById(id);
+        return apiCountRepository.findById(id).orElse(null);
     }
 
     //12시에 api 사용횟수를 0으로 초기화
     //NOTE : 추후에 여러 스케쥴을 사용하려면 @EnableAsync, @Async 사용해야함(비동기로 바꿔야함)
     @Scheduled(cron = "0 0 0 * * *")
+    @Transactional
     public void resetApiCount() {
         log.info("API 사용 횟수 초기화 작업 시작");
         try {
-            ApiCount apiCount = apiCountRepository.findById(DEFAULT_API_COUNT_ID);
+            ApiCount apiCount = apiCountRepository.findById(DEFAULT_API_COUNT_ID).orElse(null);
             if (apiCount != null) {
                 apiCount.setUseCount(0);
                 apiCountRepository.save(apiCount);
