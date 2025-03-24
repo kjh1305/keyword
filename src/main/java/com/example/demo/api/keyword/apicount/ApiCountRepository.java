@@ -1,20 +1,8 @@
 package com.example.demo.api.keyword.apicount;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 
-@Repository
-@RequiredArgsConstructor
-public class ApiCountRepository {
+public interface ApiCountRepository extends JpaRepository<ApiCount, Integer> {
 
-    private final ApiCountMapper apiCountMapper;
-
-    public Integer save(ApiCount apiCount){
-        return apiCountMapper.save(apiCount);
-    }
-
-    public ApiCount findById(Integer id){
-        return apiCountMapper.findById(id);
-    }
 }
