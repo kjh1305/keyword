@@ -4,12 +4,14 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 import java.util.Date;
 
 @Entity
 @Getter
 @Setter
+@ToString
 @Table(name = "api_count")
 public class ApiCount {
 
