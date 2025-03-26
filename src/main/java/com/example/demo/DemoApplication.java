@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
-@MapperScan(basePackages = {"com.example.demo.api.keyword.apicount", "com.example.demo.api.keyword.work", "com.example.demo.api.keyword.backup",
+@MapperScan(basePackages = {"com.example.demo.api.keyword.work", "com.example.demo.api.keyword.backup",
 "com.example.demo.api.keyword.category", "com.example.demo.api.keyword.rank"})
 @EnableJpaRepositories
 public class DemoApplication {
