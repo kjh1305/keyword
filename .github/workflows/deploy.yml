@@ -60,6 +60,7 @@ jobs:
           
             docker run -d \
               --name demo-app \
+              --network app-network \
               -p 8888:8888 \
               ghcr.io/${{ github.repository }}:${{ github.sha }}
           EOF
