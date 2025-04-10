@@ -23,10 +23,13 @@
             --border-color: #dee2e6; /* Default border color */
             --card-bg: #ffffff; /* Card background */
             --body-bg: #f8f9fa; /* Body background */
+            /* Sidebar Width */
+            --sidebar-width: 260px; /* Adjusted sidebar width */
         }
 
         html {
-            scroll-padding-top: 70px; /* Adjust if you have a fixed header */
+            /* Default scroll padding for fixed/sticky elements */
+            scroll-padding-top: 70px; /* Default for mobile navbar height */
             scroll-behavior: smooth;
         }
 
@@ -38,92 +41,147 @@
             color: var(--text-main);
             -webkit-font-smoothing: antialiased; /* Smoother fonts on WebKit */
             -moz-osx-font-smoothing: grayscale; /* Smoother fonts on Firefox */
+            padding-top: 70px; /* Add padding for the fixed top navbar on small screens */
         }
 
-        /* --- Sidebar --- */
-        .sidebar-nav {
-            background-color: var(--card-bg);
-            height: 100vh;
-            position: sticky;
+        /* --- Sidebar Navigation (lg and up) --- */
+        .sidebar {
+            position: fixed; /* Changed to fixed */
             top: 0;
-            overflow-y: auto;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background-color: var(--card-bg);
             border-right: 1px solid var(--border-color);
-            padding-top: 1.5rem !important; /* Add some top padding */
+            padding: 1.5rem 0 1rem 0; /* Adjust padding */
+            overflow-y: auto; /* Allow scrolling within sidebar */
+            z-index: 1030; /* Ensure it's above content but below modals etc. */
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05); /* Optional subtle shadow */
+            transition: transform 0.3s ease; /* Optional: For potential future hide/show */
         }
-        .sidebar-nav .nav-link {
+        .sidebar .sidebar-title {
+            padding: 0 1.5rem 1rem 1.5rem; /* Padding around the title */
+            font-weight: 700;
+            color: rgb(var(--bs-primary-rgb));
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+        }
+
+        .sidebar .nav-link {
             color: var(--text-muted);
-            padding: 0.5rem 1rem; /* Adjust padding */
+            padding: 0.6rem 1.5rem; /* Adjust padding */
             font-weight: 500;
-            border-left: 3px solid transparent; /* For active indicator */
             transition: all 0.2s ease-in-out;
             font-size: 0.9rem;
+            border-left: 4px solid transparent; /* Active indicator */
         }
-        .sidebar-nav .nav-link:hover {
+        .sidebar .nav-link:hover {
             color: var(--primary-darker);
             background-color: var(--primary-light);
             border-left-color: var(--primary-darker);
         }
-        .sidebar-nav .nav-link.active {
+        .sidebar .nav-link.active {
             color: rgb(var(--bs-primary-rgb));
             background-color: var(--primary-light);
-            font-weight: 700; /* Bold active link */
+            font-weight: 700;
             border-left-color: rgb(var(--bs-primary-rgb));
         }
-        .sidebar-nav .nav-link i {
+        .sidebar .nav-link i {
             margin-right: 0.8rem;
             width: 1.1em;
             text-align: center;
-            color: #adb5bd; /* Slightly muted icon color */
+            color: #adb5bd;
             transition: color 0.2s ease-in-out;
         }
-        .sidebar-nav .nav-link:hover i,
-        .sidebar-nav .nav-link.active i {
-            color: rgb(var(--bs-primary-rgb)); /* Active/hover icon color */
+        .sidebar .nav-link:hover i,
+        .sidebar .nav-link.active i {
+            color: rgb(var(--bs-primary-rgb));
         }
 
-        /* Sub-navigation links */
-        .sub-nav-link {
-            font-size: 0.85em !important; /* Smaller font */
-            padding-left: 2.8rem !important; /* More indentation */
-            font-weight: 400 !important; /* Normal weight */
+        /* Sub-navigation links in Sidebar */
+        .sidebar .sub-nav-link {
+            font-size: 0.85em !important;
+            padding-left: 3.5rem !important; /* Increased indent */
+            font-weight: 400 !important;
             color: var(--text-muted) !important;
-        }
-        .sub-nav-link:hover {
-            color: var(--primary-darker) !important;
-            background-color: #f8f9fa !important; /* Subtle hover background */
             border-left-color: transparent !important; /* No border for sublinks */
+            background-color: transparent !important; /* Clearer default */
         }
-        .sub-nav-link.active {
+        .sidebar .sub-nav-link:hover {
+            color: var(--primary-darker) !important;
+            background-color: #f8f9fa !important; /* Subtle hover */
+        }
+        .sidebar .sub-nav-link.active {
             color: rgb(var(--bs-primary-rgb)) !important;
-            background-color: #f8f9fa !important;
-            font-weight: 500 !important; /* Slightly bolder active sublink */
-            border-left-color: transparent !important;
+            background-color: #f0f3f5 !important; /* Slightly different active */
+            font-weight: 500 !important;
         }
-        .sidebar-nav h3 {
-            padding-left: 1rem; /* Align title with links */
+
+        /* --- Top Navbar (Mobile / < lg) --- */
+        .mobile-navbar {
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            min-height: 70px; /* Consistent height */
         }
+        .mobile-navbar .navbar-brand {
+            font-weight: bold;
+            color: rgb(var(--bs-primary-rgb)) !important;
+        }
+        .mobile-navbar .navbar-toggler {
+            border: none;
+        }
+        .mobile-navbar .navbar-toggler:focus {
+            box-shadow: none;
+        }
+        /* Styling for links inside mobile dropdown */
+        .mobile-navbar .navbar-nav .nav-link {
+            color: var(--text-muted);
+            padding: 0.8rem 1rem; /* Slightly more vertical padding */
+            font-weight: 500;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .mobile-navbar .navbar-nav .nav-link:hover {
+            color: var(--primary-darker);
+            background-color: var(--primary-light);
+        }
+        .mobile-navbar .navbar-nav .nav-link.active {
+            color: rgb(var(--bs-primary-rgb));
+            background-color: var(--primary-light);
+            font-weight: 700;
+        }
+        .mobile-navbar .navbar-nav .nav-link i {
+            margin-right: 0.8rem;
+            width: 1.1em;
+            text-align: center;
+        }
+        /* Mobile Sub-links */
+        .mobile-navbar .sub-nav-link {
+            font-size: 0.9em !important; /* Keep reasonable size */
+            padding-left: 2rem !important; /* Indentation */
+            font-weight: 400 !important;
+        }
+
 
         /* --- Main Content Area --- */
         main {
-            background-color: var(--card-bg); /* White background for content */
-            border-radius: 8px; /* Optional: rounded corners */
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); /* Soft shadow */
-            margin-top: 1rem; /* Space from top */
-            margin-bottom: 2rem; /* Space from bottom */
-        }
-        @media (min-width: 992px) {
-            main {
-                margin-left: 1rem; /* Space from sidebar */
-            }
+            background-color: var(--card-bg);
+            margin: 1.5rem; /* Add some margin around the main content */
+            margin-left: calc(var(--sidebar-width) + 1.5rem); /* Make space for fixed sidebar */
+            padding: 1.5rem; /* Inner padding */
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: margin-left 0.3s ease; /* Sync with sidebar animation if used */
         }
 
-        /* Header */
+        /* --- Header inside Main --- */
         header {
             border-bottom-color: var(--border-color) !important;
+            padding-bottom: 1.5rem; /* Adjust padding */
         }
         header h1 {
-            font-weight: 700; /* Bolder name */
+            font-weight: 700;
             color: var(--text-main);
+            font-size: 2rem; /* Slightly adjust size */
         }
         header .lead {
             font-weight: 400;
@@ -138,7 +196,7 @@
         }
         .contact-info i {
             color: rgb(var(--bs-primary-rgb));
-            margin-right: 0.4rem;
+            margin-right: 0.5rem; /* Increased spacing */
             vertical-align: middle;
         }
         .contact-info a {
@@ -157,13 +215,13 @@
             color: rgb(var(--bs-primary-rgb));
             border-bottom: 2px solid rgb(var(--bs-primary-rgb));
             padding-bottom: 0.6rem;
-            margin-bottom: 2.5rem; /* More space below title */
+            margin-bottom: 2.5rem;
             display: inline-block;
         }
 
         /* Experience & Project Items */
         .experience-item, #portfolio .card {
-            margin-bottom: 2.5rem !important; /* Increase spacing */
+            margin-bottom: 2.5rem !important;
         }
         .experience-item:last-child, #portfolio .card:last-child {
             margin-bottom: 0 !important;
@@ -182,60 +240,59 @@
             padding-bottom: 0 !important;
         }
 
-
         /* Project/Experience Card */
         .project.card {
-            border: 1px solid var(--border-color); /* Softer border */
-            border-left: 4px solid rgb(var(--bs-primary-rgb)); /* Keep accent */
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04); /* Subtle shadow */
+            border: 1px solid var(--border-color);
+            border-left: 4px solid rgb(var(--bs-primary-rgb));
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
             transition: box-shadow 0.3s ease;
         }
         .project.card:hover {
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
         }
-        .project .card-title { /* Project title */
-            font-size: 1.1rem; /* Slightly smaller */
-            font-weight: 700; /* Bolder */
-            color: #343a40; /* Darker title */
+        .project .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #343a40;
             margin-bottom: 1rem !important;
         }
         .project .card-body {
-            padding: 1.5rem; /* More padding inside cards */
+            padding: 1.5rem;
         }
         .project hr {
-            border-top-color: #e9ecef; /* Lighter HR */
+            border-top-color: #e9ecef;
             margin-top: 1.5rem;
             margin-bottom: 1.5rem;
         }
-        .project h6.fw-semibold { /* Subheadings inside card */
+        .project h6.fw-semibold {
             color: #495057;
             font-size: 0.95rem;
             margin-top: 1.5rem !important;
         }
         .project ul {
-            padding-left: 1.2rem; /* Indent lists slightly */
+            padding-left: 1.2rem;
         }
         .project ul ul {
-            padding-left: 1rem; /* Further indent nested lists */
+            padding-left: 1rem;
             margin-top: 0.3rem;
         }
         .project li {
             margin-bottom: 0.4rem;
         }
-        .project strong { /* Highlighted text */
+        .project strong {
             font-weight: 600;
-            color: #000; /* Make bold text black for emphasis */
+            color: #000;
         }
 
         /* Tech stack badge */
         .tech-stack {
-            font-size: 0.8em !important; /* Slightly smaller */
+            font-size: 0.8em !important;
             padding: 0.35em 0.65em !important;
-            border-radius: 4px !important; /* Rounded corners */
+            border-radius: 4px !important;
             font-weight: 500 !important;
-            background-color: #e9ecef !important; /* Grey background */
-            color: #495057 !important; /* Darker grey text */
-            border: 1px solid #dee2e6; /* Subtle border */
+            background-color: #e9ecef !important;
+            color: #495057 !important;
+            border: 1px solid #dee2e6;
             margin-bottom: 0.4rem !important;
         }
 
@@ -246,7 +303,7 @@
         figure img {
             border-radius: 4px !important;
             border: 1px solid var(--border-color) !important;
-            background-color: #fff; /* Ensure clean background if transparent */
+            background-color: #fff;
         }
         figure figcaption {
             color: var(--text-muted);
@@ -261,68 +318,55 @@
 
         /* Scroll-to-top button */
         #scrollTopBtn {
+            position: fixed; /* Keep fixed */
+            bottom: 20px;
+            right: 20px;
+            display: none; /* Initially hidden */
+            z-index: 1030; /* Above most content */
             background-color: rgb(var(--bs-primary-rgb));
             border: none;
             opacity: 0.6;
             transition: opacity 0.3s ease, transform 0.3s ease;
+            width: 45px; /* Explicit size */
+            height: 45px;
+            padding: 0; /* Reset padding */
+            text-align: center;
+            line-height: 45px; /* Center icon vertically */
         }
         #scrollTopBtn:hover {
             opacity: 1;
-            transform: translateY(-3px); /* Slight lift effect */
+            transform: translateY(-3px);
         }
         #scrollTopBtn i {
-            font-size: 1.5rem; /* Adjust icon size if needed */
+            font-size: 1.3rem; /* Adjusted icon size */
+            vertical-align: middle; /* Better alignment */
         }
 
-        /* Responsive adjustments */
+        /* --- Responsive Adjustments --- */
+
+        /* Styles for Medium screens and down (< 992px) */
         @media (max-width: 991.98px) {
             html {
-                scroll-padding-top: 0;
+                scroll-padding-top: 70px; /* Match mobile navbar height */
             }
-            .sidebar-nav {
-                position: static;
-                height: auto;
-                border-bottom: 1px solid var(--border-color);
-                border-right: none;
-                overflow-y: visible;
+            body {
+                padding-left: 0; /* No sidebar padding */
+                padding-top: 70px; /* Padding for fixed top navbar */
             }
-            .sidebar-nav .nav {
-                flex-direction: row !important;
-                justify-content: flex-start; /* Align left on smaller screens */
-                flex-wrap: wrap;
-                padding: 0.5rem; /* Add padding around links */
+            /* Hide sidebar */
+            .sidebar {
+                transform: translateX(-100%); /* Hide sidebar off-screen */
+                display: none; /* Also hide from layout flow */
             }
-            .sidebar-nav .nav-link {
-                margin: 0.2rem;
-                padding: 0.4rem 0.8rem;
-                border-left: none; /* Remove left border */
-                border-radius: 4px; /* Add border radius */
-            }
-            .sidebar-nav .nav-link:hover,
-            .sidebar-nav .nav-link.active {
-                background-color: var(--primary-light); /* Consistent hover/active bg */
-                border-left: none;
-            }
-            .sidebar-nav .sub-nav-link { /* Adjust sub-link style for horizontal nav */
-                padding: 0.4rem 0.8rem !important; /* Match parent link padding */
-                margin: 0.2rem;
-                border-radius: 4px;
-                background-color: #f8f9fa !important; /* Differentiate sublinks slightly */
-            }
-            .sidebar-nav .sub-nav-link:hover {
-                background-color: #e9ecef !important;
-            }
-            .sidebar-nav .sub-nav-link.active {
-                background-color: #e0e7ff !important; /* Slightly different active sublink bg */
-                color: rgb(var(--bs-primary-rgb)) !important;
-            }
-
+            /* Adjust main content */
             main {
-                margin-left: 0;
-                margin-top: 0.5rem; /* Reduce top margin */
-                border-radius: 0; /* Remove radius on small screens */
-                box-shadow: none; /* Remove shadow on small screens */
+                margin-left: 1.5rem; /* Reset margin for mobile */
+                margin-right: 1.5rem; /* Add right margin */
+                margin-top: 1.5rem; /* Consistent top margin */
+                box-shadow: none; /* Optional: remove shadow on mobile */
+                padding: 1rem; /* Adjust padding */
             }
+            /* Header content centering */
             .profile-pic-wrapper {
                 text-align: center;
                 margin-bottom: 1.5rem;
@@ -331,34 +375,56 @@
                 text-align: center;
             }
             .contact-info ul {
-                padding-left: 0; /* Remove padding */
+                padding-left: 0;
+                text-align: center; /* Center list items */
             }
             .contact-info li {
-                display: inline-block; /* Make inline again */
-                margin-right: 1rem;
-                margin-bottom: 0.5rem;
-            }
-            .contact-info li:last-child {
+                display: block; /* Stack contact items */
                 margin-right: 0;
+                margin-bottom: 0.8rem;
+            }
+            /* Mobile Nav Specific */
+            .mobile-navbar .navbar-collapse { /* Add padding when menu is open */
+                padding-bottom: 1rem;
+            }
+            .mobile-navbar .navbar-nav .nav-link i {
+                color: #adb5bd; /* Explicit color */
+            }
+            .mobile-navbar .navbar-nav .nav-link.active i,
+            .mobile-navbar .navbar-nav .nav-link:hover i {
+                color: rgb(var(--bs-primary-rgb)); /* Highlight icon on active/hover */
             }
         }
+
+        /* Styles for Small screens and down (< 576px) */
         @media (max-width: 575.98px) {
             body {
-                font-size: 0.9rem; /* Further reduce font size */
+                font-size: 0.9rem;
+                padding-top: 60px; /* Slightly smaller navbar potentially */
             }
+            html {
+                scroll-padding-top: 60px;
+            }
+            .mobile-navbar {
+                min-height: 60px;
+            }
+
+            main {
+                margin-left: 1rem;
+                margin-right: 1rem;
+                margin-top: 1rem;
+                padding: 1rem;
+            }
+
             .section-title {
                 font-size: 1.5rem;
                 margin-bottom: 2rem;
             }
-            h1 {
+            h1 { /* Header H1 */
                 font-size: 1.8rem;
             }
             header .lead {
                 font-size: 1rem;
-            }
-            .sidebar-nav .nav-link, .sidebar-nav .sub-nav-link {
-                font-size: 0.8rem;
-                padding: 0.35rem 0.7rem;
             }
             .project .card-title {
                 font-size: 1rem;
@@ -367,27 +433,82 @@
                 padding: 1rem;
             }
             figure img {
-                max-width: 100%; /* Allow full width within constraints */
+                max-width: 100%;
             }
-            .contact-info li {
-                display: block; /* Stack contact info again on very small screens */
-                margin-right: 0;
+            .mobile-navbar .navbar-brand {
+                font-size: 1rem; /* Slightly smaller brand on very small screens */
+            }
+            .contact-info i {
+                margin-right: 0.4rem;
             }
         }
-
     </style>
 </head>
 <body>
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar Navigation -->
-        <nav class="col-lg-2 col-md-12 p-0 p-lg-0 sidebar-nav"> <!-- Removed default padding -->
-            <h3 class="d-none d-lg-block h5 mb-4 fw-bold text-primary">김준형</h3>
-            <ul class="nav flex-column">
+
+<!-- Sidebar Navigation (visible on lg and up) -->
+<div class="sidebar d-none d-lg-block"> <!-- Use Bootstrap classes for visibility -->
+    <h3 class="sidebar-title h5">김준형</h3>
+    <ul class="nav flex-column">
+        <!-- Links duplicated here for the sidebar -->
+        <li class="nav-item">
+            <a class="nav-link" href="#experience"><i class="bi bi-briefcase-fill"></i>경력 사항</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#exp-playdev">플레이뎁</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#exp-last1mile">라스트일마일</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#exp-smc">더에스엠씨그룹</a>
+        </li>
+        <li class="nav-item mt-3">
+            <a class="nav-link" href="#portfolio"><i class="bi bi-code-slash"></i>개인 프로젝트</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#proj-user-mgmt">사용자 관리 토이</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#proj-spring-blog">Spring Blog</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#proj-bab">BAB 창업대전</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#proj-jsp-blog">JSP/Servlet Blog</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#proj-mrmt">MRMT 구독 페이지 (인턴)</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#proj-newyear">새해 인사 짤뽑기 (인턴)</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#proj-php-gallery">나만의 갤러리</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#proj-php-aji">Aji 투표 사이트</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link sub-nav-link" href="#proj-php-shop">PHP 쇼핑몰</a>
+        </li>
+    </ul>
+</div>
+
+<!-- Mobile Top Navbar (visible on < lg) -->
+<nav class="navbar navbar-expand-lg fixed-top shadow-sm mobile-navbar d-lg-none">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">김준형</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNavbarNav" aria-controls="mobileNavbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mobileNavbarNav">
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0"> <!-- Changed flex-column to default navbar-nav -->
+                <!-- Links duplicated here for mobile dropdown -->
                 <li class="nav-item">
                     <a class="nav-link" href="#experience"><i class="bi bi-briefcase-fill"></i>경력 사항</a>
                 </li>
-                <!-- 경력 하위 링크 -->
                 <li class="nav-item">
                     <a class="nav-link sub-nav-link" href="#exp-playdev">플레이뎁</a>
                 </li>
@@ -397,11 +518,9 @@
                 <li class="nav-item">
                     <a class="nav-link sub-nav-link" href="#exp-smc">더에스엠씨그룹</a>
                 </li>
-
-                <li class="nav-item mt-3"> <!-- Increased margin */ -->
+                <li class="nav-item mt-lg-0 mt-2"> <!-- Adjust margin for mobile */ -->
                     <a class="nav-link" href="#portfolio"><i class="bi bi-code-slash"></i>개인 프로젝트</a>
                 </li>
-                <!-- 프로젝트 하위 링크 -->
                 <li class="nav-item">
                     <a class="nav-link sub-nav-link" href="#proj-user-mgmt">사용자 관리 토이</a>
                 </li>
@@ -430,613 +549,610 @@
                     <a class="nav-link sub-nav-link" href="#proj-php-shop">PHP 쇼핑몰</a>
                 </li>
             </ul>
-        </nav>
+        </div>
+    </div>
+</nav>
 
-        <!-- Main Content -->
-        <!-- Added container for main content styling -->
-        <div class="col-lg-10 col-md-12">
-            <main class="p-4 p-lg-5">
-                <header class="mb-5 pb-4 border-bottom">
-                    <div class="row align-items-center">
-                        <div class="col-md-3 profile-pic-wrapper">
-                            <!-- Profile picture -->
-                            <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. (예: 상대경로 /portfolio/images/my.jpg 또는 절대 URL) -->
-                            <img src="/portfolio/images/my.jpg" alt="김준형 프로필 사진" class="img-fluid rounded-circle mb-3 mb-md-0" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid var(--border-color);">
-                        </div>
-                        <div class="col-md-9 header-content-wrapper">
-                            <h1 class="display-5 fw-bold mb-1">김준형</h1>
-                            <p class="lead text-secondary mb-3">Backend Developer | Software Engineer</p>
-                            <ul class="list-inline contact-info mb-0">
-                                <li class="list-inline-item me-lg-3">
-                                    <i class="bi bi-envelope-fill"></i> <a href="mailto:cosyq1305@naver.com">cosyq1305@naver.com</a>
-                                </li>
-                                <li class="list-inline-item me-lg-3">
-                                    <i class="bi bi-link-45deg"></i> <a href="https://cokes.tistory.com" target="_blank">cokes.tistory.com</a>
-                                </li>
-                                <li class="list-inline-item me-lg-3">
-                                    <i class="bi bi-github"></i> <a href="https://github.com/kjh1305" target="_blank">GitHub (kjh1305)</a>
-                                </li>
-                                <li class="list-inline-item"> <!-- Removed me-lg-3 -->
-                                    <i class="bi bi-link-45deg"></i> <a href="https://www.rallit.com/hub/resumes/1699/%EA%B9%80%EC%A4%80%ED%98%95" target="_blank">rallitHub</a>
-                                </li>
+<!-- Main Content Area -->
+<!-- Removed container-fluid and row structure around main -->
+<main> <!-- Apply padding and margin directly to main -->
+    <header class="mb-5 pb-4 border-bottom">
+        <div class="row align-items-center">
+            <div class="col-md-3 profile-pic-wrapper">
+                <img src="/portfolio/images/my.jpg" alt="김준형 프로필 사진" class="img-fluid rounded-circle mb-3 mb-md-0" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid var(--border-color);">
+            </div>
+            <div class="col-md-9 header-content-wrapper">
+                <h1 class="display-5 fw-bold mb-1">김준형</h1>
+                <p class="lead text-secondary mb-3">Backend Developer | Software Engineer</p>
+                <ul class="list-unstyled contact-info mb-0"> <!-- Changed to list-unstyled for flexibility -->
+                    <li class="mb-2">
+                        <i class="bi bi-envelope-fill"></i> <a href="mailto:cosyq1305@naver.com">cosyq1305@naver.com</a>
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-link-45deg"></i> <a href="https://cokes.tistory.com" target="_blank">cokes.tistory.com</a>
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-github"></i> <a href="https://github.com/kjh1305" target="_blank">GitHub (kjh1305)</a>
+                    </li>
+                    <li> <!-- Removed mb-2 -->
+                        <i class="bi bi-link-45deg"></i> <a href="https://www.rallit.com/hub/resumes/1699/%EA%B9%80%EC%A4%80%ED%98%95" target="_blank">rallitHub</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <!-- Experience Section -->
+    <section id="experience" class="section mb-5">
+        <h2 class="section-title h3">경력 사항</h2>
+
+        <!-- Playdev -->
+        <div id="exp-playdev" class="experience-item mb-4 pb-4 border-bottom">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-2">
+                <h3 class="fs-5 fw-semibold mb-1 mb-sm-0">플레이뎁 (Playdev)</h3>
+                <span class="text-muted small">2022.06 ~ 현재</span>
+            </div>
+
+            <!-- Project Card 1 -->
+            <div class="card project mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">📌 E-commerce 판매 최적화 및 자동화 시스템 고도화 (Java/Spring 기반)</h4>
+                    <p><strong>개요:</strong> 초기 쿠팡 위너 가격 경쟁력 확보 중심에서 출발하여, 다중 마켓플레이스(GS SHOP, Toss 등) 상품 관리 자동화까지 지원하도록 백엔드 시스템을 단계적으로 설계/확장한 프로젝트</p>
+                    <p><strong>기술 스택:</strong>
+                        <span class="badge tech-stack">Java</span>
+                        <span class="badge tech-stack">Spring Boot</span>
+                        <span class="badge tech-stack">Python</span>
+                        <span class="badge tech-stack">WebClient</span>
+                        <span class="badge tech-stack">MySQL</span>
+                        <span class="badge tech-stack">Vue.js</span>
+                    </p>
+                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <ul class="small">
+                        <li><strong>1단계: 쿠팡 위너 로직 안정화 및 성능 개선 (API 개발):</strong>
+                            <ul>
+                                <li>기존 Python 클라이언트의 불안정한 Selenium 기반 로직을 쿠팡 내부 API로 변경</li>
+                                <li>내부 API 변경 통해 클라이언트 상품 처리 속도 10배 향상 (5시간 → 30분) 및 시스템 안정성 확보</li>
                             </ul>
-                        </div>
+                        </li>
+                        <li><strong>2단계: 다중 마켓플레이스 지원 백엔드 확장 (아키텍처 설계 & API 연동):</strong>
+                            <ul>
+                                <li>기존 쿠팡 중심 구조에서 다중 마켓플레이스 지원 위한 백엔드 아키텍처 확장 설계 주도</li>
+                                <li>Spring WebClient 활용, GS SHOP, 카카오/Toss 쇼핑 등 외부 API 비동기 연동/통합 개발</li>
+                                <li>신규 E-commerce 플랫폼 상품 정보 자동 동기화/관리 백엔드 API 신규 개발</li>
+                            </ul>
+                        </li>
+                        <li><strong>공통 백엔드 기능 개발 및 강화:</strong>
+                            <ul>
+                                <li>사용자 관리, 구독 기반 유료화(적립금 차감), 서비스 이용 통계(매출, 로그) 등 핵심 관리 기능 API 개발</li>
+                                <li>관리자 페이지, 클라이언트, 배치 등 다양한 환경 고려한 확장성 높은 RESTful API 설계/구현</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p class="mb-2"><strong>성과:</strong></p>
+                    <ul class="small">
+                        <li>API 기반 전환으로 <strong>시스템 안정성 및 유지보수성 대폭 향상</strong></li>
+                        <li>쿠팡 상품 처리 속도 <strong>10배 개선 (5시간 → 30분)</strong></li>
+                        <li>사용자 쿠팡 <strong>매출 195%, 주문량 169% 증가</strong> 기여</li>
+                        <li>서비스 지원 범위 확대 (쿠팡 → 다중 마켓) 및 <strong>상품 관리 자동화 구현</strong></li>
+                        <li>다중 마켓 지원으로 <strong>내부 운영 효율 증대</strong> 및 데이터 오류 감소</li>
+                        <li>위너 달성 상품 누적 <strong>1000만 개,</strong> 주문 <strong>10만 개</strong> 달성</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Project Card 2 -->
+            <div class="card project mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">📌 키워드 추천 서비스 고도화</h4>
+                    <p><strong>개요:</strong> 쿠팡/스마트스토어 판매 데이터 분석 기반, 상품 정보(엑셀 입력)에 최적화된 매출 증대용 키워드 추출 및 추천 기능 고도화 프로젝트</p>
+                    <p><strong>기술 스택:</strong>
+                        <span class="badge tech-stack">Java</span>
+                        <span class="badge tech-stack">Spring Boot</span>
+                        <span class="badge tech-stack">MySQL</span>
+                        <span class="badge tech-stack">Vue.js</span>
+                    </p>
+                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <ul class="small">
+                        <li><strong>대량 키워드 추출 기능 설계/구현:</strong> 기존 단건 처리에서 엑셀 업로드 기반 대량 처리 방식으로 확장 (Spring Boot API 신규 개발 및 Vue.js 연동)</li>
+                        <li><strong>백엔드 성능 최적화 및 아키텍처 개선 주도:</strong>
+                            <ul>
+                                <li>대용량 엑셀 처리 시 서버 부하 및 I/O 병목 현상 분석/식별</li>
+                                <li>파일 처리 로직을 클라이언트(JS)로 이전, 백엔드(Spring)는 순수 데이터(JSON)만 처리하도록 아키텍처 재설계/구현</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p class="mb-2"><strong>성과:</strong></p>
+                    <ul class="small">
+                        <li>아키텍처 개선으로 <strong>백엔드 응답 속도 30% 향상</strong> 및 서버 자원 사용 효율화</li>
+                        <li>대량 키워드 일괄 추출 기능 제공으로 <strong>사용자 작업 시간 단축</strong> 및 편의성 증대</li>
+                        <li>데이터 기반 키워드 추천 통해 <strong>사용자 판매 전략 수립 및 잠재 매출 증대 기여</strong></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Project Card 3 -->
+            <div class="card project mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">📌 자사 판매 프로그램 개발 및 자동화</h4>
+                    <p><strong>개요:</strong> 상품 등록부터 CS 처리까지 전반적인 온라인 판매 프로세스 자동화 및 데이터 통합 관리로 운영 효율 극대화 시스템 개발</p>
+                    <p><strong>기술 스택:</strong>
+                        <span class="badge tech-stack">Python</span>
+                        <span class="badge tech-stack">FastAPI</span>
+                        <span class="badge tech-stack">MySQL</span>
+                        <span class="badge tech-stack">Vue.js</span>
+                        <span class="badge tech-stack">PM2</span>
+                    </p>
+                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <ul class="small">
+                        <li><strong>핵심 판매 자동화 배치 시스템 설계/개발 주도:</strong> 상품 정보 수집, 등록, 주문 처리, 배송 연동, CS 수집 등 주요 프로세스 자동화 구현</li>
+                        <li><strong>배포 자동화 및 모니터링 환경 구축:</strong>
+                            <ul>
+                                <li>GitLab CI/CD 파이프라인 구축으로 수동 배포 프로세스 자동화 및 <strong>배포 시간 단축</strong></li>
+                                <li>PM2 도입으로 배치 애플리케이션 안정적 실행 보장 및 <strong>실시간 로그 모니터링 환경 구현</strong></li>
+                            </ul>
+                        </li>
+                        <li><strong>상품 카테고리 자동 매칭 기능 개발:</strong> 외부 API 데이터 및 상품 정보 분석 기반, E-commerce 플랫폼 카테고리 자동 매핑 로직 구현</li>
+                        <li>상품 자동 등록 설정 관리자 페이지 <strong>백엔드 API(FastAPI) 및 프론트엔드(Vue.js) 개발</strong></li>
+                    </ul>
+                    <p class="mb-2"><strong>성과:</strong></p>
+                    <ul class="small">
+                        <li><strong>주요 판매 프로세스 자동화 및 데이터 실시간 동기화</strong> 달성:
+                            <ul>
+                                <li>상품 상태 불일치로 인한 <strong>주문 취소율 75% 감소</strong></li>
+                                <li>상품/주문 관련 <strong>수작업 시간 87% 단축 (4시간 → 30분)</strong> 및 데이터 오류율 감소</li>
+                            </ul>
+                        </li>
+                        <li>CI/CD 및 PM2 도입으로 <strong>배포 안정성 확보 및 운영 효율 증대</strong></li>
+                        <li>카테고리 자동 매칭으로 <strong>상품 등록 시간 추가 단축 및 정확도 향상</strong></li>
+                        <li>실시간 알림 기능으로 <strong>고객 문의 대응 속도 개선</strong></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Project Card 4 -->
+            <div class="card project mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">📌 다팔자 서비스 신규 마켓 연동 개발</h4>
+                    <p><strong>개요:</strong> 상품 대량 등록/자동 상태 동기화 서비스 '다팔자'에 신규 판매 채널(GS SHOP, TOSS) 확장 지원</p>
+                    <p><strong>기술 스택:</strong>
+                        <span class="badge tech-stack">Node.js</span>
+                        <span class="badge tech-stack">TypeScript</span>
+                        <span class="badge tech-stack">Electron</span>
+                    </p>
+                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <ul class="small">
+                        <li>GS SHOP 및 TOSS 마켓플레이스 상품 등록/관리 <strong>API 분석 및 연동 모듈 개발</strong></li>
+                        <li>신규 마켓 연동 기능의 <strong>기존 시스템 통합 및 안정화 작업 수행</strong></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Project Card 5 -->
+            <div class="card project mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">📌 통합 매크로 프로그램 안정성 및 사용성 개선</h4>
+                    <p><strong>개요:</strong> 기존 매크로 프로그램의 리소스 과부하 및 관리 복잡성 문제 해결 위한 아키텍처 재설계 및 분리</p>
+                    <p><strong>기술 스택:</strong>
+                        <span class="badge tech-stack">Python</span>
+                        <span class="badge tech-stack">MySQL</span>
+                    </p>
+                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <ul class="small">
+                        <li>관리자와 실행 에이전트 분리, Selenium 서버 분리 등 <strong>구조 개선 주도</strong></li>
+                    </ul>
+                    <p class="mb-2"><strong>성과:</strong></p>
+                    <ul class="small">
+                        <li><strong>매크로 안정성 대폭 향상</strong> 및 관리 편의성 증대</li>
+                        <li>PC당 동시 실행 5개 제한 및 리소스 과부하로 인한 다운 현상 해결: Selenium 서버 분리로 <strong>안정적인 다중 매크로 실행 환경 구축</strong> 및 동시 실행 제약 완화</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Project Card 6 -->
+            <div class="card project mb-0"> <!-- Last project in this company block -->
+                <div class="card-body">
+                    <h4 class="card-title">📌 다수 도매 사이트 상품 정보 자동 수집 시스템</h4>
+                    <p><strong>개요:</strong> 여러 도매 사이트 최신 상품 정보(재고, 단종 등) 자동 수집/동기화로 품절 인한 주문 취소 방지 및 수작업 비효율 개선</p>
+                    <p><strong>기술 스택:</strong>
+                        <span class="badge tech-stack">Python</span>
+                        <span class="badge tech-stack">Redis</span>
+                        <span class="badge tech-stack">MongoDB</span>
+                        <span class="badge tech-stack">SQLite</span>
+                    </p>
+                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <ul class="small">
+                        <li>상품 정보 자동 수집 크롤러 및 사용자 확인용 GUI 프로그램 <strong>설계 및 개발 주도</strong></li>
+                    </ul>
+                    <p class="mb-2"><strong>성과:</strong></p>
+                    <ul class="small">
+                        <li>상품 상태 정보 확인 자동화로 <strong>수작업 시간 단축</strong> 및 <strong>주문 취소율 감소 기여</strong></li>
+                        <li>Redis 활용 통한 <strong>크롤링 작업 안정성 확보 (중단 시 복구)</strong> 및 <strong>처리 속도 개선</strong></li>
+                        <li>MongoDB 기반 <strong>대규모 상품 데이터 처리 효율 증대</strong></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Last1mile -->
+        <div id="exp-last1mile" class="experience-item mb-4 pb-4 border-bottom">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-2">
+                <h3 class="fs-5 fw-semibold mb-1 mb-sm-0">라스트일마일 (Last1mile)</h3>
+                <span class="text-muted small">2021.08 ~ 2022.05</span>
+            </div>
+            <p class="text-muted fst-italic small mb-0"><em>(주요 프로젝트는 플레이뎁으로 이관되어 연속 진행됨 - 상단 플레이뎁 경력 참고)</em></p>
+        </div>
+
+        <!-- The SMC Group -->
+        <div id="exp-smc" class="experience-item mb-0 pb-0 border-0">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-2">
+                <h3 class="fs-5 fw-semibold mb-1 mb-sm-0">더에스엠씨그룹 (The SMC Group)</h3>
+                <span class="text-muted small">2021.01 ~ 2021.02 (인턴)</span>
+            </div>
+            <div class="card project mb-0">
+                <div class="card-body">
+                    <h4 class="card-title">📌 방구석 연구소 서비스 기능 개발 및 개선 (노른자 인턴쉽)</h4>
+                    <p><strong>개요:</strong> 높은 트래픽의 '방구석 연구소' 서비스 신규 기능(짤 뽑기 테스트) 개발, 기존 기능 개선, 뉴스레터 구독 기능 개발 참여</p>
+                    <p><strong>기술 스택:</strong>
+                        <span class="badge tech-stack">PHP</span>
+                        <span class="badge tech-stack">Codeigniter</span>
+                        <span class="badge tech-stack">MySQL</span>
+                        <span class="badge tech-stack">JavaScript</span>
+                    </p>
+                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <ul class="small">
+                        <li>'짤 뽑기' 신규 테스트 백엔드(이미지 처리) 및 프론트엔드(Canvas) 로직 개발</li>
+                        <li><strong>기존 로딩 페이지 보안 강화:</strong> URL 파라미터 데이터 전송을 인코딩된 Body 전송으로 변경, 타 사용자 이미지 접근 취약점 해결</li>
+                        <li>이미지 리사이징 로직 도입으로 <strong>서버 부하 감소 및 응답 속도 개선</strong></li>
+                        <li>뉴스레터 구독 페이지 개발 및 Fetch Polyfill 적용 통한 <strong>IE 호환성 확보</strong></li>
+                        <li>스티비(Stibee) API 연동 통한 뉴스레터 발송 및 구독자 관리 기능 구현</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Portfolio Section -->
+    <section id="portfolio" class="section mb-5">
+        <h2 class="section-title h3">개인 프로젝트</h2>
+
+        <!-- Project 1 -->
+        <div id="proj-user-mgmt" class="card project mb-4">
+            <div class="card-body">
+                <h4 class="card-title">📌 사용자 관리 토이 프로젝트</h4>
+                <p class="github-link small mb-3">
+                    <strong><i class="bi bi-github"></i> Source:</strong>
+                    <a href="https://github.com/kjh1305/SpringAPI" target="_blank" class="ms-1">Backend (SpringAPI)</a> |
+                    <a href="https://github.com/kjh1305/vue-project" target="_blank" class="ms-1">Frontend (vue-project)</a>
+                </p>
+                <hr>
+                <h6 class="fw-semibold small">상세 내용</h6>
+                <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
+                <div class="row g-3 mb-3 text-center">
+                    <div class="col-md-6 col-lg-4">
+                        <figure class="figure">
+                            <img src="/portfolio/images/project1/1.webp" class="figure-img img-fluid" alt="클라이언트, 서버 Jenkins Items">
+                            <figcaption class="figure-caption small">Jenkins Items</figcaption>
+                        </figure>
                     </div>
-                </header>
-
-                <!-- Experience Section -->
-                <section id="experience" class="section mb-5">
-                    <h2 class="section-title h3">경력 사항</h2>
-
-                    <!-- Playdev -->
-                    <div id="exp-playdev" class="experience-item mb-4 pb-4 border-bottom">
-                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-2">
-                            <h3 class="fs-5 fw-semibold mb-1 mb-sm-0">플레이뎁 (Playdev)</h3>
-                            <span class="text-muted small">2022.06 ~ 현재</span>
-                        </div>
-
-                        <!-- Project Card 1 -->
-                        <div class="card project mb-4">
-                            <div class="card-body">
-                                <h4 class="card-title">📌 E-commerce 판매 최적화 및 자동화 시스템 고도화 (Java/Spring 기반)</h4>
-                                <p><strong>개요:</strong> 초기 쿠팡 위너 가격 경쟁력 확보 중심에서 출발하여, 다중 마켓플레이스(GS SHOP, Toss 등) 상품 관리 자동화까지 지원하도록 백엔드 시스템을 단계적으로 설계/확장한 프로젝트</p>
-                                <p><strong>기술 스택:</strong>
-                                    <span class="badge tech-stack">Java</span>
-                                    <span class="badge tech-stack">Spring Boot</span>
-                                    <span class="badge tech-stack">Python</span>
-                                    <span class="badge tech-stack">WebClient</span>
-                                    <span class="badge tech-stack">MySQL</span>
-                                    <span class="badge tech-stack">Vue.js</span>
-                                </p>
-                                <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                                <ul class="small">
-                                    <li><strong>1단계: 쿠팡 위너 로직 안정화 및 성능 개선 (API 개발):</strong>
-                                        <ul>
-                                            <li>기존 Python 클라이언트의 불안정한 Selenium 기반 로직을 쿠팡 내부 API로 변경</li>
-                                            <li>내부 API 변경 통해 클라이언트 상품 처리 속도 10배 향상 (5시간 → 30분) 및 시스템 안정성 확보</li>
-                                        </ul>
-                                    </li>
-                                    <li><strong>2단계: 다중 마켓플레이스 지원 백엔드 확장 (아키텍처 설계 & API 연동):</strong>
-                                        <ul>
-                                            <li>기존 쿠팡 중심 구조에서 다중 마켓플레이스 지원 위한 백엔드 아키텍처 확장 설계 주도</li>
-                                            <li>Spring WebClient 활용, GS SHOP, 카카오/Toss 쇼핑 등 외부 API 비동기 연동/통합 개발</li>
-                                            <li>신규 E-commerce 플랫폼 상품 정보 자동 동기화/관리 백엔드 API 신규 개발</li>
-                                        </ul>
-                                    </li>
-                                    <li><strong>공통 백엔드 기능 개발 및 강화:</strong>
-                                        <ul>
-                                            <li>사용자 관리, 구독 기반 유료화(적립금 차감), 서비스 이용 통계(매출, 로그) 등 핵심 관리 기능 API 개발</li>
-                                            <li>관리자 페이지, 클라이언트, 배치 등 다양한 환경 고려한 확장성 높은 RESTful API 설계/구현</li>
-                                        </ul>
-                                    </li>
-                                </ul>
-                                <p class="mb-2"><strong>성과:</strong></p>
-                                <ul class="small">
-                                    <li>API 기반 전환으로 <strong>시스템 안정성 및 유지보수성 대폭 향상</strong></li>
-                                    <li>쿠팡 상품 처리 속도 <strong>10배 개선 (5시간 → 30분)</strong></li>
-                                    <li>사용자 쿠팡 <strong>매출 195%, 주문량 169% 증가</strong> 기여</li>
-                                    <li>서비스 지원 범위 확대 (쿠팡 → 다중 마켓) 및 <strong>상품 관리 자동화 구현</strong></li>
-                                    <li>다중 마켓 지원으로 <strong>내부 운영 효율 증대</strong> 및 데이터 오류 감소</li>
-                                    <li>위너 달성 상품 누적 <strong>1000만 개,</strong> 주문 <strong>10만 개</strong> 달성</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Project Card 2 -->
-                        <div class="card project mb-4">
-                            <div class="card-body">
-                                <h4 class="card-title">📌 키워드 추천 서비스 고도화</h4>
-                                <p><strong>개요:</strong> 쿠팡/스마트스토어 판매 데이터 분석 기반, 상품 정보(엑셀 입력)에 최적화된 매출 증대용 키워드 추출 및 추천 기능 고도화 프로젝트</p>
-                                <p><strong>기술 스택:</strong>
-                                    <span class="badge tech-stack">Java</span>
-                                    <span class="badge tech-stack">Spring Boot</span>
-                                    <span class="badge tech-stack">MySQL</span>
-                                    <span class="badge tech-stack">Vue.js</span>
-                                </p>
-                                <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                                <ul class="small">
-                                    <li><strong>대량 키워드 추출 기능 설계/구현:</strong> 기존 단건 처리에서 엑셀 업로드 기반 대량 처리 방식으로 확장 (Spring Boot API 신규 개발 및 Vue.js 연동)</li>
-                                    <li><strong>백엔드 성능 최적화 및 아키텍처 개선 주도:</strong>
-                                        <ul>
-                                            <li>대용량 엑셀 처리 시 서버 부하 및 I/O 병목 현상 분석/식별</li>
-                                            <li>파일 처리 로직을 클라이언트(JS)로 이전, 백엔드(Spring)는 순수 데이터(JSON)만 처리하도록 아키텍처 재설계/구현</li>
-                                        </ul>
-                                    </li>
-                                </ul>
-                                <p class="mb-2"><strong>성과:</strong></p>
-                                <ul class="small">
-                                    <li>아키텍처 개선으로 <strong>백엔드 응답 속도 30% 향상</strong> 및 서버 자원 사용 효율화</li>
-                                    <li>대량 키워드 일괄 추출 기능 제공으로 <strong>사용자 작업 시간 단축</strong> 및 편의성 증대</li>
-                                    <li>데이터 기반 키워드 추천 통해 <strong>사용자 판매 전략 수립 및 잠재 매출 증대 기여</strong></li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Project Card 3 -->
-                        <div class="card project mb-4">
-                            <div class="card-body">
-                                <h4 class="card-title">📌 자사 판매 프로그램 개발 및 자동화</h4>
-                                <p><strong>개요:</strong> 상품 등록부터 CS 처리까지 전반적인 온라인 판매 프로세스 자동화 및 데이터 통합 관리로 운영 효율 극대화 시스템 개발</p>
-                                <p><strong>기술 스택:</strong>
-                                    <span class="badge tech-stack">Python</span>
-                                    <span class="badge tech-stack">FastAPI</span>
-                                    <span class="badge tech-stack">MySQL</span>
-                                    <span class="badge tech-stack">Vue.js</span>
-                                    <span class="badge tech-stack">PM2</span>
-                                </p>
-                                <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                                <ul class="small">
-                                    <li><strong>핵심 판매 자동화 배치 시스템 설계/개발 주도:</strong> 상품 정보 수집, 등록, 주문 처리, 배송 연동, CS 수집 등 주요 프로세스 자동화 구현</li>
-                                    <li><strong>배포 자동화 및 모니터링 환경 구축:</strong>
-                                        <ul>
-                                            <li>GitLab CI/CD 파이프라인 구축으로 수동 배포 프로세스 자동화 및 <strong>배포 시간 단축</strong></li>
-                                            <li>PM2 도입으로 배치 애플리케이션 안정적 실행 보장 및 <strong>실시간 로그 모니터링 환경 구현</strong></li>
-                                        </ul>
-                                    </li>
-                                    <li><strong>상품 카테고리 자동 매칭 기능 개발:</strong> 외부 API 데이터 및 상품 정보 분석 기반, E-commerce 플랫폼 카테고리 자동 매핑 로직 구현</li>
-                                    <li>상품 자동 등록 설정 관리자 페이지 <strong>백엔드 API(FastAPI) 및 프론트엔드(Vue.js) 개발</strong></li>
-                                </ul>
-                                <p class="mb-2"><strong>성과:</strong></p>
-                                <ul class="small">
-                                    <li><strong>주요 판매 프로세스 자동화 및 데이터 실시간 동기화</strong> 달성:
-                                        <ul>
-                                            <li>상품 상태 불일치로 인한 <strong>주문 취소율 75% 감소</strong></li>
-                                            <li>상품/주문 관련 <strong>수작업 시간 87% 단축 (4시간 → 30분)</strong> 및 데이터 오류율 감소</li>
-                                        </ul>
-                                    </li>
-                                    <li>CI/CD 및 PM2 도입으로 <strong>배포 안정성 확보 및 운영 효율 증대</strong></li>
-                                    <li>카테고리 자동 매칭으로 <strong>상품 등록 시간 추가 단축 및 정확도 향상</strong></li>
-                                    <li>실시간 알림 기능으로 <strong>고객 문의 대응 속도 개선</strong></li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Project Card 4 -->
-                        <div class="card project mb-4">
-                            <div class="card-body">
-                                <h4 class="card-title">📌 다팔자 서비스 신규 마켓 연동 개발</h4>
-                                <p><strong>개요:</strong> 상품 대량 등록/자동 상태 동기화 서비스 '다팔자'에 신규 판매 채널(GS SHOP, TOSS) 확장 지원</p>
-                                <p><strong>기술 스택:</strong>
-                                    <span class="badge tech-stack">Node.js</span>
-                                    <span class="badge tech-stack">TypeScript</span>
-                                    <span class="badge tech-stack">Electron</span>
-                                </p>
-                                <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                                <ul class="small">
-                                    <li>GS SHOP 및 TOSS 마켓플레이스 상품 등록/관리 <strong>API 분석 및 연동 모듈 개발</strong></li>
-                                    <li>신규 마켓 연동 기능의 <strong>기존 시스템 통합 및 안정화 작업 수행</strong></li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Project Card 5 -->
-                        <div class="card project mb-4">
-                            <div class="card-body">
-                                <h4 class="card-title">📌 통합 매크로 프로그램 안정성 및 사용성 개선</h4>
-                                <p><strong>개요:</strong> 기존 매크로 프로그램의 리소스 과부하 및 관리 복잡성 문제 해결 위한 아키텍처 재설계 및 분리</p>
-                                <p><strong>기술 스택:</strong>
-                                    <span class="badge tech-stack">Python</span>
-                                    <span class="badge tech-stack">MySQL</span>
-                                </p>
-                                <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                                <ul class="small">
-                                    <li>관리자와 실행 에이전트 분리, Selenium 서버 분리 등 <strong>구조 개선 주도</strong></li>
-                                </ul>
-                                <p class="mb-2"><strong>성과:</strong></p>
-                                <ul class="small">
-                                    <li><strong>매크로 안정성 대폭 향상</strong> 및 관리 편의성 증대</li>
-                                    <li>PC당 동시 실행 5개 제한 및 리소스 과부하로 인한 다운 현상 해결: Selenium 서버 분리로 <strong>안정적인 다중 매크로 실행 환경 구축</strong> 및 동시 실행 제약 완화</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Project Card 6 -->
-                        <div class="card project mb-0"> <!-- Last project in this company block -->
-                            <div class="card-body">
-                                <h4 class="card-title">📌 다수 도매 사이트 상품 정보 자동 수집 시스템</h4>
-                                <p><strong>개요:</strong> 여러 도매 사이트 최신 상품 정보(재고, 단종 등) 자동 수집/동기화로 품절 인한 주문 취소 방지 및 수작업 비효율 개선</p>
-                                <p><strong>기술 스택:</strong>
-                                    <span class="badge tech-stack">Python</span>
-                                    <span class="badge tech-stack">Redis</span>
-                                    <span class="badge tech-stack">MongoDB</span>
-                                    <span class="badge tech-stack">SQLite</span>
-                                </p>
-                                <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                                <ul class="small">
-                                    <li>상품 정보 자동 수집 크롤러 및 사용자 확인용 GUI 프로그램 <strong>설계 및 개발 주도</strong></li>
-                                </ul>
-                                <p class="mb-2"><strong>성과:</strong></p>
-                                <ul class="small">
-                                    <li>상품 상태 정보 확인 자동화로 <strong>수작업 시간 단축</strong> 및 <strong>주문 취소율 감소 기여</strong></li>
-                                    <li>Redis 활용 통한 <strong>크롤링 작업 안정성 확보 (중단 시 복구)</strong> 및 <strong>처리 속도 개선</strong></li>
-                                    <li>MongoDB 기반 <strong>대규모 상품 데이터 처리 효율 증대</strong></li>
-                                </ul>
-                            </div>
-                        </div>
+                    <div class="col-md-6 col-lg-4">
+                        <figure class="figure">
+                            <img src="/portfolio/images/project1/2.webp" class="figure-img img-fluid" alt="Docker images 및 container">
+                            <figcaption class="figure-caption small">Docker Containers</figcaption>
+                        </figure>
                     </div>
-
-                    <!-- Last1mile -->
-                    <div id="exp-last1mile" class="experience-item mb-4 pb-4 border-bottom">
-                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-2">
-                            <h3 class="fs-5 fw-semibold mb-1 mb-sm-0">라스트일마일 (Last1mile)</h3>
-                            <span class="text-muted small">2021.08 ~ 2022.05</span>
-                        </div>
-                        <p class="text-muted fst-italic small mb-0"><em>(주요 프로젝트는 플레이뎁으로 이관되어 연속 진행됨 - 상단 플레이뎁 경력 참고)</em></p>
+                    <div class="col-md-6 col-lg-4">
+                        <figure class="figure">
+                            <img src="/portfolio/images/project1/3.webp" class="figure-img img-fluid" alt="회원 리스트">
+                            <figcaption class="figure-caption small">회원 리스트</figcaption>
+                        </figure>
                     </div>
-
-                    <!-- The SMC Group -->
-                    <div id="exp-smc" class="experience-item mb-0 pb-0 border-0">
-                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-2">
-                            <h3 class="fs-5 fw-semibold mb-1 mb-sm-0">더에스엠씨그룹 (The SMC Group)</h3>
-                            <span class="text-muted small">2021.01 ~ 2021.02 (인턴)</span>
-                        </div>
-                        <div class="card project mb-0">
-                            <div class="card-body">
-                                <h4 class="card-title">📌 방구석 연구소 서비스 기능 개발 및 개선 (노른자 인턴쉽)</h4>
-                                <p><strong>개요:</strong> 높은 트래픽의 '방구석 연구소' 서비스 신규 기능(짤 뽑기 테스트) 개발, 기존 기능 개선, 뉴스레터 구독 기능 개발 참여</p>
-                                <p><strong>기술 스택:</strong>
-                                    <span class="badge tech-stack">PHP</span>
-                                    <span class="badge tech-stack">Codeigniter</span>
-                                    <span class="badge tech-stack">MySQL</span>
-                                    <span class="badge tech-stack">JavaScript</span>
-                                </p>
-                                <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                                <ul class="small">
-                                    <li>'짤 뽑기' 신규 테스트 백엔드(이미지 처리) 및 프론트엔드(Canvas) 로직 개발</li>
-                                    <li><strong>기존 로딩 페이지 보안 강화:</strong> URL 파라미터 데이터 전송을 인코딩된 Body 전송으로 변경, 타 사용자 이미지 접근 취약점 해결</li>
-                                    <li>이미지 리사이징 로직 도입으로 <strong>서버 부하 감소 및 응답 속도 개선</strong></li>
-                                    <li>뉴스레터 구독 페이지 개발 및 Fetch Polyfill 적용 통한 <strong>IE 호환성 확보</strong></li>
-                                    <li>스티비(Stibee) API 연동 통한 뉴스레터 발송 및 구독자 관리 기능 구현</li>
-                                </ul>
-                            </div>
-                        </div>
+                    <div class="col-md-6 col-lg-4">
+                        <figure class="figure">
+                            <img src="/portfolio/images/project1/4.webp" class="figure-img img-fluid" alt="사용자 정보 리스트 테이블+페이지네이션">
+                            <figcaption class="figure-caption small">사용자 목록 (페이지네이션)</figcaption>
+                        </figure>
                     </div>
-                </section>
-
-                <!-- Portfolio Section -->
-                <section id="portfolio" class="section mb-5">
-                    <h2 class="section-title h3">개인 프로젝트</h2>
-
-                    <!-- Project 1 -->
-                    <div id="proj-user-mgmt" class="card project mb-4">
-                        <div class="card-body">
-                            <h4 class="card-title">📌 사용자 관리 토이 프로젝트</h4>
-                            <p class="github-link small mb-3">
-                                <strong><i class="bi bi-github"></i> Source:</strong>
-                                <a href="https://github.com/kjh1305/SpringAPI" target="_blank" class="ms-1">Backend (SpringAPI)</a> |
-                                <a href="https://github.com/kjh1305/vue-project" target="_blank" class="ms-1">Frontend (vue-project)</a>
-                            </p>
-                            <hr>
-                            <h6 class="fw-semibold small">상세 내용</h6>
-                            <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
-                            <div class="row g-3 mb-3 text-center">
-                                <div class="col-md-6 col-lg-4">
-                                    <figure class="figure">
-                                        <img src="/portfolio/images/project1/1.webp" class="figure-img img-fluid" alt="클라이언트, 서버 Jenkins Items">
-                                        <figcaption class="figure-caption small">Jenkins Items</figcaption>
-                                    </figure>
-                                </div>
-                                <div class="col-md-6 col-lg-4">
-                                    <figure class="figure">
-                                        <img src="/portfolio/images/project1/2.webp" class="figure-img img-fluid" alt="Docker images 및 container">
-                                        <figcaption class="figure-caption small">Docker Containers</figcaption>
-                                    </figure>
-                                </div>
-                                <div class="col-md-6 col-lg-4">
-                                    <figure class="figure">
-                                        <img src="/portfolio/images/project1/3.webp" class="figure-img img-fluid" alt="회원 리스트">
-                                        <figcaption class="figure-caption small">회원 리스트</figcaption>
-                                    </figure>
-                                </div>
-                                <div class="col-md-6 col-lg-4">
-                                    <figure class="figure">
-                                        <img src="/portfolio/images/project1/4.webp" class="figure-img img-fluid" alt="사용자 정보 리스트 테이블+페이지네이션">
-                                        <figcaption class="figure-caption small">사용자 목록 (페이지네이션)</figcaption>
-                                    </figure>
-                                </div>
-                                <div class="col-md-6 col-lg-4">
-                                    <figure class="figure">
-                                        <img src="/portfolio/images/project1/5.webp" class="figure-img img-fluid" alt="로그인 페이지">
-                                        <figcaption class="figure-caption small">로그인 페이지</figcaption>
-                                    </figure>
-                                </div>
-                            </div>
-                            <p class="fst-italic text-muted small mb-3">📔 Vue.js(Vuetify) SPA, Spring Boot API, Spring Security, Jenkins/Docker CI/CD, AWS EC2/RDS 배포. (S3/JPA 추가 예정)</p>
-                            <hr>
-                            <h6 class="fw-semibold small">구현된 기능 및 화면 (진행중)</h6>
-                            <ul class="small">
-                                <li><strong>서버/배포:</strong> Nginx(Vue 빌드) + Spring Boot API Docker 이미지 자동 배포 (Jenkins), Git Webhook (현재 중단)</li>
-                                <li><strong>Frontend:</strong> Vuetify 기반 UI (Header, Footer, Login, UserList) 개발 중</li>
-                                <li><strong>Backend:</strong> 회원가입, 로그인, User CRUD, JWT (Access/Refresh 토큰 분리) 개발 중</li>
-                            </ul>
-                        </div>
+                    <div class="col-md-6 col-lg-4">
+                        <figure class="figure">
+                            <img src="/portfolio/images/project1/5.webp" class="figure-img img-fluid" alt="로그인 페이지">
+                            <figcaption class="figure-caption small">로그인 페이지</figcaption>
+                        </figure>
                     </div>
+                </div>
+                <p class="fst-italic text-muted small mb-3">📔 Vue.js(Vuetify) SPA, Spring Boot API, Spring Security, Jenkins/Docker CI/CD, AWS EC2/RDS 배포. (S3/JPA 추가 예정)</p>
+                <hr>
+                <h6 class="fw-semibold small">구현된 기능 및 화면 (진행중)</h6>
+                <ul class="small">
+                    <li><strong>서버/배포:</strong> Nginx(Vue 빌드) + Spring Boot API Docker 이미지 자동 배포 (Jenkins), Git Webhook (현재 중단)</li>
+                    <li><strong>Frontend:</strong> Vuetify 기반 UI (Header, Footer, Login, UserList) 개발 중</li>
+                    <li><strong>Backend:</strong> 회원가입, 로그인, User CRUD, JWT (Access/Refresh 토큰 분리) 개발 중</li>
+                </ul>
+            </div>
+        </div>
 
-                    <!-- Project 2 -->
-                    <div id="proj-spring-blog" class="card project mb-4">
-                        <div class="card-body">
-                            <h4 class="card-title">📌 Spring boot Bolg 프로젝트</h4>
-                            <p class="github-link small mb-3">
-                                <strong><i class="bi bi-github"></i> Source:</strong>
-                                <a href="https://github.com/kjh1305/SpringBlog" target="_blank">kjh1305/SpringBlog</a>
-                            </p>
-                            <hr>
-                            <h6 class="fw-semibold small">상세 내용</h6>
-                            <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
-                            <div class="row g-3 mb-3 text-center">
-                                <div class="col-md-6">
-                                    <figure class="figure">
-                                        <img src="/portfolio/images/project2/2.webp" class="figure-img img-fluid" alt="Spring Blog 스크린샷 1">
-                                    </figure>
-                                </div>
-                                <div class="col-md-6">
-                                    <figure class="figure">
-                                        <img src="/portfolio/images/project2/3.webp" class="figure-img img-fluid" alt="Spring Blog 스크린샷 2">
-                                    </figure>
-                                </div>
-                            </div>
-                            <p class="fst-italic text-muted small mb-3">📔 Member(SpringJdbcTemplate), Blog(MyBatis) 구현. 구 JSP/Servlet 블로그를 Spring Boot + Thymeleaf 학습 목적으로 업그레이드.</p>
-                            <hr>
-                            <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
-                            <ul class="small">
-                                <li>회원 가입/로그인 (Session, Cookie), 회원 수정/삭제</li>
-                                <li>블로그 CRUD (이미지 업로드 - @Multipart), 페이징, 검색 (제목/작성자)</li>
-                                <li>관리자(ROOT) 로그인 시 회원 관리 기능</li>
-                            </ul>
-                            <hr>
-                            <h6 class="fw-semibold small">느낀점</h6>
-                            <ul class="small">
-                                <li>JSP/Servlet 대비 코드 반복 감소 및 생산성 향상 (Spring Boot 자동 설정)</li>
-                                <li>Thymeleaf 템플릿 엔진의 편리함 경험</li>
-                            </ul>
-                        </div>
+        <!-- Project 2 -->
+        <div id="proj-spring-blog" class="card project mb-4">
+            <div class="card-body">
+                <h4 class="card-title">📌 Spring boot Bolg 프로젝트</h4>
+                <p class="github-link small mb-3">
+                    <strong><i class="bi bi-github"></i> Source:</strong>
+                    <a href="https://github.com/kjh1305/SpringBlog" target="_blank">kjh1305/SpringBlog</a>
+                </p>
+                <hr>
+                <h6 class="fw-semibold small">상세 내용</h6>
+                <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
+                <div class="row g-3 mb-3 text-center">
+                    <div class="col-md-6">
+                        <figure class="figure">
+                            <img src="/portfolio/images/project2/2.webp" class="figure-img img-fluid" alt="Spring Blog 스크린샷 1">
+                        </figure>
                     </div>
-
-                    <!-- Project 3 -->
-                    <div id="proj-bab" class="card project mb-4">
-                        <div class="card-body">
-                            <h4 class="card-title">📌 BAB - 창업대전 프로젝트</h4>
-                            <p class="github-link small mb-3">
-                                <strong><i class="bi bi-github"></i> Source:</strong>
-                                <a href="https://github.com/kjh1305/BAB-project" target="_blank">kjh1305/BAB-project</a>
-                            </p>
-                            <hr>
-                            <h6 class="fw-semibold small">상세 내용</h6>
-                            <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
-                            <div class="text-center mb-3">
-                                <figure class="figure">
-                                    <img src="/portfolio/images/project3/1.webp" class="figure-img img-fluid" alt="BAB-project 스크린샷">
-                                </figure>
-                            </div>
-                            <p class="fst-italic text-muted small mb-3">📔 인덕대학교 교수/학생 커뮤니티 활성화 목적 프로젝트 (창업대전 참여). Bootstrap 템플릿 사용.</p>
-                            <hr>
-                            <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
-                            <ul class="small">
-                                <li>회원가입(교수/학생), 로그인 (Session)</li>
-                                <li>언어별 카테고리 및 게시판 CRUD</li>
-                                <li>게시글 별 질의응답 (댓글 CRUD), SmartEditor 라이브러리 적용</li>
-                            </ul>
-                            <hr>
-                            <h6 class="fw-semibold small">느낀점</h6>
-                            <ul class="small">
-                                <li>프로젝트 진행하며 Spring 학습 (초기 어려움 경험)</li>
-                                <li>팀 프로젝트 경험 및 회원가입/로그인 기능 구현 통한 Spring 구조 이해도 향상</li>
-                                <li>Spring 환경 설정의 복잡성 체감</li>
-                            </ul>
-                        </div>
+                    <div class="col-md-6">
+                        <figure class="figure">
+                            <img src="/portfolio/images/project2/3.webp" class="figure-img img-fluid" alt="Spring Blog 스크린샷 2">
+                        </figure>
                     </div>
+                </div>
+                <p class="fst-italic text-muted small mb-3">📔 Member(SpringJdbcTemplate), Blog(MyBatis) 구현. 구 JSP/Servlet 블로그를 Spring Boot + Thymeleaf 학습 목적으로 업그레이드.</p>
+                <hr>
+                <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
+                <ul class="small">
+                    <li>회원 가입/로그인 (Session, Cookie), 회원 수정/삭제</li>
+                    <li>블로그 CRUD (이미지 업로드 - @Multipart), 페이징, 검색 (제목/작성자)</li>
+                    <li>관리자(ROOT) 로그인 시 회원 관리 기능</li>
+                </ul>
+                <hr>
+                <h6 class="fw-semibold small">느낀점</h6>
+                <ul class="small">
+                    <li>JSP/Servlet 대비 코드 반복 감소 및 생산성 향상 (Spring Boot 자동 설정)</li>
+                    <li>Thymeleaf 템플릿 엔진의 편리함 경험</li>
+                </ul>
+            </div>
+        </div>
 
-                    <!-- Project 4 -->
-                    <div id="proj-jsp-blog" class="card project mb-4">
-                        <div class="card-body">
-                            <h4 class="card-title">📌 Jsp/Servlet Blog</h4>
-                            <p class="github-link small mb-3">
-                                <strong><i class="bi bi-github"></i> Source:</strong>
-                                <a href="https://github.com/kjh1305/JSP-blog" target="_blank">kjh1305/JSP-blog</a>
-                            </p>
-                            <hr>
-                            <h6 class="fw-semibold small">상세 내용</h6>
-                            <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
-                            <div class="text-center mb-3">
-                                <figure class="figure">
-                                    <img src="/portfolio/images/project4/1.webp" class="figure-img img-fluid" alt="JSP-blog 스크린샷">
-                                </figure>
-                            </div>
-                            <p class="fst-italic text-muted small mb-3">📔 Bootstrap 템플릿 활용, JSP/Servlet 및 MVC Model 2 패턴 학습 목적 프로젝트.</p>
-                            <hr>
-                            <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
-                            <ul class="small">
-                                <li>회원 가입/로그인 (Session, Cookie), 회원 정보 조회/수정/삭제 (비밀번호 확인)</li>
-                                <li>블로그 CRUD (이미지 업로드, 삭제 시 비밀번호 확인), 페이징</li>
-                            </ul>
-                            <hr>
-                            <h6 class="fw-semibold small">느낀점</h6>
-                            <ul class="small">
-                                <li>JSP/Servlet 사용 시 코드 반복성 및 어려움 체감</li>
-                                <li>Spring Framework 필요성 인지, 프레임워크 발전 이유 공감</li>
-                                <li>Oracle DB와 MySQL 문법 차이 학습, Servlet 매핑 기능 이해</li>
-                            </ul>
-                        </div>
-                    </div>
+        <!-- Project 3 -->
+        <div id="proj-bab" class="card project mb-4">
+            <div class="card-body">
+                <h4 class="card-title">📌 BAB - 창업대전 프로젝트</h4>
+                <p class="github-link small mb-3">
+                    <strong><i class="bi bi-github"></i> Source:</strong>
+                    <a href="https://github.com/kjh1305/BAB-project" target="_blank">kjh1305/BAB-project</a>
+                </p>
+                <hr>
+                <h6 class="fw-semibold small">상세 내용</h6>
+                <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
+                <div class="text-center mb-3">
+                    <figure class="figure">
+                        <img src="/portfolio/images/project3/1.webp" class="figure-img img-fluid" alt="BAB-project 스크린샷">
+                    </figure>
+                </div>
+                <p class="fst-italic text-muted small mb-3">📔 인덕대학교 교수/학생 커뮤니티 활성화 목적 프로젝트 (창업대전 참여). Bootstrap 템플릿 사용.</p>
+                <hr>
+                <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
+                <ul class="small">
+                    <li>회원가입(교수/학생), 로그인 (Session)</li>
+                    <li>언어별 카테고리 및 게시판 CRUD</li>
+                    <li>게시글 별 질의응답 (댓글 CRUD), SmartEditor 라이브러리 적용</li>
+                </ul>
+                <hr>
+                <h6 class="fw-semibold small">느낀점</h6>
+                <ul class="small">
+                    <li>프로젝트 진행하며 Spring 학습 (초기 어려움 경험)</li>
+                    <li>팀 프로젝트 경험 및 회원가입/로그인 기능 구현 통한 Spring 구조 이해도 향상</li>
+                    <li>Spring 환경 설정의 복잡성 체감</li>
+                </ul>
+            </div>
+        </div>
 
-                    <!-- Project 5 -->
-                    <div id="proj-mrmt" class="card project mb-4">
-                        <div class="card-body">
-                            <h4 class="card-title">📌 방구석 연구소 mrmt 구독 페이지</h4>
-                            <p class="small mb-3">
-                                <strong><i class="bi bi-link-45deg"></i> URL:</strong>
-                                <a href="http://mrmt.kr/" target="_blank">미리밋터 mirimeeter</a>
-                            </p>
-                            <hr>
-                            <h6 class="fw-semibold small">상세 내용</h6>
-                            <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
-                            <div class="text-center mb-3">
-                                <figure class="figure">
-                                    <img src="/portfolio/images/project5/1.webp" class="figure-img img-fluid" alt="방구석연구소 - mrmt 구독페이지 스크린샷">
-                                </figure>
-                            </div>
-                            <p class="fst-italic text-muted small mb-3">👍 스티비(Stibee) API 연동, 구독자 관리 기능 구현.</p>
-                            <hr>
-                            <h6 class="fw-semibold small">백엔드 개발 설명</h6>
-                            <ul class="small">
-                                <li>PHP, Codeigniter 프레임워크 활용, Cafe24 호스팅, MySQL 사용</li>
-                                <li>이메일 중복 확인, 구독자 정보 DB 등록 및 Stibee API 동시 등록 (환영 메일 자동 발송)</li>
-                                <li>관리자 페이지: 구독자 조회/검색/삭제 (페이징), IE11 호환성 (Fetch Polyfill)</li>
-                            </ul>
-                            <hr>
-                            <h6 class="fw-semibold small">느낀점</h6>
-                            <ul class="small">
-                                <li>크로스 브라우징 중요성 인지, 프레임워크 기능 활용 경험</li>
-                                <li>Open API 연동 및 사용, 기획/디자인/프론트엔드 협업 경험, Git/Github 활용</li>
-                            </ul>
-                        </div>
-                    </div>
+        <!-- Project 4 -->
+        <div id="proj-jsp-blog" class="card project mb-4">
+            <div class="card-body">
+                <h4 class="card-title">📌 Jsp/Servlet Blog</h4>
+                <p class="github-link small mb-3">
+                    <strong><i class="bi bi-github"></i> Source:</strong>
+                    <a href="https://github.com/kjh1305/JSP-blog" target="_blank">kjh1305/JSP-blog</a>
+                </p>
+                <hr>
+                <h6 class="fw-semibold small">상세 내용</h6>
+                <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
+                <div class="text-center mb-3">
+                    <figure class="figure">
+                        <img src="/portfolio/images/project4/1.webp" class="figure-img img-fluid" alt="JSP-blog 스크린샷">
+                    </figure>
+                </div>
+                <p class="fst-italic text-muted small mb-3">📔 Bootstrap 템플릿 활용, JSP/Servlet 및 MVC Model 2 패턴 학습 목적 프로젝트.</p>
+                <hr>
+                <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
+                <ul class="small">
+                    <li>회원 가입/로그인 (Session, Cookie), 회원 정보 조회/수정/삭제 (비밀번호 확인)</li>
+                    <li>블로그 CRUD (이미지 업로드, 삭제 시 비밀번호 확인), 페이징</li>
+                </ul>
+                <hr>
+                <h6 class="fw-semibold small">느낀점</h6>
+                <ul class="small">
+                    <li>JSP/Servlet 사용 시 코드 반복성 및 어려움 체감</li>
+                    <li>Spring Framework 필요성 인지, 프레임워크 발전 이유 공감</li>
+                    <li>Oracle DB와 MySQL 문법 차이 학습, Servlet 매핑 기능 이해</li>
+                </ul>
+            </div>
+        </div>
 
-                    <!-- Project 6 -->
-                    <div id="proj-newyear" class="card project mb-4">
-                        <div class="card-body">
-                            <h4 class="card-title">📌 방구석 연구소 새해 인사 짤뽑기</h4>
-                            <p class="small mb-3">
-                                <strong><i class="bi bi-link-45deg"></i> URL:</strong>
-                                <a href="https://www.banggooso.com/intro.html?idx=27" target="_blank">새해 인사 짤뽑기</a>
-                            </p>
-                            <hr>
-                            <h6 class="fw-semibold small">상세 내용</h6>
-                            <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
-                            <div class="text-center mb-3">
-                                <figure class="figure">
-                                    <img src="/portfolio/images/project6/1.webp" class="figure-img img-fluid" alt="방구석연구소 - 인턴 프로젝트 스크린샷">
-                                </figure>
-                            </div>
-                            <p class="fst-italic text-muted small mb-3">💣 방구석 연구소 인턴 프로젝트. 새해 기념 랜덤 이미지 뽑기 기능.</p>
-                            <hr>
-                            <h6 class="fw-semibold small">백엔드 개발 설명</h6>
-                            <ul class="small">
-                                <li>기존 DB 및 관리자 페이지 활용, 이미지 합성 데이터 테이블 설계</li>
-                                <li>카테고리(얼굴, 나이, 아재, 병맛, 히든 짤) 구현, 관리자 페이지 개발</li>
-                                <li>Canvas 활용 이미지/텍스트 합성 (얼굴, 나이)</li>
-                            </ul>
-                            <hr>
-                            <h6 class="fw-semibold small">느낀점</h6>
-                            <ul class="small">
-                                <li>기획 변경에 따른 개발 유연성 필요성 체감, 기존 코드 구조(하드코딩) 문제점 인지</li>
-                                <li>개인정보(얼굴) 데이터 처리 시 보안 중요성 (Query Parameter -> 암호화된 ID/UUID 사용)</li>
-                                <li>대용량 이미지 처리 시 서버 부하 고려 (확장자 변경, 리사이징)</li>
-                            </ul>
-                        </div>
-                    </div>
+        <!-- Project 5 -->
+        <div id="proj-mrmt" class="card project mb-4">
+            <div class="card-body">
+                <h4 class="card-title">📌 방구석 연구소 mrmt 구독 페이지</h4>
+                <p class="small mb-3">
+                    <strong><i class="bi bi-link-45deg"></i> URL:</strong>
+                    <a href="http://mrmt.kr/" target="_blank">미리밋터 mirimeeter</a>
+                </p>
+                <hr>
+                <h6 class="fw-semibold small">상세 내용</h6>
+                <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
+                <div class="text-center mb-3">
+                    <figure class="figure">
+                        <img src="/portfolio/images/project5/1.webp" class="figure-img img-fluid" alt="방구석연구소 - mrmt 구독페이지 스크린샷">
+                    </figure>
+                </div>
+                <p class="fst-italic text-muted small mb-3">👍 스티비(Stibee) API 연동, 구독자 관리 기능 구현.</p>
+                <hr>
+                <h6 class="fw-semibold small">백엔드 개발 설명</h6>
+                <ul class="small">
+                    <li>PHP, Codeigniter 프레임워크 활용, Cafe24 호스팅, MySQL 사용</li>
+                    <li>이메일 중복 확인, 구독자 정보 DB 등록 및 Stibee API 동시 등록 (환영 메일 자동 발송)</li>
+                    <li>관리자 페이지: 구독자 조회/검색/삭제 (페이징), IE11 호환성 (Fetch Polyfill)</li>
+                </ul>
+                <hr>
+                <h6 class="fw-semibold small">느낀점</h6>
+                <ul class="small">
+                    <li>크로스 브라우징 중요성 인지, 프레임워크 기능 활용 경험</li>
+                    <li>Open API 연동 및 사용, 기획/디자인/프론트엔드 협업 경험, Git/Github 활용</li>
+                </ul>
+            </div>
+        </div>
 
-                    <!-- Project 7 -->
-                    <div id="proj-php-gallery" class="card project mb-4">
-                        <div class="card-body">
-                            <h4 class="card-title">📌 나만의 작품 갤러리</h4>
-                            <p class="github-link small mb-3">
-                                <strong><i class="bi bi-github"></i> Source:</strong>
-                                <a href="https://github.com/kjh1305/PHP-gallery" target="_blank">kjh1305/PHP-gallery</a>
-                            </p>
-                            <hr>
-                            <h6 class="fw-semibold small">상세 내용</h6>
-                            <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
-                            <div class="text-center mb-3">
-                                <figure class="figure">
-                                    <img src="/portfolio/images/project7/1.webp" class="figure-img img-fluid" alt="나만의 작품 갤러리 스크린샷">
-                                </figure>
-                            </div>
-                            <p class="fst-italic text-muted small mb-3">👨‍🎨 PHP/Codeigniter 기반 반응형 갤러리. 작가 회원가입/로그인, 작품 등록/수정/삭제, 좋아요 기능 구현.</p>
-                            <hr>
-                            <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
-                            <ul class="small">
-                                <li><strong>사용자:</strong> 작가 CRUD, 작품 CRUD, 좋아요(1인 1작품, 토글), 이미지 미리보기, 목록/검색, 작가별/작품별 상세 페이지</li>
-                                <li><strong>관리자:</strong> 회원/작품/좋아요 관리</li>
-                            </ul>
-                            <hr>
-                            <h6 class="fw-semibold small">느낀점</h6>
-                            <ul class="small">
-                                <li>DB 설계 중요성 (기능 추가 시 수정 발생), `LEFT JOIN` 활용 능력 향상</li>
-                                <li>Codeigniter 폼 검증, 페이지네이션 등 기능 활용 경험</li>
-                                <li>Bootstrap 템플릿 조합 및 커스터마이징 어려움 체감</li>
-                            </ul>
-                        </div>
-                    </div>
+        <!-- Project 6 -->
+        <div id="proj-newyear" class="card project mb-4">
+            <div class="card-body">
+                <h4 class="card-title">📌 방구석 연구소 새해 인사 짤뽑기</h4>
+                <p class="small mb-3">
+                    <strong><i class="bi bi-link-45deg"></i> URL:</strong>
+                    <a href="https://www.banggooso.com/intro.html?idx=27" target="_blank">새해 인사 짤뽑기</a>
+                </p>
+                <hr>
+                <h6 class="fw-semibold small">상세 내용</h6>
+                <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
+                <div class="text-center mb-3">
+                    <figure class="figure">
+                        <img src="/portfolio/images/project6/1.webp" class="figure-img img-fluid" alt="방구석연구소 - 인턴 프로젝트 스크린샷">
+                    </figure>
+                </div>
+                <p class="fst-italic text-muted small mb-3">💣 방구석 연구소 인턴 프로젝트. 새해 기념 랜덤 이미지 뽑기 기능.</p>
+                <hr>
+                <h6 class="fw-semibold small">백엔드 개발 설명</h6>
+                <ul class="small">
+                    <li>기존 DB 및 관리자 페이지 활용, 이미지 합성 데이터 테이블 설계</li>
+                    <li>카테고리(얼굴, 나이, 아재, 병맛, 히든 짤) 구현, 관리자 페이지 개발</li>
+                    <li>Canvas 활용 이미지/텍스트 합성 (얼굴, 나이)</li>
+                </ul>
+                <hr>
+                <h6 class="fw-semibold small">느낀점</h6>
+                <ul class="small">
+                    <li>기획 변경에 따른 개발 유연성 필요성 체감, 기존 코드 구조(하드코딩) 문제점 인지</li>
+                    <li>개인정보(얼굴) 데이터 처리 시 보안 중요성 (Query Parameter -> 암호화된 ID/UUID 사용)</li>
+                    <li>대용량 이미지 처리 시 서버 부하 고려 (확장자 변경, 리사이징)</li>
+                </ul>
+            </div>
+        </div>
 
-                    <!-- Project 8 -->
-                    <div id="proj-php-aji" class="card project mb-4">
-                        <div class="card-body">
-                            <h4 class="card-title">📌 Aji 강아지 투표 사이트</h4>
-                            <p class="github-link small mb-3">
-                                <strong><i class="bi bi-github"></i> Source:</strong>
-                                <a href="https://github.com/kjh1305/PHP-aji" target="_blank">kjh1305/PHP-aji</a>
-                            </p>
-                            <hr>
-                            <h6 class="fw-semibold small">상세 내용</h6>
-                            <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
-                            <div class="text-center mb-3">
-                                <figure class="figure">
-                                    <img src="/portfolio/images/project8/1.webp" class="figure-img img-fluid" alt="Aji 스크린샷">
-                                </figure>
-                            </div>
-                            <p class="fst-italic text-muted small mb-3">🐶 PHP/Codeigniter MVC 패턴 및 기본 구조 이해 목적 프로젝트. 리눅스 서버(Apache, SSH) 환경 작업.</p>
-                            <hr>
-                            <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
-                            <ul class="small">
-                                <li>HOME 화면 투표수 TOP3 노출, 강아지 투표/검색/페이징</li>
-                                <li>Chart.js 활용 투표 현황 시각화 (도넛/막대 그래프)</li>
-                                <li>관리자 로그인 시 강아지 CRUD</li>
-                            </ul>
-                            <hr>
-                            <h6 class="fw-semibold small">느낀점</h6>
-                            <ul class="small">
-                                <li>Codeigniter 페이징, Chart.js 라이브러리, Bootstrap 반응형 사이트 구현 경험</li>
-                                <li>Ajax 비동기 통신 시도 및 부분적 어려움 경험 (데이터 업데이트 실패)</li>
-                            </ul>
-                        </div>
-                    </div>
+        <!-- Project 7 -->
+        <div id="proj-php-gallery" class="card project mb-4">
+            <div class="card-body">
+                <h4 class="card-title">📌 나만의 작품 갤러리</h4>
+                <p class="github-link small mb-3">
+                    <strong><i class="bi bi-github"></i> Source:</strong>
+                    <a href="https://github.com/kjh1305/PHP-gallery" target="_blank">kjh1305/PHP-gallery</a>
+                </p>
+                <hr>
+                <h6 class="fw-semibold small">상세 내용</h6>
+                <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
+                <div class="text-center mb-3">
+                    <figure class="figure">
+                        <img src="/portfolio/images/project7/1.webp" class="figure-img img-fluid" alt="나만의 작품 갤러리 스크린샷">
+                    </figure>
+                </div>
+                <p class="fst-italic text-muted small mb-3">👨‍🎨 PHP/Codeigniter 기반 반응형 갤러리. 작가 회원가입/로그인, 작품 등록/수정/삭제, 좋아요 기능 구현.</p>
+                <hr>
+                <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
+                <ul class="small">
+                    <li><strong>사용자:</strong> 작가 CRUD, 작품 CRUD, 좋아요(1인 1작품, 토글), 이미지 미리보기, 목록/검색, 작가별/작품별 상세 페이지</li>
+                    <li><strong>관리자:</strong> 회원/작품/좋아요 관리</li>
+                </ul>
+                <hr>
+                <h6 class="fw-semibold small">느낀점</h6>
+                <ul class="small">
+                    <li>DB 설계 중요성 (기능 추가 시 수정 발생), `LEFT JOIN` 활용 능력 향상</li>
+                    <li>Codeigniter 폼 검증, 페이지네이션 등 기능 활용 경험</li>
+                    <li>Bootstrap 템플릿 조합 및 커스터마이징 어려움 체감</li>
+                </ul>
+            </div>
+        </div>
 
-                    <!-- Project 9 -->
-                    <div id="proj-php-shop" class="card project mb-0"> <!-- Last project -->
-                        <div class="card-body">
-                            <h4 class="card-title">📌 PHP 쇼핑몰</h4>
-                            <p class="github-link small mb-3">
-                                <strong><i class="bi bi-github"></i> Source:</strong>
-                                <a href="https://github.com/kjh1305/PHP-shop" target="_blank">kjh1305/PHP-shop</a>
-                            </p>
-                            <hr>
-                            <h6 class="fw-semibold small">상세 내용</h6>
-                            <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
-                            <div class="text-center mb-3">
-                                <figure class="figure">
-                                    <img src="/portfolio/images/project9/1.webp" class="figure-img img-fluid" alt="PHP 쇼핑몰 스크린샷">
-                                </figure>
-                            </div>
-                            <p class="fst-italic text-muted small mb-3">🛒 순수 PHP 학습 목적 쇼핑몰 구축. 리눅스 서버(Apache, SSH) 환경 작업.</p>
-                            <hr>
-                            <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
-                            <ul class="small">
-                                <li><strong>사용자:</strong> 카테고리(New/Hit/Sale), 회원가입/로그인/수정, 장바구니, 구매 시스템</li>
-                                <li><strong>관리자:</strong> 회원/상품/주문/옵션 관리</li>
-                            </ul>
-                            <hr>
-                            <h6 class="fw-semibold small">느낀점</h6>
-                            <ul class="small">
-                                <li>PHP 데이터 처리 기본 방식 이해, 단일 페이지 내 다수 언어 혼재 문제점 발견</li>
-                                <li>사용자/관리자 페이지 분리 필요성 절감, 쇼핑몰 기본 구조 이해</li>
-                                <li>기본적인 MySQL 사용법 (CRUD) 습득</li>
-                            </ul>
-                        </div>
-                    </div>
-                </section>
+        <!-- Project 8 -->
+        <div id="proj-php-aji" class="card project mb-4">
+            <div class="card-body">
+                <h4 class="card-title">📌 Aji 강아지 투표 사이트</h4>
+                <p class="github-link small mb-3">
+                    <strong><i class="bi bi-github"></i> Source:</strong>
+                    <a href="https://github.com/kjh1305/PHP-aji" target="_blank">kjh1305/PHP-aji</a>
+                </p>
+                <hr>
+                <h6 class="fw-semibold small">상세 내용</h6>
+                <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
+                <div class="text-center mb-3">
+                    <figure class="figure">
+                        <img src="/portfolio/images/project8/1.webp" class="figure-img img-fluid" alt="Aji 스크린샷">
+                    </figure>
+                </div>
+                <p class="fst-italic text-muted small mb-3">🐶 PHP/Codeigniter MVC 패턴 및 기본 구조 이해 목적 프로젝트. 리눅스 서버(Apache, SSH) 환경 작업.</p>
+                <hr>
+                <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
+                <ul class="small">
+                    <li>HOME 화면 투표수 TOP3 노출, 강아지 투표/검색/페이징</li>
+                    <li>Chart.js 활용 투표 현황 시각화 (도넛/막대 그래프)</li>
+                    <li>관리자 로그인 시 강아지 CRUD</li>
+                </ul>
+                <hr>
+                <h6 class="fw-semibold small">느낀점</h6>
+                <ul class="small">
+                    <li>Codeigniter 페이징, Chart.js 라이브러리, Bootstrap 반응형 사이트 구현 경험</li>
+                    <li>Ajax 비동기 통신 시도 및 부분적 어려움 경험 (데이터 업데이트 실패)</li>
+                </ul>
+            </div>
+        </div>
 
-                <footer class="mt-5 pt-4 border-top text-center text-muted small">
-                    <p class="mb-0">읽어주셔서 감사합니다.</p>
-                </footer>
-            </main> <!-- End Main Content -->
-        </div> <!-- End Main Content Col -->
-    </div> <!-- End Row -->
-</div> <!-- End Container -->
+        <!-- Project 9 -->
+        <div id="proj-php-shop" class="card project mb-0"> <!-- Last project -->
+            <div class="card-body">
+                <h4 class="card-title">📌 PHP 쇼핑몰</h4>
+                <p class="github-link small mb-3">
+                    <strong><i class="bi bi-github"></i> Source:</strong>
+                    <a href="https://github.com/kjh1305/PHP-shop" target="_blank">kjh1305/PHP-shop</a>
+                </p>
+                <hr>
+                <h6 class="fw-semibold small">상세 내용</h6>
+                <!-- !! 중요: 이미지 경로는 실제 환경에 맞게 수정해야 합니다. -->
+                <div class="text-center mb-3">
+                    <figure class="figure">
+                        <img src="/portfolio/images/project9/1.webp" class="figure-img img-fluid" alt="PHP 쇼핑몰 스크린샷">
+                    </figure>
+                </div>
+                <p class="fst-italic text-muted small mb-3">🛒 순수 PHP 학습 목적 쇼핑몰 구축. 리눅스 서버(Apache, SSH) 환경 작업.</p>
+                <hr>
+                <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
+                <ul class="small">
+                    <li><strong>사용자:</strong> 카테고리(New/Hit/Sale), 회원가입/로그인/수정, 장바구니, 구매 시스템</li>
+                    <li><strong>관리자:</strong> 회원/상품/주문/옵션 관리</li>
+                </ul>
+                <hr>
+                <h6 class="fw-semibold small">느낀점</h6>
+                <ul class="small">
+                    <li>PHP 데이터 처리 기본 방식 이해, 단일 페이지 내 다수 언어 혼재 문제점 발견</li>
+                    <li>사용자/관리자 페이지 분리 필요성 절감, 쇼핑몰 기본 구조 이해</li>
+                    <li>기본적인 MySQL 사용법 (CRUD) 습득</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <footer class="mt-5 pt-4 border-top text-center text-muted small">
+        <p class="mb-0">읽어주셔서 감사합니다.</p>
+    </footer>
+</main> <!-- End Main Content -->
+
 
 <!-- Scroll to Top Button -->
 <button id="scrollTopBtn" class="btn btn-primary rounded-circle shadow" title="맨 위로 이동">
-    <i class="bi bi-arrow-up"></i> <!-- Removed fs-4, using default size -->
+    <i class="bi bi-arrow-up"></i>
 </button>
 
 <!-- Bootstrap Bundle with Popper -->
@@ -1046,23 +1162,14 @@
     // Scroll to Top Button Script
     const scrollTopBtn = document.getElementById("scrollTopBtn");
     const scrollThreshold = 300; // Show button after scrolling 300px
-    const mainContent = document.querySelector('main'); // Main content area
-    const sidebarNav = document.querySelector('.sidebar-nav'); // Sidebar
 
-    function scrollFunction() {
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
-        if (scrollY > scrollThreshold) {
+    function toggleScrollTopButton() {
+        if (window.scrollY > scrollThreshold) {
             scrollTopBtn.style.display = "block";
         } else {
             scrollTopBtn.style.display = "none";
         }
-
-        // Call link highlighting function
-        highlightNavLink();
     }
-
-    window.addEventListener('scroll', scrollFunction); // Use event listener
 
     // Smooth scroll to top when button is clicked
     scrollTopBtn.addEventListener("click", function(){
@@ -1070,92 +1177,179 @@
     });
 
     // --- Active link highlighting based on scroll position ---
-    const sections = document.querySelectorAll('section[id], div[id^="exp-"], div[id^="proj-"]'); // Sections and specific divs
-    const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
-    const offsetMargin = 80; // Adjust this value based on your layout/fixed header
+    const sections = document.querySelectorAll('section[id], div[id^="exp-"], div[id^="proj-"]');
+    const sidebarLinks = document.querySelectorAll('.sidebar .nav-link'); // Target sidebar links
+    const mobileNavLinks = document.querySelectorAll('.mobile-navbar .nav-link'); // Target mobile nav links
+    const allNavLinks = document.querySelectorAll('.sidebar .nav-link, .mobile-navbar .nav-link'); // Combine lists
+    const sidebar = document.querySelector('.sidebar'); // Sidebar element
+    const mobileNavbar = document.querySelector('.mobile-navbar'); // Mobile navbar element
+
+
+    function getOffsetTop() {
+        // Use mobile navbar height for offset on mobile, adjust for desktop
+        // On desktop, the sidebar is fixed, so offset calculation needs to be relative to viewport top
+        const headerHeight = window.innerWidth < 992 ? (mobileNavbar?.offsetHeight || 70) : 0;
+        // Add a buffer to trigger activation slightly earlier when scrolling up
+        return headerHeight + 40;
+    }
 
     function highlightNavLink() {
         let currentActiveId = '';
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollY = window.scrollY;
+        const offsetMargin = getOffsetTop(); // Dynamic offset
 
         sections.forEach(section => {
-            // Adjust for items inside the main scrolling container if needed
             const sectionTop = section.offsetTop - offsetMargin;
             const sectionHeight = section.offsetHeight;
-
-            // Check if section is in viewport
+            // Check if section is within the viewport, accounting for offset
+            // Adjusted logic to better catch sections near top/bottom
             if (scrollY >= sectionTop && scrollY < sectionTop + sectionHeight) {
-                // Prioritize specific IDs like exp-playdev over parent sections like experience
-                if (section.id.includes('-')) {
-                    currentActiveId = section.getAttribute('id');
-                } else if (!currentActiveId || !currentActiveId.includes('-')) {
-                    // Only set parent section if no specific child is active
-                    currentActiveId = section.getAttribute('id');
-                }
+                currentActiveId = section.getAttribute('id');
             }
         });
 
-        // If near the bottom, activate the last link if nothing else is active
-        if ((window.innerHeight + scrollY) >= document.body.offsetHeight - 50 && !currentActiveId) {
-            const lastNavLinkHref = navLinks[navLinks.length - 1]?.getAttribute('href');
-            if(lastNavLinkHref) {
-                currentActiveId = lastNavLinkHref.substring(1);
+        // If near the bottom, activate the last main section link if nothing else is active
+        // or if the last element is partially visible but doesn't fill criteria above.
+        const nearBottom = (window.innerHeight + scrollY) >= document.body.offsetHeight - 50;
+        if(nearBottom && !currentActiveId) {
+            // Find the ID of the last section element that has a corresponding nav link
+            let lastValidSectionId = null;
+            for (let i = sections.length - 1; i >= 0; i--) {
+                const potentialId = sections[i].getAttribute('id');
+                if (document.querySelector(`.nav-link[href="#${potentialId}"]`)) {
+                    lastValidSectionId = potentialId;
+                    break;
+                }
+            }
+            if (lastValidSectionId) {
+                currentActiveId = lastValidSectionId;
             }
         }
 
         // Remove active class from all links first
-        navLinks.forEach(link => link.classList.remove('active'));
+        allNavLinks.forEach(link => link.classList.remove('active'));
 
         // Add active class to the corresponding link(s)
         if (currentActiveId) {
-            const activeLink = sidebarNav.querySelector(`.nav-link[href="#${currentActiveId}"]`);
-            if (activeLink) {
-                activeLink.classList.add('active');
+            const activeLinks = document.querySelectorAll(`.nav-link[href="#${currentActiveId}"]`);
+            activeLinks.forEach(activeLink => {
+                if (activeLink) {
+                    activeLink.classList.add('active');
 
-                // Also activate parent link if a sub-link is active
-                if (activeLink.classList.contains('sub-nav-link')) {
-                    const parentId = currentActiveId.startsWith('exp-') ? 'experience' : 'portfolio';
-                    const parentLink = sidebarNav.querySelector(`.nav-link[href="#${parentId}"]`);
-                    if (parentLink) {
-                        parentLink.classList.add('active'); // Activate parent as well
+                    // Automatically activate parent link if a sub-link is active
+                    if (activeLink.classList.contains('sub-nav-link')) {
+                        const parentId = currentActiveId.startsWith('exp-') ? 'experience' : 'portfolio';
+                        const parentLinks = document.querySelectorAll(`.nav-link[href="#${parentId}"]`);
+                        parentLinks.forEach(parentLink => {
+                            if (parentLink && !parentLink.classList.contains('sub-nav-link')) {
+                                parentLink.classList.add('active');
+                            }
+                        });
+                    }
+
+                    // Scroll sidebar if active link is not visible (only on desktop sidebar)
+                    if (window.innerWidth >= 992 && sidebar && activeLink.closest('.sidebar')) {
+                        const linkRect = activeLink.getBoundingClientRect();
+                        const sidebarRect = sidebar.getBoundingClientRect();
+
+                        // Check if the link is fully visible within the sidebar viewport
+                        const isVisible =
+                            linkRect.top >= sidebarRect.top &&
+                            linkRect.bottom <= sidebarRect.bottom;
+
+                        if (!isVisible) {
+                            // Scroll to center the active link within the sidebar
+                            sidebar.scrollTo({
+                                top: sidebar.scrollTop + linkRect.top - sidebarRect.top - (sidebarRect.height / 2) + (linkRect.height / 2),
+                                behavior: 'smooth'
+                            });
+                        }
                     }
                 }
-            } else {
-                // Fallback for main sections if specific ID link not found directly
-                const mainSectionId = currentActiveId.split('-')[0];
-                const mainSectionLink = sidebarNav.querySelector(`.nav-link[href="#${mainSectionId}"]`);
-                if(mainSectionLink) {
-                    mainSectionLink.classList.add('active');
-                }
-            }
+            });
         } else {
-            // If no section is active (e.g., at the very top), activate the first link? (Optional)
-            // navLinks[0]?.classList.add('active');
+            // If no section is detected (e.g., at the very top before the first section)
+            // Optionally activate the first *main* link
+            const firstMainLink = document.querySelector('.nav-link:not(.sub-nav-link)');
+            // if (firstMainLink && scrollY < sections[0]?.offsetTop - offsetMargin) {
+            // activeLinks.forEach(link=> link.classList.remove('active')); // Ensure others are off
+            // const firstMainLinks = document.querySelectorAll(`.nav-link[href="${firstMainLink.getAttribute('href')}"]`);
+            // firstMainLinks.forEach(link => link.classList.add('active'));
+            //}
         }
     }
 
-    // Initial call to set active link on page load
-    document.addEventListener('DOMContentLoaded', () => {
-        highlightNavLink(); // Initial highlight
-        // Ensure sidebar scrolls to active item if needed (especially on load/refresh)
-        setTimeout(() => { // Timeout ensures layout is stable
-            const activeLink = sidebarNav.querySelector('.nav-link.active');
-            if (activeLink && sidebarNav.scrollHeight > sidebarNav.clientHeight) {
-                const linkTop = activeLink.offsetTop;
-                const sidebarScrollTop = sidebarNav.scrollTop;
-                const linkHeight = activeLink.offsetHeight;
-                const sidebarHeight = sidebarNav.clientHeight;
+    // --- Event Listeners ---
+    window.addEventListener('scroll', () => {
+        toggleScrollTopButton();
+        highlightNavLink();
+    });
 
-                // Check if the link is not fully visible
-                if (linkTop < sidebarScrollTop || (linkTop + linkHeight) > (sidebarScrollTop + sidebarHeight)) {
-                    // Scroll to center the active link
-                    sidebarNav.scrollTo({
-                        top: linkTop - (sidebarHeight / 2) + (linkHeight / 2),
-                        behavior: 'smooth'
-                    });
+    // Initial setup on DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', () => {
+        toggleScrollTopButton(); // Check button visibility on load
+        highlightNavLink(); // Initial highlight
+
+        // Add event listener to close mobile navbar when a link is clicked
+        const mobileNavbarNav = document.getElementById('mobileNavbarNav');
+        if (mobileNavbarNav) {
+            const bsCollapse = new bootstrap.Collapse(mobileNavbarNav, { toggle: false });
+            const navLinksInMenu = mobileNavbarNav.querySelectorAll('.nav-link');
+
+            navLinksInMenu.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    // Only close if the navbar is currently collapsed (mobile view)
+                    if (mobileNavbarNav.classList.contains('show')) {
+                        // Allow default scroll behavior but close menu
+                        bsCollapse.hide();
+                    }
+                    // Smooth scroll adjustment (wait for menu to potentially close)
+                    // Use the href from the clicked link
+                    const targetId = link.getAttribute('href');
+                    if (targetId && targetId.startsWith('#')) {
+                        const targetElement = document.querySelector(targetId);
+                        if (targetElement) {
+                            // Prevent instant jump
+                            e.preventDefault();
+                            // Calculate scroll position
+                            const offset = getOffsetTop(); // Use the same offset as highlight function
+                            const elementPosition = targetElement.getBoundingClientRect().top + window.scrollY;
+                            const offsetPosition = elementPosition - offset + 20; // Adjust offset slightly
+
+                            window.scrollTo({
+                                top: offsetPosition,
+                                behavior: 'smooth'
+                            });
+                        }
+                    }
+
+                });
+            });
+        }
+
+        // Smooth scroll for sidebar links as well
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                const targetId = link.getAttribute('href');
+                if (targetId && targetId.startsWith('#')) {
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        e.preventDefault();
+                        const offset = getOffsetTop(); // Use 0 or small offset for desktop?
+                        const elementPosition = targetElement.getBoundingClientRect().top + window.scrollY;
+                        // For desktop, scroll padding takes care of it if set right.
+                        // Or use a small fixed offset like 20.
+                        const desktopOffset = 20;
+                        const offsetPosition = elementPosition - desktopOffset;
+
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                        });
+                    }
                 }
-            }
-        }, 300); // Adjust delay if needed
+            });
+        });
     });
 
 </script>
