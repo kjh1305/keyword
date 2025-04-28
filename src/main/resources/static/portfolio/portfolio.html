@@ -636,7 +636,7 @@
             <!-- Project Card 1 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">📌 E-commerce 판매 최적화 및 자동화 시스템 고도화 (Java/Spring 기반)</h4>
+                    <h4 class="card-title">📌 E-commerce 판매 최적화 (다잡아 서비스) 및 자동화 시스템 고도화</h4>
                     <p><strong>개요:</strong> 초기 쿠팡 위너 가격 경쟁력 확보 중심에서 출발하여, 다중 마켓플레이스(GS SHOP, Toss 등) 상품 관리 자동화까지 지원하도록 백엔드 시스템을 단계적으로 설계/확장한 프로젝트</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Java</span>
@@ -651,7 +651,7 @@
                         <li><strong>1단계: 쿠팡 위너 로직 안정화 및 성능 개선 (API 개발):</strong>
                             <ul>
                                 <li>기존 Python 클라이언트의 불안정한 Selenium 기반 로직을 쿠팡 내부 API로 변경</li>
-                                <li>내부 API 변경 통해 클라이언트 상품 처리 속도 10배 향상 (5시간 → 30분) 및 시스템 안정성 확보</li>
+                                <li>셀레니움 -> 쿠팡 내부 API 변경 통해 클라이언트 위너 상품 만들기 처리 속도 향상 및 시스템 안정성 확보</li>
                             </ul>
                         </li>
                         <li><strong>2단계: 다중 마켓플레이스 지원 백엔드 확장 (아키텍처 설계 & API 연동):</strong>
@@ -671,7 +671,7 @@
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
                         <li>API 기반 전환으로 <strong>시스템 안정성 및 유지보수성 대폭 향상</strong></li>
-                        <li>쿠팡 상품 처리 속도 <strong>10배 개선 (5시간 → 30분)</strong></li>
+                        <li>쿠팡 위너 상품 만들기 처리 속도 <strong>10배 개선 (5시간 → 30분)</strong></li>
                         <li>사용자 쿠팡 <strong>매출 195%, 주문량 169% 증가</strong> 기여</li>
                         <li>서비스 지원 범위 확대 (쿠팡 → 다중 마켓) 및 <strong>상품 관리 자동화 구현</strong></li>
                         <li>다중 마켓 지원으로 <strong>내부 운영 효율 증대</strong> 및 데이터 오류 감소</li>
@@ -680,37 +680,6 @@
                 </div>
             </div>
 
-            <!-- Project Card 2 -->
-            <div class="card project mb-4">
-                <div class="card-body">
-                    <h4 class="card-title">📌 키워드 추천 서비스 고도화</h4>
-                    <p><strong>개요:</strong> 쿠팡/스마트스토어 판매 데이터 분석 기반, 상품 정보(엑셀 입력)에 최적화된 매출 증대용 키워드 추출 및 추천 기능 고도화 프로젝트</p>
-                    <p><strong>기술 스택:</strong>
-                        <span class="badge tech-stack">Java</span>
-                        <span class="badge tech-stack">Spring Boot</span>
-                        <span class="badge tech-stack">MySQL</span>
-                        <span class="badge tech-stack">Vue.js</span>
-                    </p>
-                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                    <ul class="small">
-                        <li><strong>대량 키워드 추출 기능 설계/구현:</strong> 기존 단건 처리에서 엑셀 업로드 기반 대량 처리 방식으로 확장 (Spring Boot API 신규 개발 및 Vue.js 연동)</li>
-                        <li><strong>백엔드 성능 최적화 및 아키텍처 개선 주도:</strong>
-                            <ul>
-                                <li>대용량 엑셀 처리 시 서버 부하 및 I/O 병목 현상 분석/식별</li>
-                                <li>파일 처리 로직을 클라이언트(JS)로 이전, 백엔드(Spring)는 순수 데이터(JSON)만 처리하도록 아키텍처 재설계/구현</li>
-                            </ul>
-                        </li>
-                    </ul>
-                    <p class="mb-2"><strong>성과:</strong></p>
-                    <ul class="small">
-                        <li>아키텍처 개선으로 <strong>백엔드 응답 속도 30% 향상</strong> 및 서버 자원 사용 효율화</li>
-                        <li>대량 키워드 일괄 추출 기능 제공으로 <strong>사용자 작업 시간 단축</strong> 및 편의성 증대</li>
-                        <li>데이터 기반 키워드 추천 통해 <strong>사용자 판매 전략 수립 및 잠재 매출 증대 기여</strong></li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Project Card 3 -->
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">📌 자사 판매 프로그램 개발 및 자동화</h4>
@@ -762,7 +731,37 @@
                     <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
                     <ul class="small">
                         <li>GS SHOP 및 TOSS 마켓플레이스 상품 등록/관리 <strong>API 분석 및 연동 모듈 개발</strong></li>
+                        <li>쿠팡, 스마트스토어, ESM, 11번가, 롯데온, 카카오, Toss, GS SHOP 마켓플레이스 주문 관리 <strong>API 분석 및 연동 모듈 개발</strong></li>
                         <li>신규 마켓 연동 기능의 <strong>기존 시스템 통합 및 안정화 작업 수행</strong></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Project Card 2 -->
+            <div class="card project mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">📌 키워드 추천 서비스 고도화</h4>
+                    <p><strong>개요:</strong> 쿠팡/스마트스토어 판매 데이터 분석 기반, 상품 정보(엑셀 입력)에 최적화된 매출 증대용 키워드 추출 및 추천 기능 고도화 프로젝트</p>
+                    <p><strong>기술 스택:</strong>
+                        <span class="badge tech-stack">Java</span>
+                        <span class="badge tech-stack">Spring Boot</span>
+                        <span class="badge tech-stack">MySQL</span>
+                        <span class="badge tech-stack">Vue.js</span>
+                    </p>
+                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <ul class="small">
+                        <li><strong>대량 키워드 추출 기능 설계/구현:</strong> 기존 단건 처리에서 엑셀 업로드 기반 대량 처리 방식으로 확장 (Spring Boot API 신규 개발 및 Vue.js 연동)</li>
+                        <li><strong>백엔드 성능 최적화 및 아키텍처 개선 주도:</strong>
+                            <ul>
+                                <li>파일 처리 로직을 클라이언트(JS)로 이전, 백엔드(Spring)는 순수 데이터(JSON)만 처리하도록 수정</li>
+                                <li>불필요한 Redis, Rabbit MQ 삭제 및 아키텍처 재설계</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p class="mb-2"><strong>성과:</strong></p>
+                    <ul class="small">
+                        <li>대량 키워드 일괄 추출 기능 제공으로 <strong>사용자 작업 시간 단축</strong> 및 편의성 증대</li>
+                        <li>데이터 기반 키워드 추천 통해 <strong>사용자 판매 전략 수립 및 잠재 매출 증대 기여</strong></li>
                     </ul>
                 </div>
             </div>
