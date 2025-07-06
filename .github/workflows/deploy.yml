@@ -49,26 +49,26 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: 'just-a-placeholder-so-we-can-disable-strict-host-key-checking'
 
-      - name: Determine current active container port
+      - name: Determine current active container name
         run: |
           PORT=$(ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} \
           ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} \
-          "grep -Po 'proxy_pass http://demo-app(-green)?:(\d+);' /home/dev/nginx/conf.d/default.conf | grep -Po '\\d+'")
-          echo "CURRENT_PORT=$PORT" >> $GITHUB_ENV
+          "grep -Po 'proxy_pass http://\\K[a-zA-Z0-9\\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf")
+          echo "CURRENT_CONTAINER=$NAME" >> $GITHUB_ENV
 
       - name: Set next prot and contatiner
-        run: | 
-            if [ "${{ env.CURRENT_PORT }}" = "8888" ]; then
-                echo "NEW_PORT=8889" >> $GITHUB_ENV
-                echo "OLD_PORT=8888" >> $GITHUB_ENV
-                echo "NEW_CONTAINER=demo-app-green" >> $GITHUB_ENV
-                echo "OLD_CONTAINER=demo-app" >> $GITHUB_ENV
-            else
-                echo "NEW_PORT=8888" >> $GITHUB_ENV
-                echo "OLD_PORT=8889" >> $GITHUB_ENV
-                echo "NEW_CONTAINER=demo-app" >> $GITHUB_ENV
-                echo "OLD_CONTAINER=demo-app-green" >> $GITHUB_ENV
-            fi
+        run: |
+          if [ "${{ env.CURRENT_CONTAINER }}" = "demo-app" ]; then
+            echo "NEW_CONTAINER=demo-app-green" >> $GITHUB_ENV
+            echo "OLD_CONTAINER=demo-app" >> $GITHUB_ENV
+            echo "NEW_PORT=8889" >> $GITHUB_ENV
+            echo "OLD_PORT=8888" >> $GITHUB_ENV
+          else
+            echo "NEW_CONTAINER=demo-app" >> $GITHUB_ENV
+            echo "OLD_CONTAINER=demo-app-green" >> $GITHUB_ENV
+            echo "NEW_PORT=8888" >> $GITHUB_ENV
+            echo "OLD_PORT=8889" >> $GITHUB_ENV
+          fi
 
       - name: SSH into server and deploy new container
         run: |
