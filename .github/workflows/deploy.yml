@@ -77,8 +77,6 @@ jobs:
           
             docker pull ghcr.io/${{ github.repository }}:${{ github.sha }}
           
-            docker stop demo-app || true && docker rm demo-app || true
-          
             docker run -d \
               --name ${{ env.NEW_CONTAINER }} \
               --network app-network \
@@ -89,7 +87,7 @@ jobs:
       - name: new container check
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} << EOF
-            for i in {1..10}; do
+            for i in {1..30}; do
               sleep 5
               STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost:${{ env.NEW_PORT }}/health || echo "000")
               if [ "\$STATUS" = "200" ]; then
