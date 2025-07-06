@@ -53,7 +53,7 @@ jobs:
         run: |
           PORT=$(ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} \
           ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} \
-          "grep -Po 'proxy_pass http://demo-app:(\\d+);' /home/dev/nginx/conf.d/default.conf | grep -Po '\\d+'")
+          "grep -Po 'proxy_pass http://demo-app(-green)?:(\d+);' /home/dev/nginx/conf.d/default.conf | grep -Po '\\d+'")
           echo "CURRENT_PORT=$PORT" >> $GITHUB_ENV
 
       - name: Set next prot and contatiner
