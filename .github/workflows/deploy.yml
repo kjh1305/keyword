@@ -49,7 +49,27 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: 'just-a-placeholder-so-we-can-disable-strict-host-key-checking'
 
-      - name: SSH into server and deploy container
+      - name: Determine current active container port
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} << EOF
+          CURRENT_PORT=$(grep -Po 'proxy_pass http://demo-app:(\d+);' /home/dev/nginx/conf.d/default.conf | grep -Po '\d+')
+            echo "CURRENT_PORT=\${CURRENT_PORT}" >> $GITHUB_ENV
+
+      - name: Set next prot and contatiner
+        run: | 
+            if [ "${{ env.CURRENT_PORT }}" = "8888" ]; then
+                echo "NEW_PORT=8889" >> $GITHUB_ENV
+                echo "OLD_PORT=8888" >> $GITHUB_ENV
+                echo "NEW_CONTAINER=demo-app-green" >> $GITHUB_ENV
+                echo "OLD_CONTAINER=demo-app" >> $GITHUB_ENV
+            else
+                echo "NEW_PORT=8888" >> $GITHUB_ENV
+                echo "OLD_PORT=8889" >> $GITHUB_ENV
+                echo "NEW_CONTAINER=demo-app" >> $GITHUB_ENV
+                echo "OLD_CONTAINER=demo-app-green" >> $GITHUB_ENV
+            fi
+
+      - name: SSH into server and deploy new container
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} << EOF
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -59,8 +79,37 @@ jobs:
             docker stop demo-app || true && docker rm demo-app || true
           
             docker run -d \
-              --name demo-app \
+              --name ${{ env.NEW_CONTAINER }} \
               --network app-network \
-              -p 8888:8888 \
+              -p ${{ env.NEW_PORT }}:8888 \
               ghcr.io/${{ github.repository }}:${{ github.sha }}
           EOF
+
+      - name: new container check
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} << EOF
+            for i in {1..10}; do
+              sleep 5
+              STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost:${{ env.NEW_PORT }}/health || echo "000")
+              if [ "\$STATUS" = "200" ]; then
+                echo "Health check passed"
+                exit 0
+              fi
+            done
+            echo "Health check failed"
+            docker rm -f ${{ env.NEW_CONTAINER }}
+            exit 1
+          EOF
+
+      - name: Update Nginx configuration
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} << EOF
+            sed -i "s/proxy_pass http:\/\/demo-app:[0-9]\+;/proxy_pass http:\/\/${{ env.NEW_CONTAINER }}:${{ env.NEW_PORT }};/" /home/dev/nginx/conf.d/default.conf
+            docker exec nginx-server nginx -s reload
+          EOF
+
+      - name: Remove old container
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} \
+           ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} \
+           "docker rm -f ${{ env.OLD_CONTAINER }} || true"
