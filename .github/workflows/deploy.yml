@@ -93,6 +93,8 @@ jobs:
               --name $NEW_CONTAINER \
               --network app-network \
               -p $NEW_PORT:8888 \
+              -e TZ=Asia/Seoul \
+              -e JAVA_TOOL_OPTIONS="-Duser.timezone=Asia/Seoul" \
               -v /home/dev/config/application-prod.properties:/app/config/application-prod.properties \
               ghcr.io/$GITHUB_REPOSITORY:$GITHUB_SHA
 
