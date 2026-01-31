@@ -43,18 +43,18 @@ jobs:
     needs: build-and-push # 이미지 빌드 후 실행
     runs-on: ubuntu-latest
     steps:
-      - name: Install SSH key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          known_hosts: 'just-a-placeholder-so-we-can-disable-strict-host-key-checking'
-
       - name: Determine current active container name
-        run: |
-          CURRENT=$(ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} \
-          ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} \
-          "grep -Po 'proxy_pass http://\\K[a-zA-Z0-9\\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf")
-          echo "CURRENT_CONTAINER=$CURRENT" >> $GITHUB_ENV
+        id: get-current
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.REMOTE_SSH_HOST }}
+          username: ${{ secrets.REMOTE_SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.REMOTE_SSH_PORT }}
+          script: grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf
+
+      - name: Set current container env
+        run: echo "CURRENT_CONTAINER=${{ steps.get-current.outputs.stdout }}" >> $GITHUB_ENV
 
       - name: Set next prot and contatiner
         run: |
@@ -71,49 +71,79 @@ jobs:
           fi
 
       - name: SSH into server and deploy new container
-        run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} << EOF
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            docker pull ghcr.io/${{ github.repository }}:${{ github.sha }}
-
-            # 기존 컨테이너 제거 (있으면)
-            docker rm -f ${{ env.NEW_CONTAINER }} 2>/dev/null || true
-
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          NEW_CONTAINER: ${{ env.NEW_CONTAINER }}
+          NEW_PORT: ${{ env.NEW_PORT }}
+        with:
+          host: ${{ secrets.REMOTE_SSH_HOST }}
+          username: ${{ secrets.REMOTE_SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.REMOTE_SSH_PORT }}
+          envs: GHCR_TOKEN,GITHUB_ACTOR,GITHUB_REPOSITORY,GITHUB_SHA,NEW_CONTAINER,NEW_PORT
+          script: |
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+            docker pull ghcr.io/$GITHUB_REPOSITORY:$GITHUB_SHA
+            docker rm -f $NEW_CONTAINER 2>/dev/null || true
             docker run -d \
-              --name ${{ env.NEW_CONTAINER }} \
+              --name $NEW_CONTAINER \
               --network app-network \
-              -p ${{ env.NEW_PORT }}:8888 \
-              ghcr.io/${{ github.repository }}:${{ github.sha }}
-          EOF
+              -p $NEW_PORT:8888 \
+              -v /home/dev/config/application-prod.properties:/app/config/application-prod.properties \
+              ghcr.io/$GITHUB_REPOSITORY:$GITHUB_SHA
 
       - name: new container check
-        run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} << EOF
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          NEW_CONTAINER: ${{ env.NEW_CONTAINER }}
+          NEW_PORT: ${{ env.NEW_PORT }}
+        with:
+          host: ${{ secrets.REMOTE_SSH_HOST }}
+          username: ${{ secrets.REMOTE_SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.REMOTE_SSH_PORT }}
+          envs: NEW_CONTAINER,NEW_PORT
+          script: |
             for i in {1..30}; do
               sleep 5
-              STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost:${{ env.NEW_PORT }}/health || echo "000")
-              echo "Health check attempt \$i: \$STATUS"
-              if [ "\$STATUS" = "200" ]; then
+              STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$NEW_PORT/health || echo "000")
+              echo "Health check attempt $i: $STATUS"
+              if [ "$STATUS" = "200" ]; then
                 echo "Health check passed"
                 exit 0
               fi
             done
             echo "Health check failed - showing container logs:"
-            docker logs ${{ env.NEW_CONTAINER }}
-            docker rm -f ${{ env.NEW_CONTAINER }}
+            docker logs $NEW_CONTAINER
+            docker rm -f $NEW_CONTAINER
             exit 1
-          EOF
 
       - name: Update Nginx configuration
-        run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} << EOF
-            sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://${{ env.NEW_CONTAINER }}:8888;|" /home/dev/nginx/conf.d/default.conf
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          NEW_CONTAINER: ${{ env.NEW_CONTAINER }}
+        with:
+          host: ${{ secrets.REMOTE_SSH_HOST }}
+          username: ${{ secrets.REMOTE_SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.REMOTE_SSH_PORT }}
+          envs: NEW_CONTAINER
+          script: |
+            sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$NEW_CONTAINER:8888;|" /home/dev/nginx/conf.d/default.conf
             docker exec nginx-server nginx -s reload
-          EOF
 
       - name: Remove old container
-        run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_SSH_PORT }} \
-           ${{ secrets.REMOTE_SSH_USERNAME }}@${{ secrets.REMOTE_SSH_HOST }} \
-           "docker rm -f ${{ env.OLD_CONTAINER }} || true"
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          OLD_CONTAINER: ${{ env.OLD_CONTAINER }}
+        with:
+          host: ${{ secrets.REMOTE_SSH_HOST }}
+          username: ${{ secrets.REMOTE_SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.REMOTE_SSH_PORT }}
+          envs: OLD_CONTAINER
+          script: docker rm -f $OLD_CONTAINER || true
