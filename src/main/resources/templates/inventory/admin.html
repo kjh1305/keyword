@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{inventory/layout :: head('시스템 관리')}"></head>
+<body>
+    <nav th:replace="~{inventory/layout :: sidebar}"></nav>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <h1 class="page-title">시스템 관리</h1>
+        </div>
+
+        <!-- Data Stats -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-box text-primary" style="font-size: 2rem;"></i>
+                        <h6 class="card-subtitle mt-2 text-muted">상품</h6>
+                        <h3 class="card-title mt-2" id="productCount" th:text="${productCount}">0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-graph-up text-success" style="font-size: 2rem;"></i>
+                        <h6 class="card-subtitle mt-2 text-muted">재고</h6>
+                        <h3 class="card-title mt-2" id="inventoryCount" th:text="${inventoryCount}">0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-truck text-warning" style="font-size: 2rem;"></i>
+                        <h6 class="card-subtitle mt-2 text-muted">주문/입고</h6>
+                        <h3 class="card-title mt-2" id="orderCount" th:text="${orderCount}">0</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                데이터 관리 (주의: 삭제된 데이터는 복구할 수 없습니다)
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">재고 데이터 삭제</h5>
+                                <p class="card-text text-muted small">월별 재고 현황 데이터만 삭제됩니다.<br>상품, 주문 데이터는 유지됩니다.</p>
+                                <button class="btn btn-warning" onclick="deleteStocks()">
+                                    <i class="bi bi-trash me-1"></i>재고 삭제
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">주문/입고 데이터 삭제</h5>
+                                <p class="card-text text-muted small">주문 및 입고 이력이 삭제됩니다.<br>상품, 재고 데이터는 유지됩니다.</p>
+                                <button class="btn btn-warning" onclick="deleteOrders()">
+                                    <i class="bi bi-trash me-1"></i>주문/입고 삭제
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-danger">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-danger">전체 데이터 삭제</h5>
+                                <p class="card-text text-muted small">상품, 재고, 주문 데이터가<br>모두 삭제됩니다.</p>
+                                <button class="btn btn-danger" onclick="deleteAll()">
+                                    <i class="bi bi-trash me-1"></i>전체 삭제
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Info -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="bi bi-info-circle me-2"></i>
+                시스템 정보
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <th style="width: 200px;">시스템 버전</th>
+                        <td>1.0.0</td>
+                    </tr>
+                    <tr>
+                        <th>프레임워크</th>
+                        <td>Spring Boot 3.4.3</td>
+                    </tr>
+                    <tr>
+                        <th>데이터베이스</th>
+                        <td>MySQL</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script>
+        function refreshStats() {
+            fetch('/api/inventory/admin/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('productCount').textContent = data.productCount;
+                    document.getElementById('inventoryCount').textContent = data.inventoryCount;
+                    document.getElementById('orderCount').textContent = data.orderCount;
+                });
+        }
+
+        function deleteStocks() {
+            if (!confirm('재고 데이터를 모두 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.')) return;
+            if (!confirm('정말로 삭제하시겠습니까?')) return;
+
+            fetch('/api/inventory/admin/stocks', { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    refreshStats();
+                })
+                .catch(error => {
+                    alert('삭제 실패');
+                });
+        }
+
+        function deleteOrders() {
+            if (!confirm('주문/입고 데이터를 모두 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.')) return;
+            if (!confirm('정말로 삭제하시겠습니까?')) return;
+
+            fetch('/api/inventory/admin/orders', { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    refreshStats();
+                })
+                .catch(error => {
+                    alert('삭제 실패');
+                });
+        }
+
+        function deleteAll() {
+            if (!confirm('⚠️ 경고 ⚠️\n\n상품, 재고, 주문 데이터가 모두 삭제됩니다.\n\n정말로 삭제하시겠습니까?')) return;
+            if (!confirm('마지막 확인입니다.\n\n모든 데이터가 영구적으로 삭제됩니다.\n계속하시겠습니까?')) return;
+
+            fetch('/api/inventory/admin/products', { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    refreshStats();
+                })
+                .catch(error => {
+                    alert('삭제 실패');
+                });
+        }
+    </script>
+</body>
+</html>

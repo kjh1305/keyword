@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{inventory/layout :: head('회원 관리')}"></head>
+<body>
+    <nav th:replace="~{inventory/layout :: sidebar}"></nav>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <h1 class="page-title">회원 관리</h1>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal" onclick="openCreateModal()">
+                <i class="bi bi-plus-lg me-1"></i>회원 추가
+            </button>
+        </div>
+
+        <!-- User List -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>회원 목록</span>
+                <span class="badge bg-secondary" th:text="${#lists.size(users)} + '명'"></span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">번호</th>
+                                <th>아이디</th>
+                                <th>이름</th>
+                                <th style="width: 100px;">권한</th>
+                                <th style="width: 150px;">등록일</th>
+                                <th style="width: 120px;">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="user, stat : ${users}">
+                                <td th:text="${stat.index + 1}"></td>
+                                <td th:text="${user.username}"></td>
+                                <td th:text="${user.name}"></td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${user.role == 'ADMIN'} ? 'bg-danger' : 'bg-secondary'"
+                                          th:text="${user.roleText}"></span>
+                                </td>
+                                <td th:text="${user.createdAtStr}"></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1 edit-btn"
+                                            th:data-id="${user.id}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger delete-btn"
+                                            th:data-id="${user.id}"
+                                            th:data-username="${user.username}"
+                                            th:disabled="${user.username == 'admin'}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(users)}">
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    등록된 회원이 없습니다.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div class="modal fade" id="userModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">회원 추가</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm">
+                        <input type="hidden" id="userId">
+                        <div class="mb-3">
+                            <label class="form-label">아이디 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="userUsername" required>
+                            <small class="text-muted" id="usernameHelp">영문, 숫자 조합</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">비밀번호 <span class="text-danger" id="pwRequired">*</span></label>
+                            <input type="password" class="form-control" id="userPassword">
+                            <small class="text-muted" id="passwordHelp">수정 시 비워두면 기존 비밀번호 유지</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">이름</label>
+                            <input type="text" class="form-control" id="userName">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">권한</label>
+                            <select class="form-select" id="userRole">
+                                <option value="USER">일반사용자</option>
+                                <option value="ADMIN">관리자</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="saveUser()">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script>
+        let isEditMode = false;
+        let userModal;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            userModal = new bootstrap.Modal(document.getElementById('userModal'));
+        });
+
+        function openCreateModal() {
+            isEditMode = false;
+            document.getElementById('modalTitle').textContent = '회원 추가';
+            document.getElementById('userForm').reset();
+            document.getElementById('userId').value = '';
+            document.getElementById('userUsername').disabled = false;
+            document.getElementById('usernameHelp').style.display = 'block';
+            document.getElementById('pwRequired').style.display = 'inline';
+            document.getElementById('passwordHelp').style.display = 'none';
+        }
+
+        function openEditModal(id) {
+            isEditMode = true;
+            document.getElementById('modalTitle').textContent = '회원 수정';
+            document.getElementById('userUsername').disabled = true;
+            document.getElementById('usernameHelp').style.display = 'none';
+            document.getElementById('pwRequired').style.display = 'none';
+            document.getElementById('passwordHelp').style.display = 'block';
+
+            fetch('/api/inventory/users/' + id)
+                .then(response => response.json())
+                .then(user => {
+                    document.getElementById('userId').value = user.id;
+                    document.getElementById('userUsername').value = user.username;
+                    document.getElementById('userName').value = user.name || '';
+                    document.getElementById('userRole').value = user.role || 'USER';
+                    document.getElementById('userPassword').value = '';
+                    userModal.show();
+                })
+                .catch(error => {
+                    alert('회원 정보를 불러오는데 실패했습니다.');
+                });
+        }
+
+        function saveUser() {
+            const username = document.getElementById('userUsername').value;
+            const password = document.getElementById('userPassword').value;
+
+            if (!isEditMode && !username) {
+                alert('아이디를 입력해주세요.');
+                return;
+            }
+            if (!isEditMode && !password) {
+                alert('비밀번호를 입력해주세요.');
+                return;
+            }
+
+            const data = {
+                username: username,
+                password: password || null,
+                name: document.getElementById('userName').value || null,
+                role: document.getElementById('userRole').value
+            };
+
+            const url = isEditMode
+                ? '/api/inventory/users/' + document.getElementById('userId').value
+                : '/api/inventory/users';
+            const method = isEditMode ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => { throw new Error(text); });
+                }
+                return response.json();
+            })
+            .then(() => {
+                userModal.hide();
+                location.reload();
+            })
+            .catch(error => {
+                alert('저장 실패: ' + error.message);
+            });
+        }
+
+        // 수정 버튼 이벤트
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                openEditModal(this.dataset.id);
+            });
+        });
+
+        // 삭제 버튼 이벤트
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const username = this.dataset.username;
+
+                if (username === 'admin') {
+                    alert('기본 관리자 계정은 삭제할 수 없습니다.');
+                    return;
+                }
+
+                if (!confirm(username + ' 회원을 삭제하시겠습니까?')) return;
+
+                fetch('/api/inventory/users/' + id, { method: 'DELETE' })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.text().then(text => { throw new Error(text); });
+                        }
+                        location.reload();
+                    })
+                    .catch(error => {
+                        alert('삭제 실패: ' + error.message);
+                    });
+            });
+        });
+    </script>
+</body>
+</html>

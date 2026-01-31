@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{inventory/layout :: head('활동 로그')}"></head>
+<body>
+    <nav th:replace="~{inventory/layout :: sidebar}"></nav>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <h1 class="page-title">활동 로그</h1>
+            <button class="btn btn-outline-danger" onclick="deleteOldLogs()">
+                <i class="bi bi-trash me-1"></i>오래된 로그 삭제
+            </button>
+        </div>
+
+        <!-- Search Filter -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">사용자</label>
+                        <input type="text" class="form-control" id="searchUsername" placeholder="사용자명">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">작업</label>
+                        <select class="form-select" id="searchAction">
+                            <option value="">전체</option>
+                            <option value="CREATE">추가</option>
+                            <option value="UPDATE">수정</option>
+                            <option value="DELETE">삭제</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">대상</label>
+                        <select class="form-select" id="searchTargetType">
+                            <option value="">전체</option>
+                            <option value="PRODUCT">상품</option>
+                            <option value="INVENTORY">재고</option>
+                            <option value="ORDER">주문/입고</option>
+                            <option value="USER">회원</option>
+                            <option value="SYSTEM">시스템</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary w-100" onclick="searchLogs()">
+                            <i class="bi bi-search me-1"></i>검색
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log List -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>활동 로그</span>
+                <span class="badge bg-secondary" id="totalCount">0건</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 160px;">일시</th>
+                                <th style="width: 100px;">사용자</th>
+                                <th style="width: 80px;">작업</th>
+                                <th style="width: 100px;">대상</th>
+                                <th>대상명</th>
+                                <th>상세</th>
+                                <th style="width: 120px;">IP</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    로딩 중...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-center mt-3" id="pagination">
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script>
+        let currentPage = 0;
+        const pageSize = 20;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            searchLogs();
+        });
+
+        function searchLogs(page = 0) {
+            currentPage = page;
+
+            const username = document.getElementById('searchUsername').value;
+            const action = document.getElementById('searchAction').value;
+            const targetType = document.getElementById('searchTargetType').value;
+
+            let url = '/api/inventory/logs?page=' + page + '&size=' + pageSize;
+            if (username) url += '&username=' + encodeURIComponent(username);
+            if (action) url += '&action=' + encodeURIComponent(action);
+            if (targetType) url += '&targetType=' + encodeURIComponent(targetType);
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    renderLogs(data.content);
+                    renderPagination(data);
+                    document.getElementById('totalCount').textContent = data.totalElements + '건';
+                })
+                .catch(error => {
+                    document.getElementById('logTableBody').innerHTML =
+                        '<tr><td colspan="7" class="text-center py-4 text-danger">로그를 불러오는데 실패했습니다.</td></tr>';
+                });
+        }
+
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logTableBody');
+
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">로그가 없습니다.</td></tr>';
+                return;
+            }
+
+            let html = '';
+            logs.forEach(log => {
+                let actionBadge = '';
+                switch (log.action) {
+                    case 'CREATE':
+                        actionBadge = '<span class="badge bg-success">추가</span>';
+                        break;
+                    case 'UPDATE':
+                        actionBadge = '<span class="badge bg-primary">수정</span>';
+                        break;
+                    case 'DELETE':
+                        actionBadge = '<span class="badge bg-danger">삭제</span>';
+                        break;
+                    default:
+                        actionBadge = '<span class="badge bg-secondary">' + log.action + '</span>';
+                }
+
+                html += '<tr>' +
+                    '<td><small>' + (log.createdAtStr || '') + '</small></td>' +
+                    '<td>' + (log.username || '') + '</td>' +
+                    '<td>' + actionBadge + '</td>' +
+                    '<td><span class="badge bg-info">' + (log.targetTypeText || '') + '</span></td>' +
+                    '<td>' + (log.targetName || '-') + '</td>' +
+                    '<td><small class="text-muted">' + (log.detail || '-') + '</small></td>' +
+                    '<td><small class="text-muted">' + (log.ipAddress || '') + '</small></td>' +
+                    '</tr>';
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function renderPagination(data) {
+            const pagination = document.getElementById('pagination');
+
+            if (data.totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let html = '<nav><ul class="pagination">';
+
+            // Previous button
+            html += '<li class="page-item ' + (!data.hasPrevious ? 'disabled' : '') + '">' +
+                '<a class="page-link" href="#" onclick="searchLogs(' + (currentPage - 1) + '); return false;">이전</a></li>';
+
+            // Page numbers
+            const startPage = Math.max(0, currentPage - 2);
+            const endPage = Math.min(data.totalPages - 1, currentPage + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += '<li class="page-item ' + (i === currentPage ? 'active' : '') + '">' +
+                    '<a class="page-link" href="#" onclick="searchLogs(' + i + '); return false;">' + (i + 1) + '</a></li>';
+            }
+
+            // Next button
+            html += '<li class="page-item ' + (!data.hasNext ? 'disabled' : '') + '">' +
+                '<a class="page-link" href="#" onclick="searchLogs(' + (currentPage + 1) + '); return false;">다음</a></li>';
+
+            html += '</ul></nav>';
+            pagination.innerHTML = html;
+        }
+
+        function deleteOldLogs() {
+            const days = prompt('며칠 이전 로그를 삭제할까요? (기본: 90일)', '90');
+            if (days === null) return;
+
+            const daysNum = parseInt(days);
+            if (isNaN(daysNum) || daysNum < 1) {
+                alert('올바른 숫자를 입력해주세요.');
+                return;
+            }
+
+            if (!confirm(daysNum + '일 이전의 로그를 삭제하시겠습니까?')) return;
+
+            fetch('/api/inventory/logs/old?daysToKeep=' + daysNum, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    searchLogs();
+                })
+                .catch(error => {
+                    alert('삭제에 실패했습니다.');
+                });
+        }
+    </script>
+</body>
+</html>
