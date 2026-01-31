@@ -93,12 +93,14 @@ jobs:
             for i in {1..30}; do
               sleep 5
               STATUS=\$(curl -s -o /dev/null -w '%{http_code}' http://localhost:${{ env.NEW_PORT }}/health || echo "000")
+              echo "Health check attempt \$i: \$STATUS"
               if [ "\$STATUS" = "200" ]; then
                 echo "Health check passed"
                 exit 0
               fi
             done
-            echo "Health check failed"
+            echo "Health check failed - showing container logs:"
+            docker logs ${{ env.NEW_CONTAINER }}
             docker rm -f ${{ env.NEW_CONTAINER }}
             exit 1
           EOF
