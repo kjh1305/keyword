@@ -18,7 +18,7 @@ public class MainController {
 
     @GetMapping("/portfolio")
     public String portfolio() {
-        return "portfolio/portfolio.html";
+        return "redirect:/portfolio/portfolio.html";
     }
 
     @GetMapping("/health")
