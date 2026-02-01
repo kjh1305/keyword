@@ -153,6 +153,23 @@ jobs:
           port: ${{ secrets.REMOTE_SSH_PORT }}
           envs: NEW_CONTAINER,NEW_PORT
           script: |
+            echo "=== Debug: NEW_CONTAINER=$NEW_CONTAINER, NEW_PORT=$NEW_PORT ==="
+
+            # 환경변수 검증
+            if [ -z "$NEW_CONTAINER" ] || [ -z "$NEW_PORT" ]; then
+              echo "ERROR: Environment variables not set properly"
+              echo "Falling back to container detection..."
+              CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf)
+              if [ "$CURRENT" = "demo-app" ]; then
+                NEW_CONTAINER="demo-app-green"
+                NEW_PORT="8889"
+              else
+                NEW_CONTAINER="demo-app"
+                NEW_PORT="8888"
+              fi
+              echo "Detected: NEW_CONTAINER=$NEW_CONTAINER, NEW_PORT=$NEW_PORT"
+            fi
+
             # 전환 전 새 컨테이너 최종 확인
             STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$NEW_PORT/health || echo "000")
             if [ "$STATUS" != "200" ]; then
@@ -192,7 +209,21 @@ jobs:
           port: ${{ secrets.REMOTE_SSH_PORT }}
           envs: OLD_CONTAINER
           script: |
+            echo "=== Debug: OLD_CONTAINER=$OLD_CONTAINER ==="
+
+            # 환경변수 검증
+            if [ -z "$OLD_CONTAINER" ]; then
+              echo "WARNING: OLD_CONTAINER not set, detecting from nginx config..."
+              CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf)
+              if [ "$CURRENT" = "demo-app" ]; then
+                OLD_CONTAINER="demo-app-green"
+              else
+                OLD_CONTAINER="demo-app"
+              fi
+              echo "Detected OLD_CONTAINER=$OLD_CONTAINER"
+            fi
+
             echo "Waiting for existing connections to drain..."
             sleep 10
-            docker rm -f $OLD_CONTAINER || true
-            echo "Old container removed"
+            docker rm -f $OLD_CONTAINER 2>/dev/null || echo "Container $OLD_CONTAINER not found or already removed"
+            echo "Old container cleanup completed"

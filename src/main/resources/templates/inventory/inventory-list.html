@@ -16,6 +16,7 @@
         .bg-purple { background-color: #8b5cf6 !important; }
         .text-purple { color: #8b5cf6 !important; }
         .text-white-50 { color: rgba(255,255,255,0.7) !important; }
+        .table-out-of-stock { background-color: #ffcdd2 !important; }
     </style>
     <nav th:replace="~{inventory/layout :: sidebar}"></nav>
 
@@ -174,7 +175,7 @@
                         </thead>
                         <tbody>
                             <tr th:each="inv, stat : ${inventories}"
-                                th:classappend="${inv.remainingStock <= 0} ? 'table-danger' : (${inv.lowStock} ? 'table-warning' : '')">
+                                th:classappend="${inv.remainingStock <= 0} ? 'table-out-of-stock' : (${inv.lowStock} ? 'table-warning' : '')">
                                 <td th:text="${currentPage * size + stat.index + 1}"></td>
                                 <td>
                                     <span class="badge bg-info" th:text="${inv.productCategory}" th:if="${inv.productCategory}"></span>
@@ -206,7 +207,7 @@
                                     <span th:text="${#numbers.formatInteger(inv.remainingStock, 1)}" th:id="'remaining-' + ${inv.id}"></span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-danger deduct-btn"
+                                    <button class="btn btn-sm btn-warning deduct-btn"
                                             th:data-id="${inv.id}"
                                             th:data-name="${inv.productName}"
                                             th:data-used="${#numbers.formatInteger(inv.usedQuantity, 1)}">
