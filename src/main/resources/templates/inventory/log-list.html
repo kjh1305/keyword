@@ -110,15 +110,24 @@
             if (targetType) url += '&targetType=' + encodeURIComponent(targetType);
 
             fetch(url)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 403) {
+                            throw new Error('관리자 권한이 필요합니다.');
+                        }
+                        throw new Error('서버 오류: ' + response.status);
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    renderLogs(data.content);
+                    renderLogs(data.content || []);
                     renderPagination(data);
-                    document.getElementById('totalCount').textContent = data.totalElements + '건';
+                    document.getElementById('totalCount').textContent = (data.totalElements || 0) + '건';
                 })
                 .catch(error => {
+                    console.error('로그 로딩 오류:', error);
                     document.getElementById('logTableBody').innerHTML =
-                        '<tr><td colspan="7" class="text-center py-4 text-danger">로그를 불러오는데 실패했습니다.</td></tr>';
+                        '<tr><td colspan="7" class="text-center py-4 text-danger">' + error.message + '</td></tr>';
                 });
         }
 

@@ -163,7 +163,8 @@
                                 <th style="width: 90px;">월초재고</th>
                                 <th style="width: 90px;">추가재고</th>
                                 <th style="width: 90px;">사용량</th>
-                                <th style="width: 120px;">남은재고</th>
+                                <th style="width: 90px;">남은재고</th>
+                                <th style="width: 80px;"></th>
                                 <th style="min-width: 150px;">유효기간</th>
                                 <th>비고</th>
                             </tr>
@@ -197,17 +198,17 @@
                                 <td class="text-end">
                                     <span th:text="${#numbers.formatInteger(inv.usedQuantity, 1)}"></span>
                                 </td>
-                                <td th:classappend="${inv.remainingStock <= 0} ? 'text-danger' : (${inv.lowStock} ? 'text-warning' : '')">
-                                    <div class="d-flex align-items-center justify-content-end gap-1">
-                                        <span class="fw-bold" th:text="${#numbers.formatInteger(inv.remainingStock, 1)}" th:id="'remaining-' + ${inv.id}"></span>
-                                        <button class="btn btn-sm btn-outline-danger deduct-btn py-0 px-1"
-                                                th:data-id="${inv.id}"
-                                                th:data-name="${inv.productName}"
-                                                th:data-used="${#numbers.formatInteger(inv.usedQuantity, 1)}"
-                                                title="차감">
-                                            <i class="bi bi-dash"></i>
-                                        </button>
-                                    </div>
+                                <td class="text-end fw-bold"
+                                    th:classappend="${inv.remainingStock <= 0} ? 'text-danger' : (${inv.lowStock} ? 'text-warning' : '')">
+                                    <span th:text="${#numbers.formatInteger(inv.remainingStock, 1)}" th:id="'remaining-' + ${inv.id}"></span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger deduct-btn"
+                                            th:data-id="${inv.id}"
+                                            th:data-name="${inv.productName}"
+                                            th:data-used="${#numbers.formatInteger(inv.usedQuantity, 1)}">
+                                        <i class="bi bi-dash-circle me-1"></i>차감
+                                    </button>
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center gap-1 flex-wrap">
@@ -240,7 +241,7 @@
                                 </td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(inventories)}">
-                                <td colspan="9" class="text-center py-4 text-muted">
+                                <td colspan="10" class="text-center py-4 text-muted">
                                     해당 월에 등록된 재고 정보가 없습니다.
                                     <br><br>
                                     <button class="btn btn-primary btn-sm" onclick="initializeMonth()">

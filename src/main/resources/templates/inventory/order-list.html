@@ -203,26 +203,17 @@
                         <input type="hidden" id="orderId">
                         <div class="mb-3">
                             <label class="form-label">제품 <span class="text-danger">*</span></label>
-                            <div class="position-relative">
-                                <input type="text" class="form-control mb-1" id="productSearch"
-                                       placeholder="제품명 검색..." autocomplete="off">
-                                <select class="form-select" id="orderProductId" required onchange="onProductSelect()" size="5"
-                                        style="display:none;">
-                                    <option value="" data-note="">제품을 선택하세요</option>
-                                    <option th:each="product : ${products}"
-                                            th:value="${product.id}"
-                                            th:text="${product.name}"
-                                            th:data-note="${product.note}"
-                                            th:data-category="${product.category}"></option>
-                                </select>
-                                <div id="productDropdown" class="list-group position-absolute w-100 shadow-sm" style="max-height: 200px; overflow-y: auto; z-index: 1000; display: none;">
-                                </div>
-                                <input type="hidden" id="selectedProductId">
-                                <div id="selectedProduct" class="form-control bg-light mt-1" style="display:none;">
-                                    <span id="selectedProductName"></span>
-                                    <button type="button" class="btn-close btn-sm float-end" onclick="clearProductSelection()"></button>
-                                </div>
-                            </div>
+                            <input type="text" class="form-control mb-2" id="productSearch"
+                                   placeholder="제품명 검색..." autocomplete="off" oninput="filterProducts()">
+                            <select class="form-select" id="orderProductId" required onchange="onProductSelect()" size="6">
+                                <option value="" data-note="">-- 제품을 선택하세요 --</option>
+                                <option th:each="product : ${products}"
+                                        th:value="${product.id}"
+                                        th:text="${product.name}"
+                                        th:data-note="${product.note}"
+                                        th:data-category="${product.category}"></option>
+                            </select>
+                            <small class="text-muted" id="productCount"></small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">주문수량 <span class="text-danger">*</span></label>
@@ -262,114 +253,55 @@
             tooltipTriggerList.map(function(el) {
                 return new bootstrap.Tooltip(el);
             });
-
-            // 제품 검색 초기화
-            initProductSearch();
         });
 
         let isEditMode = false;
-        let allProducts = [];
+        let allProductOptions = [];
 
-        // 제품 검색 기능
-        function initProductSearch() {
+        // 페이지 로드 시 제품 목록 저장
+        document.addEventListener('DOMContentLoaded', function() {
             const select = document.getElementById('orderProductId');
-            const searchInput = document.getElementById('productSearch');
-            const dropdown = document.getElementById('productDropdown');
+            allProductOptions = Array.from(select.options).map(opt => ({
+                value: opt.value,
+                text: opt.text,
+                note: opt.dataset.note || '',
+                category: opt.dataset.category || ''
+            }));
+            updateProductCount();
+        });
 
-            // select에서 제품 목록 추출
-            allProducts = [];
-            Array.from(select.options).forEach(opt => {
-                if (opt.value) {
-                    allProducts.push({
-                        id: opt.value,
-                        name: opt.text,
-                        note: opt.dataset.note || '',
-                        category: opt.dataset.category || ''
-                    });
+        // 제품 필터링
+        function filterProducts() {
+            const query = document.getElementById('productSearch').value.toLowerCase().trim();
+            const select = document.getElementById('orderProductId');
+
+            // 기존 옵션 모두 제거
+            select.innerHTML = '';
+
+            // 필터링된 옵션 추가
+            let count = 0;
+            allProductOptions.forEach(opt => {
+                if (!query ||
+                    opt.text.toLowerCase().includes(query) ||
+                    (opt.category && opt.category.toLowerCase().includes(query))) {
+                    const option = document.createElement('option');
+                    option.value = opt.value;
+                    option.text = opt.text;
+                    option.dataset.note = opt.note;
+                    option.dataset.category = opt.category;
+                    select.appendChild(option);
+                    if (opt.value) count++;
                 }
             });
 
-            // 검색 입력 이벤트
-            searchInput.addEventListener('input', function() {
-                const query = this.value.toLowerCase().trim();
-                if (query.length === 0) {
-                    dropdown.style.display = 'none';
-                    return;
-                }
-
-                const filtered = allProducts.filter(p =>
-                    p.name.toLowerCase().includes(query) ||
-                    (p.category && p.category.toLowerCase().includes(query))
-                );
-
-                if (filtered.length > 0) {
-                    dropdown.innerHTML = filtered.map(p =>
-                        `<a href="#" class="list-group-item list-group-item-action py-2" data-id="${p.id}" data-name="${p.name}" data-note="${p.note}">
-                            <span>${p.name}</span>
-                            ${p.category ? '<small class="text-muted ms-2">(' + p.category + ')</small>' : ''}
-                        </a>`
-                    ).join('');
-                    dropdown.style.display = 'block';
-                } else {
-                    dropdown.innerHTML = '<div class="list-group-item text-muted">검색 결과가 없습니다</div>';
-                    dropdown.style.display = 'block';
-                }
-            });
-
-            // 검색창 포커스 시 전체 목록 표시
-            searchInput.addEventListener('focus', function() {
-                if (this.value.trim() === '' && !document.getElementById('selectedProductId').value) {
-                    dropdown.innerHTML = allProducts.slice(0, 10).map(p =>
-                        `<a href="#" class="list-group-item list-group-item-action py-2" data-id="${p.id}" data-name="${p.name}" data-note="${p.note}">
-                            <span>${p.name}</span>
-                            ${p.category ? '<small class="text-muted ms-2">(' + p.category + ')</small>' : ''}
-                        </a>`
-                    ).join('');
-                    if (allProducts.length > 10) {
-                        dropdown.innerHTML += '<div class="list-group-item text-muted small">검색어를 입력하세요...</div>';
-                    }
-                    dropdown.style.display = 'block';
-                }
-            });
-
-            // 드롭다운 항목 클릭
-            dropdown.addEventListener('click', function(e) {
-                const item = e.target.closest('a');
-                if (item && item.dataset.id) {
-                    selectProduct(item.dataset.id, item.dataset.name, item.dataset.note);
-                }
-                e.preventDefault();
-            });
-
-            // 외부 클릭 시 드롭다운 닫기
-            document.addEventListener('click', function(e) {
-                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
-                    dropdown.style.display = 'none';
-                }
-            });
+            updateProductCount(count);
         }
 
-        function selectProduct(id, name, note) {
-            document.getElementById('selectedProductId').value = id;
-            document.getElementById('orderProductId').value = id;
-            document.getElementById('selectedProductName').textContent = name;
-            document.getElementById('selectedProduct').style.display = 'block';
-            document.getElementById('productSearch').style.display = 'none';
-            document.getElementById('productDropdown').style.display = 'none';
-
-            // 비고 자동 세팅 (신규 등록 시에만)
-            if (!isEditMode && note) {
-                document.getElementById('orderNote').value = note;
-            }
-        }
-
-        function clearProductSelection() {
-            document.getElementById('selectedProductId').value = '';
-            document.getElementById('orderProductId').value = '';
-            document.getElementById('selectedProduct').style.display = 'none';
-            document.getElementById('productSearch').style.display = 'block';
-            document.getElementById('productSearch').value = '';
-            document.getElementById('productSearch').focus();
+        function updateProductCount(count) {
+            const total = allProductOptions.filter(o => o.value).length;
+            if (count === undefined) count = total;
+            document.getElementById('productCount').textContent =
+                count === total ? `총 ${total}개` : `${count}개 / ${total}개`;
         }
 
         // 제품 선택 시 비고 자동 세팅
@@ -391,12 +323,9 @@
             // 오늘 날짜를 기본값으로 설정
             document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
 
-            // 제품 검색 UI 초기화
-            document.getElementById('selectedProductId').value = '';
-            document.getElementById('selectedProduct').style.display = 'none';
-            document.getElementById('productSearch').style.display = 'block';
+            // 제품 검색 초기화
             document.getElementById('productSearch').value = '';
-            document.getElementById('productDropdown').style.display = 'none';
+            filterProducts();
         }
 
         function openEditModal(id) {
@@ -407,18 +336,15 @@
                 .then(response => response.json())
                 .then(order => {
                     document.getElementById('orderId').value = order.id;
-                    document.getElementById('orderProductId').value = order.productId;
-                    document.getElementById('selectedProductId').value = order.productId;
                     document.getElementById('orderQuantityNum').value = order.quantity ? Math.floor(order.quantity) : '';
                     document.getElementById('orderDate').value = order.orderDate || '';
                     document.getElementById('orderExpiryDate').value = order.expiryDate || '';
                     document.getElementById('orderNote').value = order.note || '';
 
-                    // 선택된 제품 표시
-                    document.getElementById('selectedProductName').textContent = order.productName;
-                    document.getElementById('selectedProduct').style.display = 'block';
-                    document.getElementById('productSearch').style.display = 'none';
-                    document.getElementById('productDropdown').style.display = 'none';
+                    // 제품 검색 초기화 후 선택
+                    document.getElementById('productSearch').value = '';
+                    filterProducts();
+                    document.getElementById('orderProductId').value = order.productId;
 
                     new bootstrap.Modal(document.getElementById('orderModal')).show();
                 })
@@ -428,12 +354,12 @@
         }
 
         function saveOrder() {
-            const productId = document.getElementById('selectedProductId').value || document.getElementById('orderProductId').value;
+            const productId = document.getElementById('orderProductId').value;
             const quantityNum = document.getElementById('orderQuantityNum').value;
 
             if (!productId) {
                 alert('제품을 선택해주세요.');
-                document.getElementById('productSearch').focus();
+                document.getElementById('orderProductId').focus();
                 return;
             }
             if (!quantityNum || parseInt(quantityNum) <= 0) {
