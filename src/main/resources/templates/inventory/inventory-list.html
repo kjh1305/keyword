@@ -107,33 +107,33 @@
             <div class="col-6 col-md-3 mb-2">
                 <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='outOfStock')}"
                    class="card text-center text-decoration-none stat-card border-danger"
-                   th:classappend="${stockFilter == 'outOfStock'} ? 'bg-danger text-white' : ''"
-                   title="남은재고가 0 이하인 제품">
+                   th:classappend="${stockFilter == 'outOfStock'} ? 'bg-danger text-white' : ''">
                     <div class="card-body py-2">
                         <small th:classappend="${stockFilter == 'outOfStock'} ? 'text-white-50' : 'text-muted'">재고 없음</small>
                         <h4 class="mb-0" th:classappend="${stockFilter != 'outOfStock'} ? 'text-danger' : ''" th:text="${outOfStockCount}"></h4>
+                        <div class="small mt-1" th:classappend="${stockFilter == 'outOfStock'} ? 'text-white-50' : 'text-muted'" style="font-size: 0.7rem;">남은재고 0 이하</div>
                     </div>
                 </a>
             </div>
             <div class="col-6 col-md-3 mb-2">
                 <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='lowStock')}"
                    class="card text-center text-decoration-none stat-card border-warning"
-                   th:classappend="${stockFilter == 'lowStock'} ? 'bg-warning' : ''"
-                   title="남은재고가 최소수량 이하인 제품 (제품관리에서 최소수량 설정)">
+                   th:classappend="${stockFilter == 'lowStock'} ? 'bg-warning' : ''">
                     <div class="card-body py-2">
                         <small th:classappend="${stockFilter == 'lowStock'} ? 'text-dark' : 'text-muted'">재고 부족</small>
                         <h4 class="mb-0" th:classappend="${stockFilter != 'lowStock'} ? 'text-warning' : 'text-dark'" th:text="${lowStockCount}"></h4>
+                        <div class="small mt-1" th:classappend="${stockFilter == 'lowStock'} ? 'text-dark' : 'text-muted'" style="font-size: 0.7rem;">최소수량 이하</div>
                     </div>
                 </a>
             </div>
             <div class="col-6 col-md-3 mb-2">
                 <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='expiryWarning')}"
                    class="card text-center text-decoration-none stat-card border-purple"
-                   th:classappend="${stockFilter == 'expiryWarning'} ? 'bg-purple text-white' : ''"
-                   title="유효기간이 30일 이내인 제품">
+                   th:classappend="${stockFilter == 'expiryWarning'} ? 'bg-purple text-white' : ''">
                     <div class="card-body py-2">
                         <small th:classappend="${stockFilter == 'expiryWarning'} ? 'text-white-50' : 'text-muted'">유효기간 임박</small>
                         <h4 class="mb-0" th:classappend="${stockFilter != 'expiryWarning'} ? 'text-purple' : ''" th:text="${expiryWarningCount}"></h4>
+                        <div class="small mt-1" th:classappend="${stockFilter == 'expiryWarning'} ? 'text-white-50' : 'text-muted'" style="font-size: 0.7rem;">30일 이내 만료</div>
                     </div>
                 </a>
             </div>
