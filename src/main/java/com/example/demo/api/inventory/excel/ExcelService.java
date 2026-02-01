@@ -522,7 +522,10 @@ public class ExcelService {
                 }
 
                 if (receivedDates != null && !receivedDates.isEmpty()) {
-                    // 입고일 개수만큼 StockOrder 생성
+                    // 가장 빠른 입고일 찾기
+                    LocalDate earliestDate = receivedDates.stream().min(LocalDate::compareTo).orElse(null);
+
+                    // 입고일 개수만큼 StockOrder 생성 (가장 빠른 날짜에만 수량, 나머지는 0)
                     for (int i = 0; i < receivedDates.size(); i++) {
                         LocalDate receivedDate = receivedDates.get(i);
                         // 유효기간은 같은 인덱스의 값 또는 마지막 값 사용
@@ -531,9 +534,12 @@ public class ExcelService {
                             expiryDate = (i < expiryDates.size()) ? expiryDates.get(i) : expiryDates.get(expiryDates.size() - 1);
                         }
 
+                        // 가장 빠른 날짜에만 수량 저장, 나머지는 0
+                        BigDecimal orderQty = receivedDate.equals(earliestDate) ? quantity : BigDecimal.ZERO;
+
                         StockOrder order = StockOrder.builder()
                                 .product(product)
-                                .quantity(quantity)
+                                .quantity(orderQty)
                                 .orderQuantity(dto.getOrderQuantityRaw())
                                 .orderDate(receivedDate)
                                 .receivedDate(receivedDate)
@@ -544,11 +550,15 @@ public class ExcelService {
                         stockOrderRepository.save(order);
                     }
                 } else if (expiryDates != null && !expiryDates.isEmpty()) {
-                    // 입고일은 없고 유효기간만 있는 경우 - 유효기간별로 StockOrder 생성
+                    // 입고일은 없고 유효기간만 있는 경우 - 가장 빠른 유효기간에만 수량
+                    LocalDate earliestExpiry = expiryDates.stream().min(LocalDate::compareTo).orElse(null);
+
                     for (LocalDate expiryDate : expiryDates) {
+                        BigDecimal orderQty = expiryDate.equals(earliestExpiry) ? quantity : BigDecimal.ZERO;
+
                         StockOrder order = StockOrder.builder()
                                 .product(product)
-                                .quantity(quantity)
+                                .quantity(orderQty)
                                 .orderQuantity(dto.getOrderQuantityRaw())
                                 .expiryDate(expiryDate)
                                 .status("COMPLETED")

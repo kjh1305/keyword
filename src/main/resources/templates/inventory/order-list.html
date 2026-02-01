@@ -3,6 +3,24 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{inventory/layout :: head('주문/입고 관리')}"></head>
 <body>
+    <style>
+        /* 유효기간 강조 색상 */
+        .bg-purple { background-color: #8b5cf6 !important; color: white !important; }
+        .bg-orange { background-color: #f97316 !important; color: white !important; }
+        .text-purple { color: #8b5cf6 !important; }
+        .text-orange { color: #f97316 !important; }
+
+        /* 비고 셀 스타일 */
+        .note-cell {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            max-width: 150px;
+            font-size: 0.85rem;
+            cursor: help;
+        }
+    </style>
     <nav th:replace="~{inventory/layout :: sidebar}"></nav>
 
     <div class="main-content">
@@ -17,7 +35,7 @@
         <div class="card mb-4">
             <div class="card-body">
                 <form class="row g-3" method="get" th:action="@{/inventory/orders}">
-                    <div class="col-md-2">
+                    <div class="col-md-2 col-6">
                         <label class="form-label">상태</label>
                         <select name="status" class="form-select">
                             <option value="">전체</option>
@@ -25,7 +43,7 @@
                             <option value="COMPLETED" th:selected="${selectedStatus == 'COMPLETED'}">입고완료</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2 col-6">
                         <label class="form-label">카테고리</label>
                         <select name="category" class="form-select">
                             <option value="">전체</option>
@@ -35,15 +53,26 @@
                                     th:selected="${cat == selectedCategory}"></option>
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2 col-6">
+                        <label class="form-label">시작일</label>
+                        <input type="date" name="startDate" class="form-control" th:value="${startDate}">
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <label class="form-label">종료일</label>
+                        <input type="date" name="endDate" class="form-control" th:value="${endDate}">
+                    </div>
+                    <div class="col-md-2">
                         <label class="form-label">제품명 검색</label>
                         <input type="text" name="keyword" class="form-control"
-                               placeholder="제품명을 입력하세요" th:value="${keyword}">
+                               placeholder="제품명" th:value="${keyword}">
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-outline-primary w-100">
+                    <div class="col-md-2 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-outline-primary flex-grow-1">
                             <i class="bi bi-search me-1"></i>검색
                         </button>
+                        <a th:href="@{/inventory/orders}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </a>
                     </div>
                 </form>
             </div>
@@ -53,7 +82,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>주문/입고 목록</span>
-                <span class="badge bg-secondary" th:text="${#lists.size(orders)} + '건'"></span>
+                <span class="badge bg-secondary" th:text="${orders.totalElements} + '건'"></span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -63,7 +92,7 @@
                                 <th style="width: 50px;">번호</th>
                                 <th style="width: 90px;">상태</th>
                                 <th style="width: 100px;">카테고리</th>
-                                <th>제품명</th>
+                                <th style="min-width: 180px;">제품명</th>
                                 <th style="width: 90px;">주문수량</th>
                                 <th style="width: 100px;">주문일</th>
                                 <th style="width: 100px;">입고일</th>
@@ -73,8 +102,8 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="order, stat : ${orders}">
-                                <td th:text="${stat.index + 1}"></td>
+                            <tr th:each="order, stat : ${orders.content}">
+                                <td th:text="${orders.number * orders.size + stat.index + 1}"></td>
                                 <td>
                                     <span class="badge"
                                           th:classappend="${order.status == 'PENDING'} ? 'bg-warning text-dark' : 'bg-success'"
@@ -87,9 +116,29 @@
                                 <td class="text-end" th:text="${#numbers.formatInteger(order.quantity, 1)}"></td>
                                 <td th:text="${order.orderDateStr}"></td>
                                 <td th:text="${order.receivedDateStr}"></td>
-                                <td th:text="${order.expiryDateStr}"></td>
                                 <td>
-                                    <small class="text-muted" th:text="${order.note}"></small>
+                                    <span th:if="${order.expiryDate != null}">
+                                        <span class="badge"
+                                              th:classappend="${order.expiryStatus == 'EXPIRED'} ? 'bg-secondary' :
+                                                             (${order.expiryStatus == 'URGENT'} ? 'bg-purple' :
+                                                             (${order.expiryStatus == 'WARNING'} ? 'bg-orange' : 'bg-light text-dark'))"
+                                              th:text="${order.expiryDateStr}"
+                                              th:title="${order.daysUntilExpiry < 0} ? ('만료 ' + (${order.daysUntilExpiry} * -1) + '일 경과') : (${order.daysUntilExpiry} + '일 남음')"></span>
+                                        <small th:if="${order.daysUntilExpiry != null and order.daysUntilExpiry <= 30}"
+                                               class="d-block mt-1"
+                                               th:classappend="${order.daysUntilExpiry < 0} ? 'text-secondary' : (${order.daysUntilExpiry <= 7} ? 'text-purple' : 'text-orange')">
+                                            <i class="bi bi-exclamation-triangle-fill me-1" th:if="${order.daysUntilExpiry <= 7}"></i>
+                                            <span th:if="${order.daysUntilExpiry < 0}" th:text="'만료 ' + (${order.daysUntilExpiry} * -1) + '일'"></span>
+                                            <span th:if="${order.daysUntilExpiry >= 0}" th:text="${order.daysUntilExpiry} + '일 남음'"></span>
+                                        </small>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span th:if="${order.note != null and !order.note.isEmpty()}"
+                                          class="note-cell"
+                                          th:text="${order.note}"
+                                          th:title="${order.note}"
+                                          data-bs-toggle="tooltip"></span>
                                 </td>
                                 <td>
                                     <button class="btn btn-sm btn-success me-1 complete-btn"
@@ -110,7 +159,7 @@
                                     </button>
                                 </td>
                             </tr>
-                            <tr th:if="${#lists.isEmpty(orders)}">
+                            <tr th:if="${orders.empty}">
                                 <td colspan="10" class="text-center py-4 text-muted">
                                     등록된 주문이 없습니다.
                                 </td>
@@ -118,6 +167,25 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+            <!-- Pagination -->
+            <div class="card-footer" th:if="${orders.totalPages > 1}">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0 flex-wrap">
+                        <li class="page-item" th:classappend="${orders.first} ? 'disabled'">
+                            <a class="page-link" th:href="@{/inventory/orders(page=${orders.number - 1}, status=${selectedStatus}, category=${selectedCategory}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}">이전</a>
+                        </li>
+                        <li class="page-item" th:each="i : ${#numbers.sequence(0, orders.totalPages - 1)}"
+                            th:if="${i >= orders.number - 2 and i <= orders.number + 2}"
+                            th:classappend="${i == orders.number} ? 'active'">
+                            <a class="page-link" th:href="@{/inventory/orders(page=${i}, status=${selectedStatus}, category=${selectedCategory}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}"
+                               th:text="${i + 1}"></a>
+                        </li>
+                        <li class="page-item" th:classappend="${orders.last} ? 'disabled'">
+                            <a class="page-link" th:href="@{/inventory/orders(page=${orders.number + 1}, status=${selectedStatus}, category=${selectedCategory}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}">다음</a>
+                        </li>
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
@@ -135,13 +203,26 @@
                         <input type="hidden" id="orderId">
                         <div class="mb-3">
                             <label class="form-label">제품 <span class="text-danger">*</span></label>
-                            <select class="form-select" id="orderProductId" required onchange="onProductSelect()">
-                                <option value="" data-note="">제품을 선택하세요</option>
-                                <option th:each="product : ${products}"
-                                        th:value="${product.id}"
-                                        th:text="${product.name}"
-                                        th:data-note="${product.note}"></option>
-                            </select>
+                            <div class="position-relative">
+                                <input type="text" class="form-control mb-1" id="productSearch"
+                                       placeholder="제품명 검색..." autocomplete="off">
+                                <select class="form-select" id="orderProductId" required onchange="onProductSelect()" size="5"
+                                        style="display:none;">
+                                    <option value="" data-note="">제품을 선택하세요</option>
+                                    <option th:each="product : ${products}"
+                                            th:value="${product.id}"
+                                            th:text="${product.name}"
+                                            th:data-note="${product.note}"
+                                            th:data-category="${product.category}"></option>
+                                </select>
+                                <div id="productDropdown" class="list-group position-absolute w-100 shadow-sm" style="max-height: 200px; overflow-y: auto; z-index: 1000; display: none;">
+                                </div>
+                                <input type="hidden" id="selectedProductId">
+                                <div id="selectedProduct" class="form-control bg-light mt-1" style="display:none;">
+                                    <span id="selectedProductName"></span>
+                                    <button type="button" class="btn-close btn-sm float-end" onclick="clearProductSelection()"></button>
+                                </div>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">주문수량 <span class="text-danger">*</span></label>
@@ -175,7 +256,121 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script>
+        // 툴팁 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function(el) {
+                return new bootstrap.Tooltip(el);
+            });
+
+            // 제품 검색 초기화
+            initProductSearch();
+        });
+
         let isEditMode = false;
+        let allProducts = [];
+
+        // 제품 검색 기능
+        function initProductSearch() {
+            const select = document.getElementById('orderProductId');
+            const searchInput = document.getElementById('productSearch');
+            const dropdown = document.getElementById('productDropdown');
+
+            // select에서 제품 목록 추출
+            allProducts = [];
+            Array.from(select.options).forEach(opt => {
+                if (opt.value) {
+                    allProducts.push({
+                        id: opt.value,
+                        name: opt.text,
+                        note: opt.dataset.note || '',
+                        category: opt.dataset.category || ''
+                    });
+                }
+            });
+
+            // 검색 입력 이벤트
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase().trim();
+                if (query.length === 0) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                const filtered = allProducts.filter(p =>
+                    p.name.toLowerCase().includes(query) ||
+                    (p.category && p.category.toLowerCase().includes(query))
+                );
+
+                if (filtered.length > 0) {
+                    dropdown.innerHTML = filtered.map(p =>
+                        `<a href="#" class="list-group-item list-group-item-action py-2" data-id="${p.id}" data-name="${p.name}" data-note="${p.note}">
+                            <span>${p.name}</span>
+                            ${p.category ? '<small class="text-muted ms-2">(' + p.category + ')</small>' : ''}
+                        </a>`
+                    ).join('');
+                    dropdown.style.display = 'block';
+                } else {
+                    dropdown.innerHTML = '<div class="list-group-item text-muted">검색 결과가 없습니다</div>';
+                    dropdown.style.display = 'block';
+                }
+            });
+
+            // 검색창 포커스 시 전체 목록 표시
+            searchInput.addEventListener('focus', function() {
+                if (this.value.trim() === '' && !document.getElementById('selectedProductId').value) {
+                    dropdown.innerHTML = allProducts.slice(0, 10).map(p =>
+                        `<a href="#" class="list-group-item list-group-item-action py-2" data-id="${p.id}" data-name="${p.name}" data-note="${p.note}">
+                            <span>${p.name}</span>
+                            ${p.category ? '<small class="text-muted ms-2">(' + p.category + ')</small>' : ''}
+                        </a>`
+                    ).join('');
+                    if (allProducts.length > 10) {
+                        dropdown.innerHTML += '<div class="list-group-item text-muted small">검색어를 입력하세요...</div>';
+                    }
+                    dropdown.style.display = 'block';
+                }
+            });
+
+            // 드롭다운 항목 클릭
+            dropdown.addEventListener('click', function(e) {
+                const item = e.target.closest('a');
+                if (item && item.dataset.id) {
+                    selectProduct(item.dataset.id, item.dataset.name, item.dataset.note);
+                }
+                e.preventDefault();
+            });
+
+            // 외부 클릭 시 드롭다운 닫기
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        }
+
+        function selectProduct(id, name, note) {
+            document.getElementById('selectedProductId').value = id;
+            document.getElementById('orderProductId').value = id;
+            document.getElementById('selectedProductName').textContent = name;
+            document.getElementById('selectedProduct').style.display = 'block';
+            document.getElementById('productSearch').style.display = 'none';
+            document.getElementById('productDropdown').style.display = 'none';
+
+            // 비고 자동 세팅 (신규 등록 시에만)
+            if (!isEditMode && note) {
+                document.getElementById('orderNote').value = note;
+            }
+        }
+
+        function clearProductSelection() {
+            document.getElementById('selectedProductId').value = '';
+            document.getElementById('orderProductId').value = '';
+            document.getElementById('selectedProduct').style.display = 'none';
+            document.getElementById('productSearch').style.display = 'block';
+            document.getElementById('productSearch').value = '';
+            document.getElementById('productSearch').focus();
+        }
 
         // 제품 선택 시 비고 자동 세팅
         function onProductSelect() {
@@ -195,6 +390,13 @@
             document.getElementById('orderId').value = '';
             // 오늘 날짜를 기본값으로 설정
             document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
+
+            // 제품 검색 UI 초기화
+            document.getElementById('selectedProductId').value = '';
+            document.getElementById('selectedProduct').style.display = 'none';
+            document.getElementById('productSearch').style.display = 'block';
+            document.getElementById('productSearch').value = '';
+            document.getElementById('productDropdown').style.display = 'none';
         }
 
         function openEditModal(id) {
@@ -206,10 +408,17 @@
                 .then(order => {
                     document.getElementById('orderId').value = order.id;
                     document.getElementById('orderProductId').value = order.productId;
+                    document.getElementById('selectedProductId').value = order.productId;
                     document.getElementById('orderQuantityNum').value = order.quantity ? Math.floor(order.quantity) : '';
                     document.getElementById('orderDate').value = order.orderDate || '';
                     document.getElementById('orderExpiryDate').value = order.expiryDate || '';
                     document.getElementById('orderNote').value = order.note || '';
+
+                    // 선택된 제품 표시
+                    document.getElementById('selectedProductName').textContent = order.productName;
+                    document.getElementById('selectedProduct').style.display = 'block';
+                    document.getElementById('productSearch').style.display = 'none';
+                    document.getElementById('productDropdown').style.display = 'none';
 
                     new bootstrap.Modal(document.getElementById('orderModal')).show();
                 })
@@ -219,11 +428,12 @@
         }
 
         function saveOrder() {
-            const productId = document.getElementById('orderProductId').value;
+            const productId = document.getElementById('selectedProductId').value || document.getElementById('orderProductId').value;
             const quantityNum = document.getElementById('orderQuantityNum').value;
 
             if (!productId) {
                 alert('제품을 선택해주세요.');
+                document.getElementById('productSearch').focus();
                 return;
             }
             if (!quantityNum || parseInt(quantityNum) <= 0) {

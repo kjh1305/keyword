@@ -23,13 +23,14 @@ public class InventoryController {
                             @RequestParam(required = false) String yearMonth,
                             @RequestParam(required = false) String category,
                             @RequestParam(required = false) String keyword,
+                            @RequestParam(required = false) String stockFilter,
                             @RequestParam(defaultValue = "0") int page,
                             @RequestParam(defaultValue = "20") int size) {
         if (yearMonth == null || yearMonth.isEmpty()) {
             yearMonth = inventoryService.getCurrentYearMonth();
         }
 
-        java.util.Map<String, Object> pageData = inventoryService.getInventoryByMonthPaged(yearMonth, category, keyword, page, size);
+        java.util.Map<String, Object> pageData = inventoryService.getInventoryByMonthPaged(yearMonth, category, keyword, stockFilter, page, size);
         List<String> yearMonths = inventoryService.getAllYearMonths();
 
         if (!yearMonths.contains(yearMonth)) {
@@ -44,11 +45,13 @@ public class InventoryController {
         model.addAttribute("hasPrevious", pageData.get("hasPrevious"));
         model.addAttribute("outOfStockCount", pageData.get("outOfStockCount"));
         model.addAttribute("lowStockCount", pageData.get("lowStockCount"));
+        model.addAttribute("expiryWarningCount", pageData.get("expiryWarningCount"));
         model.addAttribute("yearMonths", yearMonths);
         model.addAttribute("selectedYearMonth", yearMonth);
         model.addAttribute("categories", productService.getAllCategories());
         model.addAttribute("selectedCategory", category);
         model.addAttribute("keyword", keyword);
+        model.addAttribute("stockFilter", stockFilter);
         model.addAttribute("size", size);
         model.addAttribute("menu", "stocks");
 

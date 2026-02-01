@@ -48,6 +48,19 @@ public class StockOrderService {
                 .collect(Collectors.toList());
     }
 
+    public Page<StockOrderDTO> searchOrdersPaged(String category, String keyword, String status,
+                                                  LocalDate startDate, LocalDate endDate,
+                                                  int page, int size) {
+        String cat = (category == null || category.isEmpty()) ? null : category;
+        String kw = (keyword == null || keyword.isEmpty()) ? null : keyword;
+        String st = (status == null || status.isEmpty()) ? null : status;
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<StockOrder> orderPage = stockOrderRepository.searchOrdersPaged(cat, kw, st, startDate, endDate, pageable);
+
+        return orderPage.map(StockOrderDTO::fromEntity);
+    }
+
     public List<StockOrderDTO> getPendingOrders() {
         return stockOrderRepository.findByStatus("PENDING").stream()
                 .map(StockOrderDTO::fromEntity)
