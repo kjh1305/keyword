@@ -16,7 +16,10 @@
         .bg-purple { background-color: #8b5cf6 !important; }
         .text-purple { color: #8b5cf6 !important; }
         .text-white-50 { color: rgba(255,255,255,0.7) !important; }
-        .table-out-of-stock { background-color: #ffcdd2 !important; }
+        .table > tbody > tr.table-out-of-stock > td,
+        .table > tbody > tr.table-out-of-stock > th {
+            background-color: #ffcdd2 !important;
+        }
     </style>
     <nav th:replace="~{inventory/layout :: sidebar}"></nav>
 
