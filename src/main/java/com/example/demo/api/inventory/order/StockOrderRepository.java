@@ -13,6 +13,9 @@ import java.util.List;
 @Repository
 public interface StockOrderRepository extends JpaRepository<StockOrder, Long> {
 
+    @Query("SELECT o FROM StockOrder o JOIN FETCH o.product WHERE o.id = :id")
+    java.util.Optional<StockOrder> findByIdWithProduct(@Param("id") Long id);
+
     @Query("SELECT o FROM StockOrder o JOIN FETCH o.product ORDER BY o.createdAt DESC")
     List<StockOrder> findAllWithProduct();
 

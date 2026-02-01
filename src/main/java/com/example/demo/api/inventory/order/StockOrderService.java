@@ -74,7 +74,7 @@ public class StockOrderService {
     }
 
     public StockOrderDTO getOrderById(Long id) {
-        return stockOrderRepository.findById(id)
+        return stockOrderRepository.findByIdWithProduct(id)
                 .map(StockOrderDTO::fromEntity)
                 .orElseThrow(() -> new IllegalArgumentException("주문 정보를 찾을 수 없습니다: " + id));
     }
