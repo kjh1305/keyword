@@ -53,7 +53,16 @@ public class ExcelService {
                 throw new IllegalArgumentException("제품명 컬럼을 찾을 수 없습니다.");
             }
 
-            for (int i = headerRowIndex + 1; i <= sheet.getLastRowNum(); i++) {
+            // 이중 헤더 여부 확인 - 다음 행이 서브 헤더인지 체크
+            int dataStartRow = headerRowIndex + 1;
+            if (dataStartRow <= sheet.getLastRowNum()) {
+                Row nextRow = sheet.getRow(dataStartRow);
+                if (nextRow != null && isSubHeaderRow(nextRow)) {
+                    dataStartRow = headerRowIndex + 2; // 이중 헤더면 +2부터 데이터
+                }
+            }
+
+            for (int i = dataStartRow; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
 
@@ -76,6 +85,22 @@ public class ExcelService {
         return result;
     }
 
+    /**
+     * 서브 헤더 행인지 확인 (이중 헤더 감지)
+     */
+    private boolean isSubHeaderRow(Row row) {
+        for (Cell cell : row) {
+            String value = getCellStringValue(cell).toLowerCase().trim();
+            // 서브 헤더에 자주 나오는 키워드
+            if (value.contains("수량") || value.contains("유효") || value.contains("기간")
+                    || value.contains("금액") || value.contains("단가") || value.contains("qty")
+                    || value.contains("amount") || value.contains("price")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private int findHeaderRow(Sheet sheet) {
         for (int i = 0; i <= Math.min(10, sheet.getLastRowNum()); i++) {
             Row row = sheet.getRow(i);
@@ -91,36 +116,77 @@ public class ExcelService {
         return 0;
     }
 
+    /**
+     * 이중 헤더 지원 - 메인 헤더와 서브 헤더(다음 행)를 모두 확인
+     */
     private Map<String, Integer> parseHeader(Row headerRow) {
         Map<String, Integer> columnMap = new HashMap<>();
+        Sheet sheet = headerRow.getSheet();
 
-        for (Cell cell : headerRow) {
-            String value = getCellStringValue(cell).toLowerCase().trim();
-            int colIndex = cell.getColumnIndex();
+        // 메인 헤더 행 파싱
+        parseHeaderRow(headerRow, columnMap);
 
-            if (value.contains("제품") || value.contains("품명") || value.contains("product")) {
-                columnMap.put("productName", colIndex);
-            } else if (value.contains("카테고리") || value.contains("분류") || value.contains("category")) {
-                columnMap.put("category", colIndex);
-            } else if (value.contains("월초") || value.contains("기초") || value.contains("initial")) {
-                columnMap.put("initialStock", colIndex);
-            } else if (value.contains("사용") || value.contains("used")) {
-                columnMap.put("usedQuantity", colIndex);
-            } else if (value.contains("남은") || value.contains("잔여") || value.contains("remaining")) {
-                columnMap.put("remainingStock", colIndex);
-            } else if (value.contains("입고") || value.contains("received") || value.contains("입하")) {
-                columnMap.put("receivedDate", colIndex);
-            } else if (value.contains("유효") || value.contains("expiry") || value.contains("만료")) {
-                columnMap.put("expiryDate", colIndex);
-            } else if (value.contains("단위") || value.contains("unit")) {
-                columnMap.put("unit", colIndex);
-            } else if (value.contains("최소") || value.contains("min")) {
-                columnMap.put("minQuantity", colIndex);
-            } else if (value.contains("비고") || value.contains("note") || value.contains("메모")) {
-                columnMap.put("note", colIndex);
+        // 서브 헤더 행 파싱 (다음 행)
+        int nextRowIndex = headerRow.getRowNum() + 1;
+        if (nextRowIndex <= sheet.getLastRowNum()) {
+            Row subHeaderRow = sheet.getRow(nextRowIndex);
+            if (subHeaderRow != null) {
+                parseHeaderRow(subHeaderRow, columnMap);
             }
         }
 
+        return columnMap;
+    }
+
+    private void parseHeaderRow(Row row, Map<String, Integer> columnMap) {
+        for (Cell cell : row) {
+            String value = getCellStringValue(cell).toLowerCase().trim();
+            int colIndex = cell.getColumnIndex();
+
+            // 이미 매핑된 컬럼은 건너뜀 (메인 헤더 우선)
+            if (value.isEmpty()) continue;
+
+            if (!columnMap.containsKey("productName") &&
+                    (value.contains("제품") || value.contains("품명") || value.contains("product"))) {
+                columnMap.put("productName", colIndex);
+            } else if (!columnMap.containsKey("category") &&
+                    (value.contains("카테고리") || value.contains("분류") || value.contains("category"))) {
+                columnMap.put("category", colIndex);
+            } else if (!columnMap.containsKey("initialStock") &&
+                    (value.contains("월초") || value.contains("기초") || value.contains("initial"))) {
+                columnMap.put("initialStock", colIndex);
+            } else if (!columnMap.containsKey("usedQuantity") &&
+                    (value.contains("사용") || value.contains("used"))) {
+                columnMap.put("usedQuantity", colIndex);
+            } else if (!columnMap.containsKey("orderQuantity") &&
+                    (value.contains("주문") && value.contains("수량") || value.contains("order") && value.contains("qty"))) {
+                columnMap.put("orderQuantity", colIndex);
+            } else if (!columnMap.containsKey("remainingStock") &&
+                    (value.contains("남은") || value.contains("잔여") || value.contains("remaining"))) {
+                columnMap.put("remainingStock", colIndex);
+            } else if (!columnMap.containsKey("receivedDate") &&
+                    (value.contains("입고") || value.contains("received") || value.contains("입하"))) {
+                columnMap.put("receivedDate", colIndex);
+            } else if (!columnMap.containsKey("expiryDate") &&
+                    (value.contains("유효") || value.contains("expiry") || value.contains("만료")
+                    || value.contains("exp") || value.contains("사용기한") || value.contains("소비기한"))) {
+                columnMap.put("expiryDate", colIndex);
+            } else if (!columnMap.containsKey("unit") &&
+                    (value.contains("단위") || value.contains("unit"))) {
+                columnMap.put("unit", colIndex);
+            } else if (!columnMap.containsKey("minQuantity") &&
+                    (value.contains("최소") || value.contains("min"))) {
+                columnMap.put("minQuantity", colIndex);
+            } else if (!columnMap.containsKey("note") &&
+                    (value.contains("비고") || value.contains("note") || value.contains("메모"))) {
+                columnMap.put("note", colIndex);
+            }
+        }
+    }
+
+    private Map<String, Integer> parseHeaderOld(Row headerRow) {
+        Map<String, Integer> columnMap = new HashMap<>();
+        parseHeaderRow(headerRow, columnMap);
         return columnMap;
     }
 
@@ -138,6 +204,11 @@ public class ExcelService {
         }
         if (columnMap.containsKey("usedQuantity")) {
             dto.setUsedQuantity(getCellDecimalValue(row.getCell(columnMap.get("usedQuantity"))));
+        }
+        if (columnMap.containsKey("orderQuantity")) {
+            Cell orderCell = row.getCell(columnMap.get("orderQuantity"));
+            dto.setOrderQuantityRaw(getCellStringValue(orderCell));
+            dto.setOrderQuantity(parseOrderQuantity(orderCell));
         }
         if (columnMap.containsKey("receivedDate")) {
             dto.setReceivedDates(getCellDatesValue(row.getCell(columnMap.get("receivedDate"))));
@@ -222,10 +293,28 @@ public class ExcelService {
         List<LocalDate> dates = new ArrayList<>();
 
         try {
-            switch (cell.getCellType()) {
+            CellType cellType = cell.getCellType();
+            // FORMULA인 경우 캐시된 값 타입 확인
+            if (cellType == CellType.FORMULA) {
+                cellType = cell.getCachedFormulaResultType();
+            }
+
+            switch (cellType) {
                 case NUMERIC:
-                    if (DateUtil.isCellDateFormatted(cell)) {
-                        dates.add(cell.getLocalDateTimeCellValue().toLocalDate());
+                    // 엑셀 날짜 형식 시도
+                    try {
+                        if (DateUtil.isCellDateFormatted(cell)) {
+                            dates.add(cell.getLocalDateTimeCellValue().toLocalDate());
+                        } else {
+                            // 날짜 형식이 아니어도 숫자가 날짜 범위면 시도
+                            double numValue = cell.getNumericCellValue();
+                            if (numValue > 1 && numValue < 100000) {
+                                java.util.Date javaDate = DateUtil.getJavaDate(numValue);
+                                dates.add(javaDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate());
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.debug("날짜 파싱 실패 (NUMERIC): {}", e.getMessage());
                     }
                     break;
                 case STRING:
@@ -246,6 +335,7 @@ public class ExcelService {
                     break;
             }
         } catch (Exception e) {
+            log.debug("날짜 파싱 실패: {}", e.getMessage());
             return null;
         }
 
@@ -255,13 +345,100 @@ public class ExcelService {
     private LocalDate parseSingleDate(String value) {
         if (value == null || value.isEmpty()) return null;
 
-        String[] patterns = {"yyyy-MM-dd", "yy.MM.dd", "yyyy.MM.dd", "yy/MM/dd", "yyyy/MM/dd", "yy-MM-dd"};
+        // 공백, 특수문자 정리
+        value = value.trim().replaceAll("[\\s]+", " ");
+
+        // 다양한 날짜 패턴 지원
+        String[] patterns = {
+            "yyyy-MM-dd", "yy-MM-dd",
+            "yyyy.MM.dd", "yy.MM.dd",
+            "yyyy/MM/dd", "yy/MM/dd",
+            "yyyy년 MM월 dd일", "yyyy년MM월dd일",
+            "MM/dd/yyyy", "MM-dd-yyyy",
+            "dd.MM.yy", "dd/MM/yy"
+        };
+
         for (String pattern : patterns) {
             try {
                 return LocalDate.parse(value, DateTimeFormatter.ofPattern(pattern));
             } catch (Exception ignored) {}
         }
+
+        // 숫자만 추출해서 시도 (예: "281014" -> 28.10.14)
+        String numbersOnly = value.replaceAll("[^0-9]", "");
+        if (numbersOnly.length() == 6) {
+            try {
+                int yy = Integer.parseInt(numbersOnly.substring(0, 2));
+                int mm = Integer.parseInt(numbersOnly.substring(2, 4));
+                int dd = Integer.parseInt(numbersOnly.substring(4, 6));
+                int year = (yy > 50) ? 1900 + yy : 2000 + yy;
+                return LocalDate.of(year, mm, dd);
+            } catch (Exception ignored) {}
+        } else if (numbersOnly.length() == 8) {
+            try {
+                int yyyy = Integer.parseInt(numbersOnly.substring(0, 4));
+                int mm = Integer.parseInt(numbersOnly.substring(4, 6));
+                int dd = Integer.parseInt(numbersOnly.substring(6, 8));
+                return LocalDate.of(yyyy, mm, dd);
+            } catch (Exception ignored) {}
+        }
+
         return null;
+    }
+
+    /**
+     * 주문수량 파싱 - 특수 형식 지원
+     * 예: "3+1" -> 4, "1box(20개입)" -> 20, "10" -> 10
+     */
+    private BigDecimal parseOrderQuantity(Cell cell) {
+        if (cell == null) return null;
+
+        try {
+            // 숫자 셀인 경우
+            if (cell.getCellType() == CellType.NUMERIC) {
+                return BigDecimal.valueOf(cell.getNumericCellValue());
+            }
+
+            // 문자열인 경우
+            String value = getCellStringValue(cell).trim();
+            if (value.isEmpty()) return null;
+
+            // 1. "3+1" 형식 처리 (덧셈 계산)
+            if (value.contains("+")) {
+                String[] parts = value.split("\\+");
+                int total = 0;
+                for (String part : parts) {
+                    String numStr = part.replaceAll("[^0-9]", "");
+                    if (!numStr.isEmpty()) {
+                        total += Integer.parseInt(numStr);
+                    }
+                }
+                if (total > 0) return BigDecimal.valueOf(total);
+            }
+
+            // 2. "1box(20개입)" 형식 처리 - 괄호 안 숫자 추출
+            if (value.contains("(") && value.contains(")")) {
+                int start = value.indexOf("(");
+                int end = value.indexOf(")");
+                if (start < end) {
+                    String insideParens = value.substring(start + 1, end);
+                    String numStr = insideParens.replaceAll("[^0-9]", "");
+                    if (!numStr.isEmpty()) {
+                        return new BigDecimal(numStr);
+                    }
+                }
+            }
+
+            // 3. 일반 숫자 추출
+            String numStr = value.replaceAll("[^0-9.]", "");
+            if (!numStr.isEmpty() && !numStr.equals(".")) {
+                return new BigDecimal(numStr);
+            }
+
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private boolean isEmptyRow(Row row) {
@@ -331,6 +508,19 @@ public class ExcelService {
                 List<LocalDate> receivedDates = dto.getReceivedDates();
                 List<LocalDate> expiryDates = dto.getExpiryDates();
 
+                // 주문수량 결정: orderQuantity가 있으면 사용, 없으면 initialStock 사용
+                BigDecimal quantity = dto.getOrderQuantity() != null ? dto.getOrderQuantity() : dto.getInitialStock();
+                // 주문수량 원본 저장 (비고에 추가)
+                String orderNote = dto.getNote();
+                if (dto.getOrderQuantityRaw() != null && !dto.getOrderQuantityRaw().isEmpty()
+                        && dto.getOrderQuantity() != null) {
+                    // 원본과 파싱된 값이 다르면 원본도 기록
+                    String rawNum = dto.getOrderQuantityRaw().replaceAll("[^0-9]", "");
+                    if (!rawNum.equals(dto.getOrderQuantity().stripTrailingZeros().toPlainString())) {
+                        orderNote = (orderNote != null ? orderNote + " / " : "") + "주문: " + dto.getOrderQuantityRaw();
+                    }
+                }
+
                 if (receivedDates != null && !receivedDates.isEmpty()) {
                     // 입고일 개수만큼 StockOrder 생성
                     for (int i = 0; i < receivedDates.size(); i++) {
@@ -343,12 +533,13 @@ public class ExcelService {
 
                         StockOrder order = StockOrder.builder()
                                 .product(product)
-                                .quantity(dto.getInitialStock())
+                                .quantity(quantity)
+                                .orderQuantity(dto.getOrderQuantityRaw())
                                 .orderDate(receivedDate)
                                 .receivedDate(receivedDate)
                                 .expiryDate(expiryDate)
                                 .status("COMPLETED")
-                                .note(dto.getNote())
+                                .note(orderNote)
                                 .build();
                         stockOrderRepository.save(order);
                     }
@@ -357,10 +548,11 @@ public class ExcelService {
                     for (LocalDate expiryDate : expiryDates) {
                         StockOrder order = StockOrder.builder()
                                 .product(product)
-                                .quantity(dto.getInitialStock())
+                                .quantity(quantity)
+                                .orderQuantity(dto.getOrderQuantityRaw())
                                 .expiryDate(expiryDate)
                                 .status("COMPLETED")
-                                .note(dto.getNote())
+                                .note(orderNote)
                                 .build();
                         stockOrderRepository.save(order);
                     }
@@ -515,31 +707,41 @@ public class ExcelService {
 
             BigDecimal totalQty = BigDecimal.ZERO;
             List<String> receivedDates = new ArrayList<>();
-            String latestExpiry = null;
+            List<String> expiryDates = new ArrayList<>();
 
             for (StockOrder order : orders) {
                 if (!"COMPLETED".equals(order.getStatus())) continue;
-                if (order.getReceivedDate() == null) continue;
 
-                // 해당 월에 입고된 건만 필터
-                if (order.getReceivedDate().getYear() == targetYear &&
-                    order.getReceivedDate().getMonthValue() == targetMonth) {
+                // 입고일이 있는 경우 해당 월 필터
+                if (order.getReceivedDate() != null) {
+                    if (order.getReceivedDate().getYear() == targetYear &&
+                        order.getReceivedDate().getMonthValue() == targetMonth) {
 
-                    if (order.getQuantity() != null) {
-                        totalQty = totalQty.add(order.getQuantity());
+                        if (order.getQuantity() != null) {
+                            totalQty = totalQty.add(order.getQuantity());
+                        }
+                        receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+
+                        if (order.getExpiryDate() != null) {
+                            expiryDates.add(order.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
+                        }
                     }
-                    receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-
-                    if (order.getExpiryDate() != null) {
-                        latestExpiry = order.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd"));
-                    }
+                } else if (order.getExpiryDate() != null) {
+                    // 입고일 없이 유효기간만 있는 경우도 추가
+                    expiryDates.add(order.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
                 }
+            }
+
+            // Inventory 자체의 유효기간도 확인
+            if (expiryDates.isEmpty() && inv.getExpiryDate() != null) {
+                expiryDates.add(inv.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
             }
 
             productOrderQtyMap.put(productId, totalQty);
             productReceivedDatesMap.put(productId, receivedDates);
-            if (latestExpiry != null) {
-                productExpiryMap.put(productId, latestExpiry);
+            // 유효기간 여러 개를 / 로 구분하여 저장
+            if (!expiryDates.isEmpty()) {
+                productExpiryMap.put(productId, String.join(" / ", expiryDates));
             }
         }
 
