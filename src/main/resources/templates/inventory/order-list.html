@@ -84,7 +84,7 @@
                                     <span class="badge bg-info" th:text="${order.productCategory}" th:if="${order.productCategory}"></span>
                                 </td>
                                 <td th:text="${order.productName}"></td>
-                                <td class="text-end" th:text="${order.quantity}"></td>
+                                <td class="text-end" th:text="${#numbers.formatInteger(order.quantity, 1)}"></td>
                                 <td th:text="${order.orderDateStr}"></td>
                                 <td th:text="${order.receivedDateStr}"></td>
                                 <td th:text="${order.expiryDateStr}"></td>
@@ -96,7 +96,7 @@
                                             th:if="${order.status == null or order.status == 'PENDING'}"
                                             th:data-id="${order.id}"
                                             th:data-name="${order.productName}"
-                                            th:data-quantity="${order.quantity}">
+                                            th:data-quantity="${#numbers.formatInteger(order.quantity, 1)}">
                                         <i class="bi bi-check-lg"></i> 입고
                                     </button>
                                     <button class="btn btn-sm btn-outline-primary me-1 edit-btn"
@@ -194,7 +194,7 @@
                 .then(order => {
                     document.getElementById('orderId').value = order.id;
                     document.getElementById('orderProductId').value = order.productId;
-                    document.getElementById('orderQuantityNum').value = order.quantity || '';
+                    document.getElementById('orderQuantityNum').value = order.quantity ? Math.floor(order.quantity) : '';
                     document.getElementById('orderDate').value = order.orderDate || '';
                     document.getElementById('orderExpiryDate').value = order.expiryDate || '';
                     document.getElementById('orderNote').value = order.note || '';

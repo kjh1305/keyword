@@ -77,10 +77,19 @@ public class ExcelController {
     }
 
     @GetMapping("/api/inventory/export/excel")
-    public ResponseEntity<byte[]> exportExcel(@RequestParam String yearMonth) throws IOException {
-        byte[] excelData = excelService.exportToExcel(yearMonth);
+    public ResponseEntity<byte[]> exportExcel(@RequestParam(required = false) String yearMonth) throws IOException {
+        byte[] excelData;
+        String filename;
 
-        String filename = URLEncoder.encode("재고현황_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
+        if (yearMonth == null || yearMonth.isEmpty() || "all".equals(yearMonth)) {
+            // 전체 년월 내보내기 (시트별로 분리)
+            excelData = excelService.exportAllToExcel();
+            filename = URLEncoder.encode("재고현황_전체.xlsx", StandardCharsets.UTF_8);
+        } else {
+            // 단일 년월 내보내기
+            excelData = excelService.exportToExcel(yearMonth);
+            filename = URLEncoder.encode("재고현황_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
+        }
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + filename)

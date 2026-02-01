@@ -115,8 +115,25 @@ jobs:
               STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$NEW_PORT/health || echo "000")
               echo "Health check attempt $i: $STATUS"
               if [ "$STATUS" = "200" ]; then
-                echo "Health check passed"
-                exit 0
+                echo "Health check passed, waiting for app to fully initialize..."
+                sleep 10
+                # 추가 확인: 연속 3회 성공해야 전환
+                SUCCESS=0
+                for j in {1..3}; do
+                  CHECK=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$NEW_PORT/health || echo "000")
+                  if [ "$CHECK" = "200" ]; then
+                    SUCCESS=$((SUCCESS + 1))
+                    echo "Readiness check $j: OK"
+                  else
+                    echo "Readiness check $j: FAILED"
+                    break
+                  fi
+                  sleep 2
+                done
+                if [ "$SUCCESS" = "3" ]; then
+                  echo "App is fully ready"
+                  exit 0
+                fi
               fi
             done
             echo "Health check failed - showing container logs:"
@@ -128,15 +145,41 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           NEW_CONTAINER: ${{ env.NEW_CONTAINER }}
+          NEW_PORT: ${{ env.NEW_PORT }}
         with:
           host: ${{ secrets.REMOTE_SSH_HOST }}
           username: ${{ secrets.REMOTE_SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.REMOTE_SSH_PORT }}
-          envs: NEW_CONTAINER
+          envs: NEW_CONTAINER,NEW_PORT
           script: |
+            # 전환 전 새 컨테이너 최종 확인
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$NEW_PORT/health || echo "000")
+            if [ "$STATUS" != "200" ]; then
+              echo "New container not ready, aborting switch"
+              exit 1
+            fi
+
+            # Nginx 설정 변경
             sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$NEW_CONTAINER:8888;|" /home/dev/nginx/conf.d/default.conf
-            docker exec nginx-server nginx -s reload
+
+            # Nginx 설정 검증 후 reload
+            docker exec nginx-server nginx -t && docker exec nginx-server nginx -s reload
+
+            echo "Nginx switched to $NEW_CONTAINER"
+            sleep 5
+
+            # 전환 후 실제 서비스 확인
+            for i in {1..5}; do
+              LIVE_STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/health || echo "000")
+              echo "Live check $i: $LIVE_STATUS"
+              if [ "$LIVE_STATUS" = "200" ]; then
+                echo "Traffic switch successful"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Warning: Live check failed but continuing..."
 
       - name: Remove old container
         uses: appleboy/ssh-action@v1.0.3
@@ -148,4 +191,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.REMOTE_SSH_PORT }}
           envs: OLD_CONTAINER
-          script: docker rm -f $OLD_CONTAINER || true
+          script: |
+            echo "Waiting for existing connections to drain..."
+            sleep 10
+            docker rm -f $OLD_CONTAINER || true
+            echo "Old container removed"
