@@ -46,6 +46,7 @@ public class InventoryController {
         model.addAttribute("currentPage", pageData.get("currentPage"));
         model.addAttribute("totalPages", pageData.get("totalPages"));
         model.addAttribute("totalElements", pageData.get("totalElements"));
+        model.addAttribute("totalProductCount", pageData.get("totalProductCount"));
         model.addAttribute("hasNext", pageData.get("hasNext"));
         model.addAttribute("hasPrevious", pageData.get("hasPrevious"));
         model.addAttribute("outOfStockCount", pageData.get("outOfStockCount"));
