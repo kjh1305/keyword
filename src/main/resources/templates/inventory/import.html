@@ -179,10 +179,8 @@
                 const tr = document.createElement('tr');
                 // 유효기간/입고일 여러 개 표시
                 let expiryDisplay = '';
-                if (item.expiryDates && item.expiryDates.length > 0) {
-                    expiryDisplay = item.expiryDates.join(' / ');
-                } else if (item.expiryDate) {
-                    expiryDisplay = item.expiryDate;
+                if (item.expiryDateStrings && item.expiryDateStrings.length > 0) {
+                    expiryDisplay = item.expiryDateStrings.join(' / ');
                 }
                 tr.innerHTML = `
                     <td>${item.rowNumber || '-'}</td>
