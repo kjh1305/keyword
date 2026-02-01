@@ -104,15 +104,18 @@
                         </thead>
                         <tbody>
                             <tr th:each="inv, stat : ${inventories}"
-                                th:classappend="${inv.lowStock} ? 'table-warning' : ''">
+                                th:classappend="${inv.remainingStock <= 0} ? 'table-danger' : (${inv.lowStock} ? 'table-warning' : '')">
                                 <td th:text="${currentPage * size + stat.index + 1}"></td>
                                 <td>
                                     <span class="badge bg-info" th:text="${inv.productCategory}" th:if="${inv.productCategory}"></span>
                                 </td>
                                 <td>
                                     <span th:text="${inv.productName}"></span>
+                                    <i class="bi bi-x-circle-fill text-danger ms-1"
+                                       th:if="${inv.remainingStock <= 0}"
+                                       title="재고 없음"></i>
                                     <i class="bi bi-exclamation-triangle-fill text-warning ms-1"
-                                       th:if="${inv.lowStock}"
+                                       th:if="${inv.remainingStock > 0 and inv.lowStock}"
                                        title="재고 부족"></i>
                                 </td>
                                 <td>
@@ -129,7 +132,7 @@
                                     <span th:text="${#numbers.formatInteger(inv.usedQuantity, 1)}"></span>
                                 </td>
                                 <td class="text-end fw-bold"
-                                    th:classappend="${inv.lowStock} ? 'text-danger' : ''">
+                                    th:classappend="${inv.remainingStock <= 0} ? 'text-danger' : (${inv.lowStock} ? 'text-warning' : '')">
                                     <span th:text="${#numbers.formatInteger(inv.remainingStock, 1)}" th:id="'remaining-' + ${inv.id}"></span>
                                 </td>
                                 <td class="text-center">
@@ -216,27 +219,35 @@
 
         <!-- Summary Card -->
         <div class="row mt-4" th:if="${totalElements > 0}">
-            <div class="col-md-4">
+            <div class="col-6 col-md-3">
                 <div class="card text-center">
-                    <div class="card-body">
+                    <div class="card-body py-3">
                         <h6 class="card-subtitle mb-2 text-muted">총 제품 수</h6>
-                        <h3 class="card-title" th:text="${totalElements}"></h3>
+                        <h3 class="card-title mb-0" th:text="${totalElements}"></h3>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-6 col-md-3">
+                <div class="card text-center border-danger">
+                    <div class="card-body py-3">
+                        <h6 class="card-subtitle mb-2 text-muted">재고 없음</h6>
+                        <h3 class="card-title mb-0 text-danger" th:text="${outOfStockCount}"></h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 mt-3 mt-md-0">
                 <div class="card text-center border-warning">
-                    <div class="card-body">
+                    <div class="card-body py-3">
                         <h6 class="card-subtitle mb-2 text-muted">재고 부족</h6>
-                        <h3 class="card-title text-warning" th:text="${lowStockCount}"></h3>
+                        <h3 class="card-title mb-0 text-warning" th:text="${lowStockCount}"></h3>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-6 col-md-3 mt-3 mt-md-0">
                 <div class="card text-center">
-                    <div class="card-body">
+                    <div class="card-body py-3">
                         <h6 class="card-subtitle mb-2 text-muted">선택 월</h6>
-                        <h3 class="card-title" th:text="${selectedYearMonth}"></h3>
+                        <h3 class="card-title mb-0" th:text="${selectedYearMonth}"></h3>
                     </div>
                 </div>
             </div>
@@ -331,13 +342,24 @@
             })
             .then(response => response.json())
             .then(inventory => {
-                document.getElementById('remaining-' + id).textContent = Math.floor(inventory.remainingStock);
+                const remainingStock = Math.floor(inventory.remainingStock);
+                document.getElementById('remaining-' + id).textContent = remainingStock;
 
                 const row = document.querySelector(`input[data-id="${id}"]`).closest('tr');
-                if (inventory.lowStock) {
+                const remainingCell = document.getElementById('remaining-' + id).closest('td');
+
+                // 행 색상 초기화
+                row.classList.remove('table-danger', 'table-warning');
+                remainingCell.classList.remove('text-danger', 'text-warning');
+
+                if (remainingStock <= 0) {
+                    // 재고 없음 - 빨간색
+                    row.classList.add('table-danger');
+                    remainingCell.classList.add('text-danger');
+                } else if (inventory.lowStock) {
+                    // 재고 부족 - 노란색
                     row.classList.add('table-warning');
-                } else {
-                    row.classList.remove('table-warning');
+                    remainingCell.classList.add('text-warning');
                 }
             })
             .catch(error => {

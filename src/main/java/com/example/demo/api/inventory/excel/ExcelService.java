@@ -108,6 +108,8 @@ public class ExcelService {
                 columnMap.put("usedQuantity", colIndex);
             } else if (value.contains("남은") || value.contains("잔여") || value.contains("remaining")) {
                 columnMap.put("remainingStock", colIndex);
+            } else if (value.contains("입고") || value.contains("received") || value.contains("입하")) {
+                columnMap.put("receivedDate", colIndex);
             } else if (value.contains("유효") || value.contains("expiry") || value.contains("만료")) {
                 columnMap.put("expiryDate", colIndex);
             } else if (value.contains("단위") || value.contains("unit")) {
@@ -137,8 +139,11 @@ public class ExcelService {
         if (columnMap.containsKey("usedQuantity")) {
             dto.setUsedQuantity(getCellDecimalValue(row.getCell(columnMap.get("usedQuantity"))));
         }
+        if (columnMap.containsKey("receivedDate")) {
+            dto.setReceivedDates(getCellDatesValue(row.getCell(columnMap.get("receivedDate"))));
+        }
         if (columnMap.containsKey("expiryDate")) {
-            dto.setExpiryDate(getCellDateValue(row.getCell(columnMap.get("expiryDate"))));
+            dto.setExpiryDates(getCellDatesValue(row.getCell(columnMap.get("expiryDate"))));
         }
         if (columnMap.containsKey("unit")) {
             dto.setUnit(getCellStringValue(row.getCell(columnMap.get("unit"))));
@@ -205,32 +210,58 @@ public class ExcelService {
     }
 
     private LocalDate getCellDateValue(Cell cell) {
+        List<LocalDate> dates = getCellDatesValue(cell);
+        if (dates == null || dates.isEmpty()) return null;
+        // 가장 빠른 날짜 반환
+        return dates.stream().min(LocalDate::compareTo).orElse(null);
+    }
+
+    private List<LocalDate> getCellDatesValue(Cell cell) {
         if (cell == null) return null;
+
+        List<LocalDate> dates = new ArrayList<>();
 
         try {
             switch (cell.getCellType()) {
                 case NUMERIC:
                     if (DateUtil.isCellDateFormatted(cell)) {
-                        return cell.getLocalDateTimeCellValue().toLocalDate();
+                        dates.add(cell.getLocalDateTimeCellValue().toLocalDate());
                     }
-                    return null;
+                    break;
                 case STRING:
                     String value = cell.getStringCellValue().trim();
                     if (value.isEmpty()) return null;
 
-                    String[] patterns = {"yyyy-MM-dd", "yy.MM.dd", "yyyy.MM.dd", "yy/MM/dd", "yyyy/MM/dd"};
-                    for (String pattern : patterns) {
-                        try {
-                            return LocalDate.parse(value, DateTimeFormatter.ofPattern(pattern));
-                        } catch (Exception ignored) {}
+                    // 여러 날짜가 "/" 또는 ","로 구분된 경우 처리
+                    String[] dateStrings = value.split("[/,]");
+
+                    for (String dateStr : dateStrings) {
+                        LocalDate parsed = parseSingleDate(dateStr.trim());
+                        if (parsed != null) {
+                            dates.add(parsed);
+                        }
                     }
-                    return null;
+                    break;
                 default:
-                    return null;
+                    break;
             }
         } catch (Exception e) {
             return null;
         }
+
+        return dates.isEmpty() ? null : dates;
+    }
+
+    private LocalDate parseSingleDate(String value) {
+        if (value == null || value.isEmpty()) return null;
+
+        String[] patterns = {"yyyy-MM-dd", "yy.MM.dd", "yyyy.MM.dd", "yy/MM/dd", "yyyy/MM/dd", "yy-MM-dd"};
+        for (String pattern : patterns) {
+            try {
+                return LocalDate.parse(value, DateTimeFormatter.ofPattern(pattern));
+            } catch (Exception ignored) {}
+        }
+        return null;
     }
 
     private boolean isEmptyRow(Row row) {
@@ -294,6 +325,45 @@ public class ExcelService {
 
                     inventoryRepository.save(inventory);
                     result.setInventoryRecords(result.getInventoryRecords() + 1);
+                }
+
+                // 입고일/유효기간이 있으면 StockOrder 생성 (입고 완료 상태로)
+                List<LocalDate> receivedDates = dto.getReceivedDates();
+                List<LocalDate> expiryDates = dto.getExpiryDates();
+
+                if (receivedDates != null && !receivedDates.isEmpty()) {
+                    // 입고일 개수만큼 StockOrder 생성
+                    for (int i = 0; i < receivedDates.size(); i++) {
+                        LocalDate receivedDate = receivedDates.get(i);
+                        // 유효기간은 같은 인덱스의 값 또는 마지막 값 사용
+                        LocalDate expiryDate = null;
+                        if (expiryDates != null && !expiryDates.isEmpty()) {
+                            expiryDate = (i < expiryDates.size()) ? expiryDates.get(i) : expiryDates.get(expiryDates.size() - 1);
+                        }
+
+                        StockOrder order = StockOrder.builder()
+                                .product(product)
+                                .quantity(dto.getInitialStock())
+                                .orderDate(receivedDate)
+                                .receivedDate(receivedDate)
+                                .expiryDate(expiryDate)
+                                .status("COMPLETED")
+                                .note(dto.getNote())
+                                .build();
+                        stockOrderRepository.save(order);
+                    }
+                } else if (expiryDates != null && !expiryDates.isEmpty()) {
+                    // 입고일은 없고 유효기간만 있는 경우 - 유효기간별로 StockOrder 생성
+                    for (LocalDate expiryDate : expiryDates) {
+                        StockOrder order = StockOrder.builder()
+                                .product(product)
+                                .quantity(dto.getInitialStock())
+                                .expiryDate(expiryDate)
+                                .status("COMPLETED")
+                                .note(dto.getNote())
+                                .build();
+                        stockOrderRepository.save(order);
+                    }
                 }
 
             } catch (Exception e) {

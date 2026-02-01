@@ -42,6 +42,7 @@ public class InventoryController {
         model.addAttribute("totalElements", pageData.get("totalElements"));
         model.addAttribute("hasNext", pageData.get("hasNext"));
         model.addAttribute("hasPrevious", pageData.get("hasPrevious"));
+        model.addAttribute("outOfStockCount", pageData.get("outOfStockCount"));
         model.addAttribute("lowStockCount", pageData.get("lowStockCount"));
         model.addAttribute("yearMonths", yearMonths);
         model.addAttribute("selectedYearMonth", yearMonth);
