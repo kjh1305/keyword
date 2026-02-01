@@ -51,15 +51,25 @@ public class InventoryService {
                 .map(InventoryDTO::fromEntity)
                 .collect(Collectors.toList());
 
-        // 전체 재고 부족 수량 계산 (별도 쿼리)
+        // 전체 재고 부족/없음 수량 계산 (별도 쿼리)
         List<Inventory> allInventories = inventoryRepository.searchInventory(yearMonth, cat, kw);
+
+        // 재고 없음 (0 이하)
+        long outOfStockCount = allInventories.stream()
+                .filter(inv -> {
+                    BigDecimal remaining = inv.getRemainingStock() != null ? inv.getRemainingStock() : BigDecimal.ZERO;
+                    return remaining.compareTo(BigDecimal.ZERO) <= 0;
+                })
+                .count();
+
+        // 재고 부족 (최소수량 이하, 0 초과)
         long lowStockCount = allInventories.stream()
                 .filter(inv -> {
                     BigDecimal remaining = inv.getRemainingStock() != null ? inv.getRemainingStock() : BigDecimal.ZERO;
                     BigDecimal minQty = inv.getProduct().getMinQuantity() != null
                             ? new BigDecimal(inv.getProduct().getMinQuantity())
                             : BigDecimal.ZERO;
-                    return remaining.compareTo(minQty) <= 0;
+                    return remaining.compareTo(BigDecimal.ZERO) > 0 && remaining.compareTo(minQty) <= 0;
                 })
                 .count();
 
@@ -70,6 +80,7 @@ public class InventoryService {
         result.put("totalElements", inventoryPage.getTotalElements());
         result.put("hasNext", inventoryPage.hasNext());
         result.put("hasPrevious", inventoryPage.hasPrevious());
+        result.put("outOfStockCount", outOfStockCount);
         result.put("lowStockCount", lowStockCount);
 
         return result;
@@ -155,27 +166,35 @@ public class InventoryService {
 
         for (Product product : allProducts) {
             if (!inventoryRepository.existsByProductIdAndYearMonth(product.getId(), yearMonth)) {
-                BigDecimal previousRemaining = getPreviousMonthRemaining(product.getId(), yearMonth);
+                Inventory previousInventory = getPreviousMonthInventory(product.getId(), yearMonth);
 
-                Inventory inventory = Inventory.builder()
+                Inventory.InventoryBuilder builder = Inventory.builder()
                         .product(product)
                         .yearMonth(yearMonth)
-                        .initialStock(previousRemaining)
-                        .usedQuantity(BigDecimal.ZERO)
-                        .build();
-                inventoryRepository.save(inventory);
+                        .usedQuantity(BigDecimal.ZERO);
+
+                if (previousInventory != null) {
+                    // 이전 달 데이터가 있으면 남은재고, 유효기간, 비고 이월
+                    builder.initialStock(previousInventory.getRemainingStock() != null
+                            ? previousInventory.getRemainingStock() : BigDecimal.ZERO)
+                           .expiryDate(previousInventory.getExpiryDate())
+                           .note(previousInventory.getNote());
+                } else {
+                    builder.initialStock(BigDecimal.ZERO);
+                }
+
+                inventoryRepository.save(builder.build());
             }
         }
     }
 
-    private BigDecimal getPreviousMonthRemaining(Long productId, String currentYearMonth) {
+    private Inventory getPreviousMonthInventory(Long productId, String currentYearMonth) {
         YearMonth current = YearMonth.parse(currentYearMonth);
         YearMonth previous = current.minusMonths(1);
         String previousMonth = previous.format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
         return inventoryRepository.findByProductIdAndYearMonth(productId, previousMonth)
-                .map(Inventory::getRemainingStock)
-                .orElse(BigDecimal.ZERO);
+                .orElse(null);
     }
 
     @Transactional
