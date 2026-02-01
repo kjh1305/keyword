@@ -119,6 +119,10 @@ public class StockOrderService {
         // 주문에 저장된 수량 사용 (파라미터로 받은 값이 없으면)
         BigDecimal quantityToAdd = receivedQuantity != null ? receivedQuantity : order.getQuantity();
 
+        // 남은수량 초기화 (FIFO 차감용)
+        order.setRemainingQuantity(quantityToAdd);
+        order.setConsumed(false);
+
         // 현재 월의 재고에 추가재고 반영
         if (quantityToAdd != null && quantityToAdd.compareTo(BigDecimal.ZERO) > 0) {
             String currentYearMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
@@ -207,8 +211,8 @@ public class StockOrderService {
 
     public Map<String, Object> getExpiryHistoryByProductPaged(Long productId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<StockOrder> orderPage = stockOrderRepository.findValidExpiryByProductId(
-                productId, LocalDate.now(), pageable);
+        // 모든 유효기간 항목 조회 (소진 여부 관계없이 - 관리용)
+        Page<StockOrder> orderPage = stockOrderRepository.findAllExpiryByProductIdPaged(productId, pageable);
 
         List<StockOrderDTO> content = orderPage.getContent().stream()
                 .map(StockOrderDTO::fromEntity)
@@ -223,5 +227,93 @@ public class StockOrderService {
         result.put("hasPrevious", orderPage.hasPrevious());
 
         return result;
+    }
+
+    /**
+     * 소진완료 처리 (수동)
+     */
+    @Transactional
+    public StockOrderDTO markAsConsumed(Long id) {
+        StockOrder order = stockOrderRepository.findByIdWithProduct(id)
+                .orElseThrow(() -> new IllegalArgumentException("주문 정보를 찾을 수 없습니다: " + id));
+
+        order.setConsumed(true);
+        order.setRemainingQuantity(BigDecimal.ZERO);
+
+        StockOrder saved = stockOrderRepository.save(order);
+        activityLogService.logUpdate("ORDER", saved.getId(), order.getProduct().getName(),
+                "유효기간 소진완료 처리 - " + (order.getExpiryDate() != null ?
+                        order.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : ""));
+        return StockOrderDTO.fromEntity(saved);
+    }
+
+    /**
+     * 소진완료 취소
+     */
+    @Transactional
+    public StockOrderDTO unmarkAsConsumed(Long id) {
+        StockOrder order = stockOrderRepository.findByIdWithProduct(id)
+                .orElseThrow(() -> new IllegalArgumentException("주문 정보를 찾을 수 없습니다: " + id));
+
+        order.setConsumed(false);
+        // 남은수량 복원 (원래 수량으로)
+        if (order.getQuantity() != null) {
+            order.setRemainingQuantity(order.getQuantity());
+        }
+
+        StockOrder saved = stockOrderRepository.save(order);
+        activityLogService.logUpdate("ORDER", saved.getId(), order.getProduct().getName(),
+                "유효기간 소진완료 취소");
+        return StockOrderDTO.fromEntity(saved);
+    }
+
+    /**
+     * 제품의 활성 유효기간 목록 조회 (소진되지 않은 것만, 유효기간 빠른 순)
+     */
+    public List<StockOrderDTO> getActiveExpiryDatesByProduct(Long productId) {
+        return stockOrderRepository.findActiveExpiryByProductId(productId).stream()
+                .map(StockOrderDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * FIFO 방식으로 재고 차감
+     * @return 실제 차감된 수량
+     */
+    @Transactional
+    public BigDecimal deductStockFIFO(Long productId, BigDecimal quantityToDeduct) {
+        List<StockOrder> activeOrders = stockOrderRepository.findActiveExpiryByProductId(productId);
+
+        BigDecimal remaining = quantityToDeduct;
+        BigDecimal totalDeducted = BigDecimal.ZERO;
+
+        for (StockOrder order : activeOrders) {
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
+
+            // 수량이 없는 경우 (기존 데이터) - FIFO 대상에서 제외
+            if (order.getRemainingQuantity() == null) continue;
+
+            BigDecimal available = order.getRemainingQuantity();
+            if (available.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+            BigDecimal toDeduct = remaining.min(available);
+            order.setRemainingQuantity(available.subtract(toDeduct));
+
+            // 남은수량이 0이면 소진완료 처리
+            if (order.getRemainingQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                order.setConsumed(true);
+            }
+
+            stockOrderRepository.save(order);
+            totalDeducted = totalDeducted.add(toDeduct);
+            remaining = remaining.subtract(toDeduct);
+
+            activityLogService.logUpdate("ORDER", order.getId(), order.getProduct().getName(),
+                    "FIFO 차감 - " + toDeduct + " (유효기간: " +
+                            (order.getExpiryDate() != null ?
+                                    order.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "미지정") + ")");
+        }
+
+        return totalDeducted;
     }
 }

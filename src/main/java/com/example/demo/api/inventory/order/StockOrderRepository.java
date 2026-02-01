@@ -69,4 +69,35 @@ public interface StockOrderRepository extends JpaRepository<StockOrder, Long> {
     Page<StockOrder> findValidExpiryByProductId(@Param("productId") Long productId,
                                                  @Param("today") LocalDate today,
                                                  Pageable pageable);
+
+    /**
+     * 활성 유효기간 목록 조회 (소진되지 않은 것만, 유효기간 빠른 순 - FIFO용)
+     */
+    @Query("SELECT o FROM StockOrder o JOIN FETCH o.product " +
+           "WHERE o.product.id = :productId AND o.status = 'COMPLETED' " +
+           "AND o.expiryDate IS NOT NULL " +
+           "AND (o.consumed IS NULL OR o.consumed = false) " +
+           "ORDER BY o.expiryDate ASC")
+    List<StockOrder> findActiveExpiryByProductId(@Param("productId") Long productId);
+
+    /**
+     * 제품의 모든 유효기간 목록 조회 (소진 여부 관계없이, 유효기간 빠른 순)
+     */
+    @Query("SELECT o FROM StockOrder o JOIN FETCH o.product " +
+           "WHERE o.product.id = :productId AND o.status = 'COMPLETED' " +
+           "AND o.expiryDate IS NOT NULL " +
+           "ORDER BY o.expiryDate ASC")
+    List<StockOrder> findAllExpiryByProductId(@Param("productId") Long productId);
+
+    /**
+     * 제품의 모든 유효기간 목록 조회 - 페이징 (관리용)
+     */
+    @Query(value = "SELECT o FROM StockOrder o JOIN FETCH o.product " +
+           "WHERE o.product.id = :productId AND o.status = 'COMPLETED' " +
+           "AND o.expiryDate IS NOT NULL " +
+           "ORDER BY o.consumed ASC, o.expiryDate ASC",
+           countQuery = "SELECT COUNT(o) FROM StockOrder o " +
+           "WHERE o.product.id = :productId AND o.status = 'COMPLETED' " +
+           "AND o.expiryDate IS NOT NULL")
+    Page<StockOrder> findAllExpiryByProductIdPaged(@Param("productId") Long productId, Pageable pageable);
 }

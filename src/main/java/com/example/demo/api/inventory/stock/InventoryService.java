@@ -57,20 +57,40 @@ public class InventoryService {
         List<InventoryDTO> content = inventoryPage.getContent().stream()
                 .map(inv -> {
                     InventoryDTO dto = InventoryDTO.fromEntity(inv);
-                    // StockOrder에서 해당 제품의 유효기간 목록 가져오기
-                    List<StockOrder> orders = stockOrderRepository.findCompletedWithExpiryByProductId(inv.getProduct().getId());
+                    // StockOrder에서 해당 제품의 유효기간 목록 가져오기 (유효기간 빠른 순)
+                    List<StockOrder> orders = stockOrderRepository.findAllExpiryByProductId(inv.getProduct().getId());
+
+                    // 유효기간 문자열 목록 (미소진 + 유효기간 지나지 않은 것만)
                     List<String> expiryDates = orders.stream()
-                            .filter(o -> o.getExpiryDate() != null && !o.getExpiryDate().isBefore(today))
+                            .filter(o -> o.getExpiryDate() != null
+                                    && !o.getExpiryDate().isBefore(today)
+                                    && (o.getConsumed() == null || !o.getConsumed()))
                             .map(o -> o.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")))
                             .distinct()
                             .collect(Collectors.toList());
                     dto.setExpiryDates(expiryDates);
 
-                    // 유효기간 임박 여부 (30일 이내)
+                    // 유효기간별 상세정보 목록 (소진된 것 포함, UI에서 표시용)
+                    List<InventoryDTO.ExpiryInfo> expiryInfoList = orders.stream()
+                            .map(o -> InventoryDTO.ExpiryInfo.builder()
+                                    .orderId(o.getId())
+                                    .expiryDate(o.getExpiryDate())
+                                    .expiryDateStr(o.getExpiryDate() != null ?
+                                            o.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")) : null)
+                                    .quantity(o.getQuantity())
+                                    .remainingQuantity(o.getRemainingQuantity())
+                                    .consumed(o.getConsumed() != null ? o.getConsumed() : false)
+                                    .hasQuantity(o.getRemainingQuantity() != null)
+                                    .build())
+                            .collect(Collectors.toList());
+                    dto.setExpiryInfoList(expiryInfoList);
+
+                    // 유효기간 임박 여부 (30일 이내, 미소진)
                     boolean hasExpiryWarning = orders.stream()
                             .anyMatch(o -> o.getExpiryDate() != null
                                     && !o.getExpiryDate().isBefore(today)
-                                    && !o.getExpiryDate().isAfter(thirtyDaysFromNow));
+                                    && !o.getExpiryDate().isAfter(thirtyDaysFromNow)
+                                    && (o.getConsumed() == null || !o.getConsumed()));
                     dto.setExpiryWarning(hasExpiryWarning);
 
                     return dto;
@@ -265,5 +285,61 @@ public class InventoryService {
         return inventoryRepository.findByProductIdOrderByYearMonthDesc(productId).stream()
                 .map(InventoryDTO::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * FIFO 방식으로 재고 차감
+     */
+    @Transactional
+    public InventoryDTO deductStockWithFIFO(Long inventoryId, BigDecimal quantityToDeduct) {
+        Inventory inventory = inventoryRepository.findById(inventoryId)
+                .orElseThrow(() -> new IllegalArgumentException("재고 정보를 찾을 수 없습니다: " + inventoryId));
+
+        Long productId = inventory.getProduct().getId();
+
+        // FIFO 차감 (유효기간 빠른 순으로)
+        List<StockOrder> activeOrders = stockOrderRepository.findActiveExpiryByProductId(productId);
+        BigDecimal remaining = quantityToDeduct;
+
+        for (StockOrder order : activeOrders) {
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
+
+            // 수량이 없는 경우 (기존 데이터) - FIFO 대상에서 제외
+            if (order.getRemainingQuantity() == null) continue;
+
+            BigDecimal available = order.getRemainingQuantity();
+            if (available.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+            BigDecimal toDeduct = remaining.min(available);
+            order.setRemainingQuantity(available.subtract(toDeduct));
+
+            // 남은수량이 0이면 소진완료 처리
+            if (order.getRemainingQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                order.setConsumed(true);
+            }
+
+            stockOrderRepository.save(order);
+            remaining = remaining.subtract(toDeduct);
+
+            activityLogService.logUpdate("ORDER", order.getId(), order.getProduct().getName(),
+                    "FIFO 차감 - " + toDeduct + " (유효기간: " +
+                            (order.getExpiryDate() != null ?
+                                    order.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "미지정") + ")");
+        }
+
+        // Inventory 사용량 업데이트
+        BigDecimal currentUsed = inventory.getUsedQuantity() != null ? inventory.getUsedQuantity() : BigDecimal.ZERO;
+        inventory.setUsedQuantity(currentUsed.add(quantityToDeduct));
+
+        // 남은재고 재계산
+        BigDecimal addedStock = inventory.getAddedStock() != null ? inventory.getAddedStock() : BigDecimal.ZERO;
+        BigDecimal initialStock = inventory.getInitialStock() != null ? inventory.getInitialStock() : BigDecimal.ZERO;
+        inventory.setRemainingStock(initialStock.add(addedStock).subtract(inventory.getUsedQuantity()));
+
+        Inventory saved = inventoryRepository.save(inventory);
+        activityLogService.logUpdate("INVENTORY", saved.getId(), saved.getProduct().getName(),
+                "재고 차감 - " + quantityToDeduct + " (FIFO)");
+
+        return InventoryDTO.fromEntity(saved);
     }
 }
