@@ -306,6 +306,128 @@ public class ExcelService {
     }
 
     public byte[] exportToExcel(String yearMonth) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            // 스타일 생성
+            Map<String, CellStyle> styles = createStyles(workbook);
+
+            // 단일 시트 생성
+            createSheetForYearMonth(workbook, yearMonth, styles);
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    public byte[] exportAllToExcel() throws IOException {
+        List<String> yearMonths = inventoryRepository.findAllYearMonths();
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            // 스타일 생성 (한 번만)
+            Map<String, CellStyle> styles = createStyles(workbook);
+
+            // 각 년월별로 시트 생성
+            for (String yearMonth : yearMonths) {
+                createSheetForYearMonth(workbook, yearMonth, styles);
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    private Map<String, CellStyle> createStyles(Workbook workbook) {
+        Map<String, CellStyle> styles = new HashMap<>();
+
+        // 타이틀 스타일
+        CellStyle titleStyle = workbook.createCellStyle();
+        titleStyle.setAlignment(HorizontalAlignment.CENTER);
+        titleStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        Font titleFont = workbook.createFont();
+        titleFont.setBold(true);
+        titleFont.setFontHeightInPoints((short) 16);
+        titleStyle.setFont(titleFont);
+        styles.put("title", titleStyle);
+
+        // 헤더 스타일
+        CellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        headerStyle.setBorderBottom(BorderStyle.THIN);
+        headerStyle.setBorderTop(BorderStyle.THIN);
+        headerStyle.setBorderLeft(BorderStyle.THIN);
+        headerStyle.setBorderRight(BorderStyle.THIN);
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerFont.setColor(IndexedColors.WHITE.getIndex());
+        headerStyle.setFont(headerFont);
+        styles.put("header", headerStyle);
+
+        // 데이터 스타일 - 기본 (가운데 정렬)
+        CellStyle centerStyle = workbook.createCellStyle();
+        centerStyle.setAlignment(HorizontalAlignment.CENTER);
+        centerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        centerStyle.setBorderBottom(BorderStyle.THIN);
+        centerStyle.setBorderTop(BorderStyle.THIN);
+        centerStyle.setBorderLeft(BorderStyle.THIN);
+        centerStyle.setBorderRight(BorderStyle.THIN);
+        styles.put("center", centerStyle);
+
+        // 데이터 스타일 - 숫자 (오른쪽 정렬)
+        CellStyle numberStyle = workbook.createCellStyle();
+        numberStyle.setAlignment(HorizontalAlignment.RIGHT);
+        numberStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        numberStyle.setBorderBottom(BorderStyle.THIN);
+        numberStyle.setBorderTop(BorderStyle.THIN);
+        numberStyle.setBorderLeft(BorderStyle.THIN);
+        numberStyle.setBorderRight(BorderStyle.THIN);
+        styles.put("number", numberStyle);
+
+        // 데이터 스타일 - 텍스트 (왼쪽 정렬)
+        CellStyle textStyle = workbook.createCellStyle();
+        textStyle.setAlignment(HorizontalAlignment.LEFT);
+        textStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        textStyle.setBorderBottom(BorderStyle.THIN);
+        textStyle.setBorderTop(BorderStyle.THIN);
+        textStyle.setBorderLeft(BorderStyle.THIN);
+        textStyle.setBorderRight(BorderStyle.THIN);
+        styles.put("text", textStyle);
+
+        // 데이터 스타일 - 줄바꿈
+        CellStyle wrapStyle = workbook.createCellStyle();
+        wrapStyle.setAlignment(HorizontalAlignment.CENTER);
+        wrapStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        wrapStyle.setWrapText(true);
+        wrapStyle.setBorderBottom(BorderStyle.THIN);
+        wrapStyle.setBorderTop(BorderStyle.THIN);
+        wrapStyle.setBorderLeft(BorderStyle.THIN);
+        wrapStyle.setBorderRight(BorderStyle.THIN);
+        styles.put("wrap", wrapStyle);
+
+        // 남은재고 강조 스타일
+        CellStyle highlightStyle = workbook.createCellStyle();
+        highlightStyle.setAlignment(HorizontalAlignment.RIGHT);
+        highlightStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        highlightStyle.setBorderBottom(BorderStyle.THIN);
+        highlightStyle.setBorderTop(BorderStyle.THIN);
+        highlightStyle.setBorderLeft(BorderStyle.THIN);
+        highlightStyle.setBorderRight(BorderStyle.THIN);
+        highlightStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        highlightStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        Font boldFont = workbook.createFont();
+        boldFont.setBold(true);
+        highlightStyle.setFont(boldFont);
+        styles.put("highlight", highlightStyle);
+
+        return styles;
+    }
+
+    private void createSheetForYearMonth(Workbook workbook, String yearMonth, Map<String, CellStyle> styles) {
         List<Inventory> inventories = inventoryRepository.findByYearMonthWithProduct(yearMonth);
 
         // 해당 월 기준 연/월 파싱
@@ -351,205 +473,123 @@ public class ExcelService {
             }
         }
 
-        try (Workbook workbook = new XSSFWorkbook();
-             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+        Sheet sheet = workbook.createSheet(yearMonth);
 
-            Sheet sheet = workbook.createSheet(yearMonth + " 재고현황");
+        // 연/월 추출 (예: 2026-01 -> 2026년 1월)
+        String year = yearMonth.substring(0, 4);
+        String month = yearMonth.substring(5);
+        if (month.startsWith("0")) month = month.substring(1);
 
-            // 연/월 추출 (예: 2026-01 -> 2026년 1월)
-            String year = yearMonth.substring(0, 4);
-            String month = yearMonth.substring(5);
-            if (month.startsWith("0")) month = month.substring(1);
+        // 타이틀 행
+        Row titleRow = sheet.createRow(0);
+        titleRow.setHeightInPoints(30);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue(year + "년 " + month + "월 피부 물품(보고용)");
+        titleCell.setCellStyle(styles.get("title"));
 
-            // 타이틀 스타일
-            CellStyle titleStyle = workbook.createCellStyle();
-            titleStyle.setAlignment(HorizontalAlignment.CENTER);
-            titleStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-            Font titleFont = workbook.createFont();
-            titleFont.setBold(true);
-            titleFont.setFontHeightInPoints((short) 16);
-            titleStyle.setFont(titleFont);
+        // 타이틀 셀 병합
+        String[] headers = {"번호", "카테고리", "제품명", "월초재고", "추가재고", "사용량", "남은재고", "주문수량", "입고일자", "유효기간", "단위", "비고"};
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
 
-            // 타이틀 행
-            Row titleRow = sheet.createRow(0);
-            titleRow.setHeightInPoints(30);
-            Cell titleCell = titleRow.createCell(0);
-            titleCell.setCellValue(year + "년 " + month + "월 피부 물품(보고용)");
-            titleCell.setCellStyle(titleStyle);
-
-            // 타이틀 셀 병합
-            String[] headers = {"번호", "카테고리", "제품명", "월초재고", "추가재고", "사용량", "남은재고", "주문수량", "입고일자", "유효기간", "단위", "비고"};
-            sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
-
-            // 헤더 스타일
-            CellStyle headerStyle = workbook.createCellStyle();
-            headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
-            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            headerStyle.setAlignment(HorizontalAlignment.CENTER);
-            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-            headerStyle.setBorderBottom(BorderStyle.THIN);
-            headerStyle.setBorderTop(BorderStyle.THIN);
-            headerStyle.setBorderLeft(BorderStyle.THIN);
-            headerStyle.setBorderRight(BorderStyle.THIN);
-            Font headerFont = workbook.createFont();
-            headerFont.setBold(true);
-            headerFont.setColor(IndexedColors.WHITE.getIndex());
-            headerStyle.setFont(headerFont);
-
-            // 헤더 행
-            Row headerRow = sheet.createRow(1);
-            headerRow.setHeightInPoints(22);
-            for (int i = 0; i < headers.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(headers[i]);
-                cell.setCellStyle(headerStyle);
-            }
-
-            // 데이터 스타일 - 기본 (가운데 정렬)
-            CellStyle centerStyle = workbook.createCellStyle();
-            centerStyle.setAlignment(HorizontalAlignment.CENTER);
-            centerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-            centerStyle.setBorderBottom(BorderStyle.THIN);
-            centerStyle.setBorderTop(BorderStyle.THIN);
-            centerStyle.setBorderLeft(BorderStyle.THIN);
-            centerStyle.setBorderRight(BorderStyle.THIN);
-
-            // 데이터 스타일 - 숫자 (오른쪽 정렬)
-            CellStyle numberStyle = workbook.createCellStyle();
-            numberStyle.setAlignment(HorizontalAlignment.RIGHT);
-            numberStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-            numberStyle.setBorderBottom(BorderStyle.THIN);
-            numberStyle.setBorderTop(BorderStyle.THIN);
-            numberStyle.setBorderLeft(BorderStyle.THIN);
-            numberStyle.setBorderRight(BorderStyle.THIN);
-
-            // 데이터 스타일 - 텍스트 (왼쪽 정렬)
-            CellStyle textStyle = workbook.createCellStyle();
-            textStyle.setAlignment(HorizontalAlignment.LEFT);
-            textStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-            textStyle.setBorderBottom(BorderStyle.THIN);
-            textStyle.setBorderTop(BorderStyle.THIN);
-            textStyle.setBorderLeft(BorderStyle.THIN);
-            textStyle.setBorderRight(BorderStyle.THIN);
-
-            // 데이터 스타일 - 줄바꿈
-            CellStyle wrapStyle = workbook.createCellStyle();
-            wrapStyle.setAlignment(HorizontalAlignment.CENTER);
-            wrapStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-            wrapStyle.setWrapText(true);
-            wrapStyle.setBorderBottom(BorderStyle.THIN);
-            wrapStyle.setBorderTop(BorderStyle.THIN);
-            wrapStyle.setBorderLeft(BorderStyle.THIN);
-            wrapStyle.setBorderRight(BorderStyle.THIN);
-
-            // 남은재고 강조 스타일
-            CellStyle highlightStyle = workbook.createCellStyle();
-            highlightStyle.setAlignment(HorizontalAlignment.RIGHT);
-            highlightStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-            highlightStyle.setBorderBottom(BorderStyle.THIN);
-            highlightStyle.setBorderTop(BorderStyle.THIN);
-            highlightStyle.setBorderLeft(BorderStyle.THIN);
-            highlightStyle.setBorderRight(BorderStyle.THIN);
-            highlightStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
-            highlightStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            Font boldFont = workbook.createFont();
-            boldFont.setBold(true);
-            highlightStyle.setFont(boldFont);
-
-            int rowNum = 2;
-            int seq = 1;
-            for (Inventory inv : inventories) {
-                Row row = sheet.createRow(rowNum);
-                Long productId = inv.getProduct().getId();
-
-                List<String> dates = productReceivedDatesMap.get(productId);
-                int dateCount = (dates != null) ? dates.size() : 0;
-                if (dateCount > 1) {
-                    row.setHeightInPoints(dateCount * 15);
-                }
-
-                // 번호
-                Cell cell0 = row.createCell(0);
-                cell0.setCellValue(seq);
-                cell0.setCellStyle(centerStyle);
-
-                // 카테고리
-                Cell cell1 = row.createCell(1);
-                cell1.setCellValue(inv.getProduct().getCategory() != null ? inv.getProduct().getCategory() : "");
-                cell1.setCellStyle(centerStyle);
-
-                // 제품명
-                Cell cell2 = row.createCell(2);
-                cell2.setCellValue(inv.getProduct().getName());
-                cell2.setCellStyle(textStyle);
-
-                // 월초재고
-                Cell cell3 = row.createCell(3);
-                cell3.setCellValue(inv.getInitialStock() != null ? inv.getInitialStock().doubleValue() : 0);
-                cell3.setCellStyle(numberStyle);
-
-                // 추가재고
-                Cell cell4 = row.createCell(4);
-                cell4.setCellValue(inv.getAddedStock() != null ? inv.getAddedStock().doubleValue() : 0);
-                cell4.setCellStyle(numberStyle);
-
-                // 사용량
-                Cell cell5 = row.createCell(5);
-                cell5.setCellValue(inv.getUsedQuantity() != null ? inv.getUsedQuantity().doubleValue() : 0);
-                cell5.setCellStyle(numberStyle);
-
-                // 남은재고 (강조)
-                Cell cell6 = row.createCell(6);
-                cell6.setCellValue(inv.getRemainingStock() != null ? inv.getRemainingStock().doubleValue() : 0);
-                cell6.setCellStyle(highlightStyle);
-
-                // 주문수량 (해당 월 합산)
-                Cell cell7 = row.createCell(7);
-                BigDecimal totalQty = productOrderQtyMap.get(productId);
-                cell7.setCellValue(totalQty != null && totalQty.compareTo(BigDecimal.ZERO) > 0 ? totalQty.doubleValue() : 0);
-                cell7.setCellStyle(numberStyle);
-
-                // 입고일자 (줄바꿈으로 구분)
-                Cell cell8 = row.createCell(8);
-                cell8.setCellValue(dates != null && !dates.isEmpty() ? String.join("\n", dates) : "");
-                cell8.setCellStyle(wrapStyle);
-
-                // 유효기간
-                Cell cell9 = row.createCell(9);
-                String expiry = productExpiryMap.get(productId);
-                cell9.setCellValue(expiry != null ? expiry : "");
-                cell9.setCellStyle(centerStyle);
-
-                // 단위
-                Cell cell10 = row.createCell(10);
-                cell10.setCellValue(inv.getProduct().getUnit() != null ? inv.getProduct().getUnit() : "");
-                cell10.setCellStyle(centerStyle);
-
-                // 비고
-                Cell cell11 = row.createCell(11);
-                cell11.setCellValue(inv.getNote() != null ? inv.getNote() : "");
-                cell11.setCellStyle(textStyle);
-
-                rowNum++;
-                seq++;
-            }
-
-            // 컬럼 너비 설정
-            sheet.setColumnWidth(0, 2000);   // 번호
-            sheet.setColumnWidth(1, 3500);   // 카테고리
-            sheet.setColumnWidth(2, 7000);   // 제품명
-            sheet.setColumnWidth(3, 3000);   // 월초재고
-            sheet.setColumnWidth(4, 3000);   // 추가재고
-            sheet.setColumnWidth(5, 3000);   // 사용량
-            sheet.setColumnWidth(6, 3000);   // 남은재고
-            sheet.setColumnWidth(7, 3000);   // 주문수량
-            sheet.setColumnWidth(8, 4000);   // 입고일자
-            sheet.setColumnWidth(9, 3500);   // 유효기간
-            sheet.setColumnWidth(10, 2500);  // 단위
-            sheet.setColumnWidth(11, 5000);  // 비고
-
-            workbook.write(out);
-            return out.toByteArray();
+        // 헤더 행
+        Row headerRow = sheet.createRow(1);
+        headerRow.setHeightInPoints(22);
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(styles.get("header"));
         }
+
+        int rowNum = 2;
+        int seq = 1;
+        for (Inventory inv : inventories) {
+            Row row = sheet.createRow(rowNum);
+            Long productId = inv.getProduct().getId();
+
+            List<String> dates = productReceivedDatesMap.get(productId);
+            int dateCount = (dates != null) ? dates.size() : 0;
+            if (dateCount > 1) {
+                row.setHeightInPoints(dateCount * 15);
+            }
+
+            // 번호
+            Cell cell0 = row.createCell(0);
+            cell0.setCellValue(seq);
+            cell0.setCellStyle(styles.get("center"));
+
+            // 카테고리
+            Cell cell1 = row.createCell(1);
+            cell1.setCellValue(inv.getProduct().getCategory() != null ? inv.getProduct().getCategory() : "");
+            cell1.setCellStyle(styles.get("center"));
+
+            // 제품명
+            Cell cell2 = row.createCell(2);
+            cell2.setCellValue(inv.getProduct().getName());
+            cell2.setCellStyle(styles.get("text"));
+
+            // 월초재고
+            Cell cell3 = row.createCell(3);
+            cell3.setCellValue(inv.getInitialStock() != null ? inv.getInitialStock().intValue() : 0);
+            cell3.setCellStyle(styles.get("number"));
+
+            // 추가재고
+            Cell cell4 = row.createCell(4);
+            cell4.setCellValue(inv.getAddedStock() != null ? inv.getAddedStock().intValue() : 0);
+            cell4.setCellStyle(styles.get("number"));
+
+            // 사용량
+            Cell cell5 = row.createCell(5);
+            cell5.setCellValue(inv.getUsedQuantity() != null ? inv.getUsedQuantity().intValue() : 0);
+            cell5.setCellStyle(styles.get("number"));
+
+            // 남은재고 (강조)
+            Cell cell6 = row.createCell(6);
+            cell6.setCellValue(inv.getRemainingStock() != null ? inv.getRemainingStock().intValue() : 0);
+            cell6.setCellStyle(styles.get("highlight"));
+
+            // 주문수량 (해당 월 합산)
+            Cell cell7 = row.createCell(7);
+            BigDecimal totalQty = productOrderQtyMap.get(productId);
+            cell7.setCellValue(totalQty != null && totalQty.compareTo(BigDecimal.ZERO) > 0 ? totalQty.intValue() : 0);
+            cell7.setCellStyle(styles.get("number"));
+
+            // 입고일자 (줄바꿈으로 구분)
+            Cell cell8 = row.createCell(8);
+            cell8.setCellValue(dates != null && !dates.isEmpty() ? String.join("\n", dates) : "");
+            cell8.setCellStyle(styles.get("wrap"));
+
+            // 유효기간
+            Cell cell9 = row.createCell(9);
+            String expiry = productExpiryMap.get(productId);
+            cell9.setCellValue(expiry != null ? expiry : "");
+            cell9.setCellStyle(styles.get("center"));
+
+            // 단위
+            Cell cell10 = row.createCell(10);
+            cell10.setCellValue(inv.getProduct().getUnit() != null ? inv.getProduct().getUnit() : "");
+            cell10.setCellStyle(styles.get("center"));
+
+            // 비고
+            Cell cell11 = row.createCell(11);
+            cell11.setCellValue(inv.getNote() != null ? inv.getNote() : "");
+            cell11.setCellStyle(styles.get("text"));
+
+            rowNum++;
+            seq++;
+        }
+
+        // 컬럼 너비 설정
+        sheet.setColumnWidth(0, 2000);   // 번호
+        sheet.setColumnWidth(1, 3500);   // 카테고리
+        sheet.setColumnWidth(2, 7000);   // 제품명
+        sheet.setColumnWidth(3, 3000);   // 월초재고
+        sheet.setColumnWidth(4, 3000);   // 추가재고
+        sheet.setColumnWidth(5, 3000);   // 사용량
+        sheet.setColumnWidth(6, 3000);   // 남은재고
+        sheet.setColumnWidth(7, 3000);   // 주문수량
+        sheet.setColumnWidth(8, 4000);   // 입고일자
+        sheet.setColumnWidth(9, 3500);   // 유효기간
+        sheet.setColumnWidth(10, 2500);  // 단위
+        sheet.setColumnWidth(11, 5000);  // 비고
     }
 }
