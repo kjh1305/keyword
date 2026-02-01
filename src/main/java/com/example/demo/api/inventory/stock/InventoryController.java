@@ -146,6 +146,16 @@ public class InventoryController {
     }
 
     /**
+     * 유효기간 수량 설정 (수량미상 데이터에 수량 입력)
+     */
+    @PostMapping("/api/inventory/orders/{orderId}/set-quantity")
+    @ResponseBody
+    public ResponseEntity<StockOrderDTO> setQuantity(@PathVariable Long orderId,
+                                                      @RequestParam BigDecimal quantity) {
+        return ResponseEntity.ok(stockOrderService.setQuantity(orderId, quantity));
+    }
+
+    /**
      * 제품의 활성 유효기간 목록 조회
      */
     @GetMapping("/api/inventory/stocks/product/{productId}/expiry")
