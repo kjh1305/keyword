@@ -25,6 +25,26 @@ public interface StockOrderRepository extends JpaRepository<StockOrder, Long> {
                                    @Param("keyword") String keyword,
                                    @Param("status") String status);
 
+    @Query(value = "SELECT o FROM StockOrder o JOIN FETCH o.product p " +
+           "WHERE (:category IS NULL OR p.category = :category) " +
+           "AND (:keyword IS NULL OR p.name LIKE %:keyword%) " +
+           "AND (:status IS NULL OR o.status = :status) " +
+           "AND (:startDate IS NULL OR o.orderDate >= :startDate) " +
+           "AND (:endDate IS NULL OR o.orderDate <= :endDate) " +
+           "ORDER BY o.createdAt DESC",
+           countQuery = "SELECT COUNT(o) FROM StockOrder o JOIN o.product p " +
+           "WHERE (:category IS NULL OR p.category = :category) " +
+           "AND (:keyword IS NULL OR p.name LIKE %:keyword%) " +
+           "AND (:status IS NULL OR o.status = :status) " +
+           "AND (:startDate IS NULL OR o.orderDate >= :startDate) " +
+           "AND (:endDate IS NULL OR o.orderDate <= :endDate)")
+    Page<StockOrder> searchOrdersPaged(@Param("category") String category,
+                                        @Param("keyword") String keyword,
+                                        @Param("status") String status,
+                                        @Param("startDate") LocalDate startDate,
+                                        @Param("endDate") LocalDate endDate,
+                                        Pageable pageable);
+
     @Query("SELECT o FROM StockOrder o JOIN FETCH o.product WHERE o.status = :status ORDER BY o.createdAt DESC")
     List<StockOrder> findByStatus(@Param("status") String status);
 

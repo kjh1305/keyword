@@ -1,6 +1,8 @@
 package com.example.demo.api.inventory.stock;
 
 import com.example.demo.api.inventory.log.ActivityLogService;
+import com.example.demo.api.inventory.order.StockOrder;
+import com.example.demo.api.inventory.order.StockOrderRepository;
 import com.example.demo.api.inventory.product.Product;
 import com.example.demo.api.inventory.product.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final ProductRepository productRepository;
     private final ActivityLogService activityLogService;
+    private final StockOrderRepository stockOrderRepository;
 
     public List<InventoryDTO> getInventoryByMonth(String yearMonth, String category, String keyword) {
         String cat = (category == null || category.isEmpty()) ? null : category;
@@ -40,16 +43,59 @@ public class InventoryService {
                 .collect(Collectors.toList());
     }
 
-    public Map<String, Object> getInventoryByMonthPaged(String yearMonth, String category, String keyword, int page, int size) {
+    public Map<String, Object> getInventoryByMonthPaged(String yearMonth, String category, String keyword, String stockFilter, int page, int size) {
         String cat = (category == null || category.isEmpty()) ? null : category;
         String kw = (keyword == null || keyword.isEmpty()) ? null : keyword;
+        String filter = (stockFilter == null || stockFilter.isEmpty()) ? null : stockFilter;
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Inventory> inventoryPage = inventoryRepository.searchInventoryPaged(yearMonth, cat, kw, pageable);
 
+        LocalDate today = LocalDate.now();
+        LocalDate thirtyDaysFromNow = today.plusDays(30);
+
         List<InventoryDTO> content = inventoryPage.getContent().stream()
-                .map(InventoryDTO::fromEntity)
+                .map(inv -> {
+                    InventoryDTO dto = InventoryDTO.fromEntity(inv);
+                    // StockOrder에서 해당 제품의 유효기간 목록 가져오기
+                    List<StockOrder> orders = stockOrderRepository.findCompletedWithExpiryByProductId(inv.getProduct().getId());
+                    List<String> expiryDates = orders.stream()
+                            .filter(o -> o.getExpiryDate() != null && !o.getExpiryDate().isBefore(today))
+                            .map(o -> o.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")))
+                            .distinct()
+                            .collect(Collectors.toList());
+                    dto.setExpiryDates(expiryDates);
+
+                    // 유효기간 임박 여부 (30일 이내)
+                    boolean hasExpiryWarning = orders.stream()
+                            .anyMatch(o -> o.getExpiryDate() != null
+                                    && !o.getExpiryDate().isBefore(today)
+                                    && !o.getExpiryDate().isAfter(thirtyDaysFromNow));
+                    dto.setExpiryWarning(hasExpiryWarning);
+
+                    return dto;
+                })
                 .collect(Collectors.toList());
+
+        // stockFilter 적용
+        if (filter != null) {
+            content = content.stream()
+                    .filter(dto -> {
+                        switch (filter) {
+                            case "outOfStock":
+                                return dto.getRemainingStock() != null && dto.getRemainingStock().compareTo(BigDecimal.ZERO) <= 0;
+                            case "lowStock":
+                                BigDecimal remaining = dto.getRemainingStock() != null ? dto.getRemainingStock() : BigDecimal.ZERO;
+                                BigDecimal minQty = dto.getMinQuantity() != null ? new BigDecimal(dto.getMinQuantity()) : BigDecimal.ZERO;
+                                return remaining.compareTo(BigDecimal.ZERO) > 0 && remaining.compareTo(minQty) <= 0;
+                            case "expiryWarning":
+                                return dto.isExpiryWarning();
+                            default:
+                                return true;
+                        }
+                    })
+                    .collect(Collectors.toList());
+        }
 
         // 전체 재고 부족/없음 수량 계산 (별도 쿼리)
         List<Inventory> allInventories = inventoryRepository.searchInventory(yearMonth, cat, kw);
@@ -73,6 +119,18 @@ public class InventoryService {
                 })
                 .count();
 
+        // 유효기간 임박 (30일 이내) - StockOrder에서 확인
+        LocalDate thirtyDaysLater = LocalDate.now().plusDays(30);
+        long expiryWarningCount = allInventories.stream()
+                .filter(inv -> {
+                    List<StockOrder> orders = stockOrderRepository.findCompletedWithExpiryByProductId(inv.getProduct().getId());
+                    return orders.stream()
+                            .anyMatch(o -> o.getExpiryDate() != null
+                                    && !o.getExpiryDate().isBefore(LocalDate.now())
+                                    && !o.getExpiryDate().isAfter(thirtyDaysLater));
+                })
+                .count();
+
         Map<String, Object> result = new HashMap<>();
         result.put("content", content);
         result.put("currentPage", inventoryPage.getNumber());
@@ -82,6 +140,7 @@ public class InventoryService {
         result.put("hasPrevious", inventoryPage.hasPrevious());
         result.put("outOfStockCount", outOfStockCount);
         result.put("lowStockCount", lowStockCount);
+        result.put("expiryWarningCount", expiryWarningCount);
 
         return result;
     }

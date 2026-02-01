@@ -3,6 +3,20 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{inventory/layout :: head('재고 현황')}"></head>
 <body>
+    <style>
+        .stat-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .border-purple { border-color: #8b5cf6 !important; }
+        .bg-purple { background-color: #8b5cf6 !important; }
+        .text-purple { color: #8b5cf6 !important; }
+        .text-white-50 { color: rgba(255,255,255,0.7) !important; }
+    </style>
     <nav th:replace="~{inventory/layout :: sidebar}"></nav>
 
     <div class="main-content">
@@ -13,18 +27,18 @@
                     <i class="bi bi-plus-circle me-1"></i>월 초기화
                 </button>
                 <div class="btn-group">
-                    <button class="btn btn-success" onclick="exportExcel()">
+                    <button class="btn btn-success" onclick="exportAllExcel()">
                         <i class="bi bi-file-earmark-excel me-1"></i>엑셀 다운로드
                     </button>
                     <button type="button" class="btn btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
                         <span class="visually-hidden">옵션</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#" onclick="exportExcel(); return false;">
-                            <i class="bi bi-calendar-month me-2"></i>선택한 달만
-                        </a></li>
                         <li><a class="dropdown-item" href="#" onclick="exportAllExcel(); return false;">
                             <i class="bi bi-calendar-range me-2"></i>전체 (시트별)
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportExcel(); return false;">
+                            <i class="bi bi-calendar-month me-2"></i>선택한 달만
                         </a></li>
                     </ul>
                 </div>
@@ -78,11 +92,65 @@
             </div>
         </div>
 
+        <!-- Summary Stats -->
+        <div class="row mb-4" th:if="${totalElements > 0}">
+            <div class="col-6 col-md-3 mb-2">
+                <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size})}"
+                   class="card text-center text-decoration-none stat-card"
+                   th:classappend="${stockFilter == null} ? 'border-primary' : ''">
+                    <div class="card-body py-2">
+                        <small class="text-muted">총 제품</small>
+                        <h4 class="mb-0" th:text="${totalElements}"></h4>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+                <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='outOfStock')}"
+                   class="card text-center text-decoration-none stat-card border-danger"
+                   th:classappend="${stockFilter == 'outOfStock'} ? 'bg-danger text-white' : ''">
+                    <div class="card-body py-2">
+                        <small th:classappend="${stockFilter == 'outOfStock'} ? 'text-white-50' : 'text-muted'">재고 없음</small>
+                        <h4 class="mb-0" th:classappend="${stockFilter != 'outOfStock'} ? 'text-danger' : ''" th:text="${outOfStockCount}"></h4>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+                <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='lowStock')}"
+                   class="card text-center text-decoration-none stat-card border-warning"
+                   th:classappend="${stockFilter == 'lowStock'} ? 'bg-warning' : ''">
+                    <div class="card-body py-2">
+                        <small th:classappend="${stockFilter == 'lowStock'} ? 'text-dark' : 'text-muted'">재고 부족</small>
+                        <h4 class="mb-0" th:classappend="${stockFilter != 'lowStock'} ? 'text-warning' : 'text-dark'" th:text="${lowStockCount}"></h4>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+                <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='expiryWarning')}"
+                   class="card text-center text-decoration-none stat-card border-purple"
+                   th:classappend="${stockFilter == 'expiryWarning'} ? 'bg-purple text-white' : ''">
+                    <div class="card-body py-2">
+                        <small th:classappend="${stockFilter == 'expiryWarning'} ? 'text-white-50' : 'text-muted'">유효기간 임박</small>
+                        <h4 class="mb-0" th:classappend="${stockFilter != 'expiryWarning'} ? 'text-purple' : ''" th:text="${expiryWarningCount}"></h4>
+                    </div>
+                </a>
+            </div>
+        </div>
+
         <!-- Inventory Table -->
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><span th:text="${selectedYearMonth}"></span> 재고 현황</span>
-                <span class="badge bg-secondary" th:text="${totalElements} + '개 제품'"></span>
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span><span th:text="${selectedYearMonth}"></span> 재고 현황</span>
+                    <span th:if="${stockFilter == 'outOfStock'}" class="badge bg-danger">재고 없음 필터</span>
+                    <span th:if="${stockFilter == 'lowStock'}" class="badge bg-warning text-dark">재고 부족 필터</span>
+                    <span th:if="${stockFilter == 'expiryWarning'}" class="badge bg-purple">유효기간 임박 필터</span>
+                    <a th:if="${stockFilter != null}"
+                       th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size})}"
+                       class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-x-lg"></i> 필터 해제
+                    </a>
+                </div>
+                <span class="badge bg-secondary" th:text="${#lists.size(inventories)} + '개 표시'"></span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -91,12 +159,12 @@
                             <tr>
                                 <th style="width: 50px;">번호</th>
                                 <th style="width: 100px;">카테고리</th>
-                                <th>제품명</th>
+                                <th style="min-width: 200px;">제품명</th>
                                 <th style="width: 90px;">월초재고</th>
                                 <th style="width: 90px;">추가재고</th>
                                 <th style="width: 90px;">사용량</th>
                                 <th style="width: 90px;">남은재고</th>
-                                <th style="width: 100px;">유효기간</th>
+                                <th style="min-width: 150px;">유효기간</th>
                                 <th style="width: 80px;">단위</th>
                                 <th>비고</th>
                                 <th style="width: 70px;">차감</th>
@@ -135,12 +203,21 @@
                                     th:classappend="${inv.remainingStock <= 0} ? 'text-danger' : (${inv.lowStock} ? 'text-warning' : '')">
                                     <span th:text="${#numbers.formatInteger(inv.remainingStock, 1)}" th:id="'remaining-' + ${inv.id}"></span>
                                 </td>
-                                <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-info expiry-btn"
-                                            th:data-product-id="${inv.productId}"
-                                            th:data-name="${inv.productName}">
-                                        <i class="bi bi-calendar-check"></i>
-                                    </button>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                                        <span th:if="${inv.expiryDates != null and !inv.expiryDates.isEmpty()}"
+                                              th:each="expDate : ${inv.expiryDates}"
+                                              class="badge bg-light text-dark border"
+                                              th:text="${expDate}"></span>
+                                        <span th:if="${inv.expiryDates == null or inv.expiryDates.isEmpty()}"
+                                              class="text-muted small">-</span>
+                                        <button class="btn btn-sm btn-outline-info expiry-btn ms-1"
+                                                th:data-product-id="${inv.productId}"
+                                                th:data-name="${inv.productName}"
+                                                title="이력 보기">
+                                            <i class="bi bi-clock-history"></i>
+                                        </button>
+                                    </div>
                                 </td>
                                 <td class="text-muted" th:text="${inv.productUnit}"></td>
                                 <td>
@@ -217,41 +294,6 @@
             </div>
         </div>
 
-        <!-- Summary Card -->
-        <div class="row mt-4" th:if="${totalElements > 0}">
-            <div class="col-6 col-md-3">
-                <div class="card text-center">
-                    <div class="card-body py-3">
-                        <h6 class="card-subtitle mb-2 text-muted">총 제품 수</h6>
-                        <h3 class="card-title mb-0" th:text="${totalElements}"></h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card text-center border-danger">
-                    <div class="card-body py-3">
-                        <h6 class="card-subtitle mb-2 text-muted">재고 없음</h6>
-                        <h3 class="card-title mb-0 text-danger" th:text="${outOfStockCount}"></h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3 mt-3 mt-md-0">
-                <div class="card text-center border-warning">
-                    <div class="card-body py-3">
-                        <h6 class="card-subtitle mb-2 text-muted">재고 부족</h6>
-                        <h3 class="card-title mb-0 text-warning" th:text="${lowStockCount}"></h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3 mt-3 mt-md-0">
-                <div class="card text-center">
-                    <div class="card-body py-3">
-                        <h6 class="card-subtitle mb-2 text-muted">선택 월</h6>
-                        <h3 class="card-title mb-0" th:text="${selectedYearMonth}"></h3>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Note Edit Modal -->
