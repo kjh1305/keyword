@@ -7,6 +7,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -22,8 +25,15 @@ public class StockOrderController {
     public String orderList(Model model,
                             @RequestParam(required = false) String category,
                             @RequestParam(required = false) String keyword,
-                            @RequestParam(required = false) String status) {
-        List<StockOrderDTO> orders = stockOrderService.searchOrders(category, keyword, status);
+                            @RequestParam(required = false) String status,
+                            @RequestParam(required = false) String startDate,
+                            @RequestParam(required = false) String endDate,
+                            @RequestParam(defaultValue = "0") int page,
+                            @RequestParam(defaultValue = "20") int size) {
+        LocalDate start = (startDate != null && !startDate.isEmpty()) ? LocalDate.parse(startDate) : null;
+        LocalDate end = (endDate != null && !endDate.isEmpty()) ? LocalDate.parse(endDate) : null;
+
+        Page<StockOrderDTO> orders = stockOrderService.searchOrdersPaged(category, keyword, status, start, end, page, size);
 
         model.addAttribute("orders", orders);
         model.addAttribute("categories", productService.getAllCategories());
@@ -31,6 +41,8 @@ public class StockOrderController {
         model.addAttribute("selectedCategory", category);
         model.addAttribute("keyword", keyword);
         model.addAttribute("selectedStatus", status);
+        model.addAttribute("startDate", startDate);
+        model.addAttribute("endDate", endDate);
         model.addAttribute("menu", "orders");
 
         return "inventory/order-list";

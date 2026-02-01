@@ -5,6 +5,8 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.ArrayList;
 
 @Data
 @NoArgsConstructor
@@ -23,9 +25,11 @@ public class InventoryDTO {
     private BigDecimal remainingStock;
     private LocalDate expiryDate;
     private String expiryDateStr;
+    private List<String> expiryDates;  // 여러 유효기간 목록
     private String note;
     private Integer minQuantity;
     private boolean lowStock;
+    private boolean expiryWarning;  // 유효기간 30일 이내 임박
 
     public static InventoryDTO fromEntity(Inventory inventory) {
         InventoryDTO dto = InventoryDTO.builder()

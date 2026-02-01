@@ -4,6 +4,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 
 @Data
 @NoArgsConstructor
@@ -24,6 +25,8 @@ public class StockOrderDTO {
     private String receivedDateStr;
     private LocalDate expiryDate;
     private String expiryDateStr;
+    private Long daysUntilExpiry;  // 유효기간까지 남은 일수
+    private String expiryStatus;   // EXPIRED, URGENT(7일이내), WARNING(30일이내), NORMAL
     private String note;
 
     public static StockOrderDTO fromEntity(StockOrder order) {
@@ -49,6 +52,19 @@ public class StockOrderDTO {
         }
         if (order.getExpiryDate() != null) {
             dto.setExpiryDateStr(order.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            // 유효기간까지 남은 일수 계산
+            long days = ChronoUnit.DAYS.between(LocalDate.now(), order.getExpiryDate());
+            dto.setDaysUntilExpiry(days);
+            // 상태 결정
+            if (days < 0) {
+                dto.setExpiryStatus("EXPIRED");
+            } else if (days <= 7) {
+                dto.setExpiryStatus("URGENT");
+            } else if (days <= 30) {
+                dto.setExpiryStatus("WARNING");
+            } else {
+                dto.setExpiryStatus("NORMAL");
+            }
         }
 
         // 상태 텍스트 변환
