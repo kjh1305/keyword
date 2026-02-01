@@ -293,80 +293,69 @@ public class ExcelService {
         List<LocalDate> dates = new ArrayList<>();
 
         try {
-            // 먼저 셀 값을 문자열로 가져오기 (모든 타입 지원)
             String value = getCellStringValue(cell).trim();
+            log.info("날짜 셀 원본: [{}]", value);
 
-            if (value.isEmpty()) {
-                // 문자열이 비어있으면 NUMERIC 날짜 시도
-                CellType cellType = cell.getCellType();
-                if (cellType == CellType.FORMULA) {
-                    cellType = cell.getCachedFormulaResultType();
-                }
-                if (cellType == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
-                    dates.add(cell.getLocalDateTimeCellValue().toLocalDate());
-                    return dates;
-                }
-                return null;
-            }
+            if (value.isEmpty()) return null;
 
-            log.info("=== 날짜 파싱 시작 === 원본값: [{}]", value);
+            // 모든 종류의 공백을 일반 공백으로 변환
+            value = value.replaceAll("[\\s\\u00A0\\u3000]+", " ");
 
-            // 여러 날짜 구분
-            // 날짜 형식: yy.MM.dd (점 사용) 또는 yy/MM/dd (슬래시 사용)
-            // 다중 날짜 구분자: " / " (공백있는 슬래시) 또는 ","
-            List<String> dateStrings = new ArrayList<>();
+            // "/" 또는 "," 앞뒤 공백 포함해서 분리
+            String[] parts = value.split("\\s*/\\s*|\\s*,\\s*");
 
-            // 1. 먼저 점(.) 형식 날짜인지 확인 (28.06.17 / 28.09.18)
-            if (value.matches(".*\\d{2}\\.\\d{2}\\.\\d{2}.*")) {
-                // 점 형식 날짜 -> "/" 또는 ","로 분리 가능
-                String[] parts = value.split("\\s*[/,]\\s*");
-                for (String part : parts) {
-                    part = part.trim();
-                    if (!part.isEmpty() && part.matches("\\d{2}\\.\\d{2}\\.\\d{2}")) {
-                        dateStrings.add(part);
+            log.info("분리 결과: {}개 - {}", parts.length, java.util.Arrays.toString(parts));
+
+            for (String part : parts) {
+                part = part.trim();
+                if (part.isEmpty()) continue;
+
+                log.info("파싱 시도: [{}]", part);
+
+                // 점(.)으로 구분된 날짜 형식 처리
+                if (part.contains(".")) {
+                    String[] nums = part.split("\\.");
+                    if (nums.length == 3) {
+                        try {
+                            int n1 = Integer.parseInt(nums[0].trim());
+                            int n2 = Integer.parseInt(nums[1].trim());
+                            int n3 = Integer.parseInt(nums[2].trim());
+
+                            int year, month, day;
+                            if (n1 > 100) {
+                                // yyyy.MM.dd (2026.01.08)
+                                year = n1;
+                                month = n2;
+                                day = n3;
+                            } else {
+                                // yy.MM.dd (28.06.17)
+                                year = (n1 > 50) ? 1900 + n1 : 2000 + n1;
+                                month = n2;
+                                day = n3;
+                            }
+
+                            LocalDate date = LocalDate.of(year, month, day);
+                            dates.add(date);
+                            log.info("날짜 파싱 성공: {} -> {}", part, date);
+                            continue;
+                        } catch (Exception e) {
+                            log.warn("날짜 변환 실패: {} - {}", part, e.getMessage());
+                        }
                     }
                 }
-                log.info("점 형식 날짜 분리: {}", dateStrings);
-            }
 
-            // 2. 점 형식이 아니면 일반 분리 시도
-            if (dateStrings.isEmpty()) {
-                if (value.contains(" / ")) {
-                    // 공백 있는 슬래시로 분리
-                    String[] parts = value.split("\\s*/\\s*");
-                    for (String part : parts) {
-                        if (!part.trim().isEmpty()) dateStrings.add(part.trim());
-                    }
-                    log.info("공백슬래시로 분리: {}", dateStrings);
-                } else if (value.contains(",")) {
-                    String[] parts = value.split("\\s*,\\s*");
-                    for (String part : parts) {
-                        if (!part.trim().isEmpty()) dateStrings.add(part.trim());
-                    }
-                    log.info("쉼표로 분리: {}", dateStrings);
-                } else {
-                    dateStrings.add(value);
-                    log.info("단일 날짜: {}", value);
+                // 다른 형식 시도
+                LocalDate parsed = parseSingleDate(part);
+                if (parsed != null) {
+                    dates.add(parsed);
+                    log.info("날짜 파싱 성공(기타): {} -> {}", part, parsed);
                 }
             }
 
-            for (String dateStr : dateStrings) {
-                String trimmed = dateStr.trim();
-                if (!trimmed.isEmpty()) {
-                    LocalDate parsed = parseSingleDate(trimmed);
-                    if (parsed != null) {
-                        dates.add(parsed);
-                        log.info(">>> 날짜 파싱 성공: [{}] -> {}", trimmed, parsed);
-                    } else {
-                        log.warn(">>> 날짜 파싱 실패: [{}]", trimmed);
-                    }
-                }
-            }
-            log.info("=== 날짜 파싱 완료 === 총 {}개 날짜", dates.size());
+            log.info("최종 파싱된 날짜: {}개", dates.size());
 
         } catch (Exception e) {
-            log.warn("날짜 파싱 실패: {}", e.getMessage());
-            return null;
+            log.error("날짜 파싱 오류: {}", e.getMessage(), e);
         }
 
         return dates.isEmpty() ? null : dates;
