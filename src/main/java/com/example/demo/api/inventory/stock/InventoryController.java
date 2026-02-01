@@ -97,7 +97,7 @@ public class InventoryController {
     @ResponseBody
     public ResponseEntity<Map<String, String>> initializeMonth(@RequestParam String yearMonth) {
         inventoryService.initializeMonthlyInventory(yearMonth);
-        return ResponseEntity.ok(Map.of("message", yearMonth + " 재고가 초기화되었습니다."));
+        return ResponseEntity.ok(Map.of("message", yearMonth + " 재고가 생성되었습니다."));
     }
 
     @GetMapping("/api/inventory/stocks/months")
