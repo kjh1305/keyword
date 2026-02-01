@@ -188,27 +188,58 @@
             .form-control, .form-select {
                 font-size: 0.9rem;
             }
-            /* 모바일에서 테이블 스크롤 힌트 */
+            }
+
+        /* 테이블 좌우 스크롤 */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .table-responsive::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-responsive::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        .table-responsive table {
+            min-width: 800px;
+        }
+
+        /* 모바일에서 스크롤 힌트 */
+        @media (max-width: 991.98px) {
             .table-responsive {
                 position: relative;
+                margin-bottom: 25px;
             }
             .table-responsive::after {
-                content: '← 스크롤 →';
+                content: '← 좌우 스크롤 →';
                 position: absolute;
                 bottom: -20px;
                 left: 50%;
                 transform: translateX(-50%);
                 font-size: 0.75rem;
-                color: #999;
+                color: #888;
+                background: #f8f9fa;
+                padding: 2px 8px;
+                border-radius: 10px;
             }
         }
     </style>
 </head>
 <body>
+    <th:block th:fragment="sidebar">
     <!-- 모바일 오버레이 -->
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-    <nav class="sidebar" th:fragment="sidebar">
+    <nav class="sidebar">
         <div class="sidebar-brand">
             <i class="bi bi-box-seam"></i>
             재고관리 시스템
@@ -266,6 +297,53 @@
             </form>
         </div>
     </nav>
+
+    <!-- 모바일 메뉴 스크립트 -->
+    <script>
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('show');
+            document.querySelector('.sidebar-overlay').classList.toggle('show');
+        }
+
+        // 페이지 로드 시 모바일 메뉴 버튼 추가
+        document.addEventListener('DOMContentLoaded', function() {
+            const topBar = document.querySelector('.top-bar');
+            if (topBar && !topBar.querySelector('.mobile-menu-btn')) {
+                const pageTitle = topBar.querySelector('.page-title');
+                if (pageTitle) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'd-flex align-items-center gap-2';
+
+                    const menuBtn = document.createElement('button');
+                    menuBtn.className = 'mobile-menu-btn';
+                    menuBtn.innerHTML = '<i class="bi bi-list"></i>';
+                    menuBtn.onclick = toggleSidebar;
+
+                    pageTitle.parentNode.insertBefore(wrapper, pageTitle);
+                    wrapper.appendChild(menuBtn);
+                    wrapper.appendChild(pageTitle);
+                }
+            }
+
+            // 사이드바 메뉴 클릭 시 모바일에서 자동 닫기
+            document.querySelectorAll('.sidebar-menu a').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 992) {
+                        toggleSidebar();
+                    }
+                });
+            });
+
+            // 화면 크기 변경 시 사이드바 상태 초기화
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 992) {
+                    document.querySelector('.sidebar').classList.remove('show');
+                    document.querySelector('.sidebar-overlay').classList.remove('show');
+                }
+            });
+        });
+    </script>
+    </th:block>
 
     <div class="main-content" th:fragment="content">
         <!-- Page content goes here -->
