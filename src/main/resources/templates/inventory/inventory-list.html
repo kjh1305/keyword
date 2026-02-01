@@ -318,15 +318,19 @@
 
     <!-- Expiry History Modal -->
     <div class="modal fade" id="expiryModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">유효기간 이력</h5>
+                    <h5 class="modal-title">유효기간 관리</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <p class="mb-3"><strong id="expiryProductName"></strong></p>
-                    <small class="text-muted">* 유효기간 지난 항목은 제외됩니다</small>
+                    <div class="alert alert-info py-2 small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>FIFO 자동 차감</strong>: 재고 차감 시 유효기간이 빠른 순서대로 자동 차감됩니다.
+                        <br>수량이 없는 기존 데이터는 <strong>소진완료</strong> 버튼으로 수동 처리해주세요.
+                    </div>
                     <div id="expiryList" class="mt-2">
                         <p class="text-muted text-center">로딩 중...</p>
                     </div>
@@ -448,7 +452,7 @@
         function loadExpiryData() {
             document.getElementById('expiryList').innerHTML = '<p class="text-muted text-center">로딩 중...</p>';
 
-            fetch('/api/inventory/orders/product/' + currentExpiryProductId + '/expiry/paged?page=' + currentExpiryPage + '&size=5')
+            fetch('/api/inventory/orders/product/' + currentExpiryProductId + '/expiry/paged?page=' + currentExpiryPage + '&size=10')
                 .then(response => response.json())
                 .then(data => {
                     totalExpiryPages = data.totalPages;
@@ -460,14 +464,44 @@
                         return;
                     }
 
-                    let html = '<table class="table table-sm"><thead><tr>' +
-                        '<th>입고일</th><th>수량</th><th>유효기간</th></tr></thead><tbody>';
+                    let html = '<table class="table table-sm align-middle"><thead><tr>' +
+                        '<th>유효기간</th><th>입고수량</th><th>남은수량</th><th>상태</th><th class="text-end">작업</th></tr></thead><tbody>';
                     data.content.forEach(order => {
-                        html += '<tr>' +
-                            '<td>' + (order.receivedDateStr || '-') + '</td>' +
-                            '<td>' + (order.quantity ? Math.floor(order.quantity) : '-') + '</td>' +
+                        const isConsumed = order.consumed === true;
+                        const hasQuantity = order.remainingQuantity !== null;
+                        const remainingQty = hasQuantity ? Math.floor(order.remainingQuantity) : '-';
+
+                        // 상태 배지
+                        let statusBadge = '';
+                        if (isConsumed) {
+                            statusBadge = '<span class="badge bg-secondary">소진완료</span>';
+                        } else if (!hasQuantity) {
+                            statusBadge = '<span class="badge bg-warning text-dark">수량미상</span>';
+                        } else if (order.remainingQuantity <= 0) {
+                            statusBadge = '<span class="badge bg-secondary">소진완료</span>';
+                        } else {
+                            statusBadge = '<span class="badge bg-success">사용중</span>';
+                        }
+
+                        // 행 스타일
+                        const rowClass = isConsumed ? 'text-muted text-decoration-line-through' : '';
+
+                        html += '<tr class="' + rowClass + '">' +
                             '<td>' + (order.expiryDateStr || '-') + '</td>' +
-                            '</tr>';
+                            '<td>' + (order.quantity ? Math.floor(order.quantity) : '-') + '</td>' +
+                            '<td class="fw-bold">' + remainingQty + '</td>' +
+                            '<td>' + statusBadge + '</td>' +
+                            '<td class="text-end">';
+
+                        if (isConsumed) {
+                            html += '<button class="btn btn-sm btn-outline-secondary" onclick="toggleConsume(' + order.id + ', false)">' +
+                                '<i class="bi bi-arrow-counterclockwise me-1"></i>복원</button>';
+                        } else {
+                            html += '<button class="btn btn-sm btn-outline-danger" onclick="toggleConsume(' + order.id + ', true)">' +
+                                '<i class="bi bi-check-circle me-1"></i>소진완료</button>';
+                        }
+
+                        html += '</td></tr>';
                     });
                     html += '</tbody></table>';
                     document.getElementById('expiryList').innerHTML = html;
@@ -485,6 +519,25 @@
                 .catch(error => {
                     document.getElementById('expiryList').innerHTML =
                         '<p class="text-danger text-center">조회 실패</p>';
+                });
+        }
+
+        // 소진완료 토글
+        function toggleConsume(orderId, consume) {
+            const endpoint = consume ? '/api/inventory/orders/' + orderId + '/consume'
+                                     : '/api/inventory/orders/' + orderId + '/unconsume';
+
+            fetch(endpoint, { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) throw new Error('처리 실패');
+                    return response.json();
+                })
+                .then(() => {
+                    loadExpiryData(); // 목록 새로고침
+                })
+                .catch(error => {
+                    alert('처리에 실패했습니다.');
+                    console.error(error);
                 });
         }
 
@@ -553,14 +606,14 @@
                 });
         }
 
-        // Deduct stock (차감) - data 속성 사용
+        // Deduct stock (FIFO 차감) - data 속성 사용
         document.querySelectorAll('.deduct-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = this.dataset.id;
                 const productName = this.dataset.name;
                 const currentUsed = parseInt(this.dataset.used) || 0;
 
-                const amount = prompt(productName + '\n현재 사용량: ' + currentUsed + '\n\n사용할 수량을 입력하세요:');
+                const amount = prompt(productName + '\n현재 사용량: ' + currentUsed + '\n\n차감할 수량을 입력하세요:\n(유효기간 빠른 순으로 자동 차감됩니다)');
                 if (amount === null) return;
 
                 const deductAmount = parseInt(amount);
@@ -569,16 +622,16 @@
                     return;
                 }
 
-                const newUsedQuantity = currentUsed + deductAmount;
-
-                fetch('/api/inventory/stocks/' + id, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ usedQuantity: newUsedQuantity })
+                // FIFO 차감 API 호출
+                fetch('/api/inventory/stocks/' + id + '/deduct?quantity=' + deductAmount, {
+                    method: 'POST'
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) throw new Error('차감 실패');
+                    return response.json();
+                })
                 .then(inventory => {
-                    alert(productName + '\n사용: ' + deductAmount + '개\n사용량: ' + currentUsed + ' → ' + Math.floor(inventory.usedQuantity) + '\n남은재고: ' + Math.floor(inventory.remainingStock));
+                    alert(productName + '\n차감: ' + deductAmount + '개 (FIFO)\n사용량: ' + currentUsed + ' → ' + Math.floor(inventory.usedQuantity) + '\n남은재고: ' + Math.floor(inventory.remainingStock));
                     location.reload();
                 })
                 .catch(error => {

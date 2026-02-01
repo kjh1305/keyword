@@ -16,7 +16,7 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
     Page<ActivityLog> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     @Query("SELECT l FROM ActivityLog l WHERE " +
-           "(:username IS NULL OR l.username LIKE %:username%) AND " +
+           "(:username IS NULL OR l.username LIKE CONCAT('%', :username, '%')) AND " +
            "(:action IS NULL OR l.action = :action) AND " +
            "(:targetType IS NULL OR l.targetType = :targetType) " +
            "ORDER BY l.createdAt DESC")

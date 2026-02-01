@@ -27,6 +27,8 @@ public class StockOrderDTO {
     private String expiryDateStr;
     private Long daysUntilExpiry;  // 유효기간까지 남은 일수
     private String expiryStatus;   // EXPIRED, URGENT(7일이내), WARNING(30일이내), NORMAL
+    private BigDecimal remainingQuantity;  // 남은 수량
+    private Boolean consumed;      // 소진완료 여부
     private String note;
 
     public static StockOrderDTO fromEntity(StockOrder order) {
@@ -41,6 +43,8 @@ public class StockOrderDTO {
                 .status(order.getStatus())
                 .receivedDate(order.getReceivedDate())
                 .expiryDate(order.getExpiryDate())
+                .remainingQuantity(order.getRemainingQuantity())
+                .consumed(order.getConsumed() != null ? order.getConsumed() : false)
                 .note(order.getNote())
                 .build();
 

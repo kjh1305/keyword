@@ -25,8 +25,26 @@ public class InventoryDTO {
     private BigDecimal remainingStock;
     private LocalDate expiryDate;
     private String expiryDateStr;
-    private List<String> expiryDates;  // 여러 유효기간 목록
+    private List<String> expiryDates;  // 여러 유효기간 목록 (표시용)
+    private List<ExpiryInfo> expiryInfoList;  // 유효기간별 상세정보 (FIFO용)
     private String note;
+
+    /**
+     * 유효기간 상세 정보
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ExpiryInfo {
+        private Long orderId;           // StockOrder ID
+        private String expiryDateStr;   // 유효기간 (표시용)
+        private LocalDate expiryDate;   // 유효기간
+        private BigDecimal quantity;    // 입고수량
+        private BigDecimal remainingQuantity;  // 남은수량
+        private Boolean consumed;       // 소진완료 여부
+        private boolean hasQuantity;    // 수량 정보 유무
+    }
     private Integer minQuantity;
     private boolean lowStock;
     private boolean expiryWarning;  // 유효기간 30일 이내 임박
