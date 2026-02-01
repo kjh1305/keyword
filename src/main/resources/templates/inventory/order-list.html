@@ -214,14 +214,14 @@
                 alert('제품을 선택해주세요.');
                 return;
             }
-            if (!quantityNum || parseFloat(quantityNum) <= 0) {
+            if (!quantityNum || parseInt(quantityNum) <= 0) {
                 alert('입고수량을 입력해주세요.');
                 return;
             }
 
             const data = {
                 productId: parseInt(productId),
-                quantity: parseFloat(quantityNum),
+                quantity: parseInt(quantityNum),
                 orderDate: document.getElementById('orderDate').value || null,
                 expiryDate: document.getElementById('orderExpiryDate').value || null,
                 note: document.getElementById('orderNote').value || null
