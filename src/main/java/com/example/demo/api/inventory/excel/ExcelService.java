@@ -569,26 +569,40 @@ public class ExcelService {
                     }
                 }
 
-                if (receivedDates != null && !receivedDates.isEmpty()) {
-                    // 가장 빠른 입고일 찾기
-                    LocalDate earliestDate = receivedDates.stream().min(LocalDate::compareTo).orElse(null);
+                // 입고일/유효기간 중 더 많은 개수 기준으로 StockOrder 생성
+                int receivedCount = (receivedDates != null) ? receivedDates.size() : 0;
+                int expiryCount = (expiryDates != null) ? expiryDates.size() : 0;
+                int maxCount = Math.max(receivedCount, expiryCount);
 
-                    // 입고일 개수만큼 StockOrder 생성 (가장 빠른 날짜에만 수량, 나머지는 0)
-                    for (int i = 0; i < receivedDates.size(); i++) {
-                        LocalDate receivedDate = receivedDates.get(i);
-                        // 유효기간은 같은 인덱스의 값 또는 마지막 값 사용
-                        LocalDate expiryDate = null;
-                        if (expiryDates != null && !expiryDates.isEmpty()) {
-                            expiryDate = (i < expiryDates.size()) ? expiryDates.get(i) : expiryDates.get(expiryDates.size() - 1);
+                if (maxCount > 0) {
+                    // 가장 빠른 날짜 찾기 (수량 배분용)
+                    LocalDate earliestDate = null;
+                    if (receivedDates != null && !receivedDates.isEmpty()) {
+                        earliestDate = receivedDates.stream().min(LocalDate::compareTo).orElse(null);
+                    } else if (expiryDates != null && !expiryDates.isEmpty()) {
+                        earliestDate = expiryDates.stream().min(LocalDate::compareTo).orElse(null);
+                    }
+
+                    for (int i = 0; i < maxCount; i++) {
+                        // 입고일: 인덱스 범위 내면 해당 값, 아니면 마지막 값 또는 null
+                        LocalDate receivedDate = null;
+                        if (receivedDates != null && !receivedDates.isEmpty()) {
+                            receivedDate = (i < receivedDates.size()) ? receivedDates.get(i) : receivedDates.get(receivedDates.size() - 1);
                         }
 
-                        // 가장 빠른 날짜에만 수량 저장, 나머지는 0
-                        BigDecimal orderQty = receivedDate.equals(earliestDate) ? quantity : BigDecimal.ZERO;
+                        // 유효기간: 인덱스 범위 내면 해당 값, 아니면 마지막 값 또는 null
+                        LocalDate expiryDate = null;
+                        if (expiryDates != null && !expiryDates.isEmpty()) {
+                            expiryDate = (i < expiryDates.size()) ? expiryDates.get(i) : null;
+                        }
+
+                        // 첫 번째 항목에만 수량 저장
+                        BigDecimal orderQty = (i == 0) ? quantity : BigDecimal.ZERO;
 
                         StockOrder order = StockOrder.builder()
                                 .product(product)
                                 .quantity(orderQty)
-                                .remainingQuantity(orderQty)  // FIFO용 남은수량 초기화
+                                .remainingQuantity(orderQty)
                                 .consumed(false)
                                 .orderQuantity(dto.getOrderQuantityRaw())
                                 .orderDate(receivedDate)
@@ -601,26 +615,7 @@ public class ExcelService {
                         log.info("StockOrder 생성 - 제품: {}, 입고일: {}, 유효기간: {}, 수량: {}",
                                 product.getName(), receivedDate, expiryDate, orderQty);
                     }
-                    log.info("제품 '{}' 총 {} 건의 StockOrder 생성됨", product.getName(), receivedDates.size());
-                } else if (expiryDates != null && !expiryDates.isEmpty()) {
-                    // 입고일은 없고 유효기간만 있는 경우 - 가장 빠른 유효기간에만 수량
-                    LocalDate earliestExpiry = expiryDates.stream().min(LocalDate::compareTo).orElse(null);
-
-                    for (LocalDate expiryDate : expiryDates) {
-                        BigDecimal orderQty = expiryDate.equals(earliestExpiry) ? quantity : BigDecimal.ZERO;
-
-                        StockOrder order = StockOrder.builder()
-                                .product(product)
-                                .quantity(orderQty)
-                                .remainingQuantity(orderQty)  // FIFO용 남은수량 초기화
-                                .consumed(false)
-                                .orderQuantity(dto.getOrderQuantityRaw())
-                                .expiryDate(expiryDate)
-                                .status("COMPLETED")
-                                .note(orderNote)
-                                .build();
-                        stockOrderRepository.save(order);
-                    }
+                    log.info("제품 '{}' 총 {} 건의 StockOrder 생성됨", product.getName(), maxCount);
                 }
 
             } catch (Exception e) {
