@@ -15,6 +15,8 @@ public class ExcelImportDTO {
     private String category;
     private BigDecimal initialStock;
     private BigDecimal usedQuantity;
+    private BigDecimal orderQuantity;       // 주문수량
+    private String orderQuantityRaw;        // 주문수량 원본 (3+1, 1box 등)
     private List<LocalDate> receivedDates;  // 입고일 (여러 개)
     private List<LocalDate> expiryDates;    // 유효기간 (여러 개)
     private String unit;
