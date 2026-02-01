@@ -309,7 +309,7 @@
         // Update inventory
         function updateInventory(id, field, value) {
             const data = {};
-            data[field] = parseFloat(value) || 0;
+            data[field] = parseInt(value) || 0;
 
             fetch('/api/inventory/stocks/' + id, {
                 method: 'PUT',
@@ -482,12 +482,12 @@
             btn.addEventListener('click', function() {
                 const id = this.dataset.id;
                 const productName = this.dataset.name;
-                const currentUsed = parseFloat(this.dataset.used) || 0;
+                const currentUsed = parseInt(this.dataset.used) || 0;
 
                 const amount = prompt(productName + '\n현재 사용량: ' + currentUsed + '\n\n사용할 수량을 입력하세요:');
                 if (amount === null) return;
 
-                const deductAmount = parseFloat(amount);
+                const deductAmount = parseInt(amount);
                 if (isNaN(deductAmount) || deductAmount <= 0) {
                     alert('올바른 수량을 입력해주세요.');
                     return;
