@@ -293,70 +293,79 @@ public class ExcelService {
         List<LocalDate> dates = new ArrayList<>();
 
         try {
-            CellType cellType = cell.getCellType();
-            // FORMULA인 경우 캐시된 값 타입 확인
-            if (cellType == CellType.FORMULA) {
-                cellType = cell.getCachedFormulaResultType();
+            // 먼저 셀 값을 문자열로 가져오기 (모든 타입 지원)
+            String value = getCellStringValue(cell).trim();
+
+            if (value.isEmpty()) {
+                // 문자열이 비어있으면 NUMERIC 날짜 시도
+                CellType cellType = cell.getCellType();
+                if (cellType == CellType.FORMULA) {
+                    cellType = cell.getCachedFormulaResultType();
+                }
+                if (cellType == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+                    dates.add(cell.getLocalDateTimeCellValue().toLocalDate());
+                    return dates;
+                }
+                return null;
             }
 
-            switch (cellType) {
-                case NUMERIC:
-                    // 엑셀 날짜 형식 시도
-                    try {
-                        if (DateUtil.isCellDateFormatted(cell)) {
-                            dates.add(cell.getLocalDateTimeCellValue().toLocalDate());
-                        } else {
-                            // 날짜 형식이 아니어도 숫자가 날짜 범위면 시도
-                            double numValue = cell.getNumericCellValue();
-                            if (numValue > 1 && numValue < 100000) {
-                                java.util.Date javaDate = DateUtil.getJavaDate(numValue);
-                                dates.add(javaDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate());
-                            }
-                        }
-                    } catch (Exception e) {
-                        log.debug("날짜 파싱 실패 (NUMERIC): {}", e.getMessage());
+            log.info("=== 날짜 파싱 시작 === 원본값: [{}]", value);
+
+            // 여러 날짜 구분
+            // 날짜 형식: yy.MM.dd (점 사용) 또는 yy/MM/dd (슬래시 사용)
+            // 다중 날짜 구분자: " / " (공백있는 슬래시) 또는 ","
+            List<String> dateStrings = new ArrayList<>();
+
+            // 1. 먼저 점(.) 형식 날짜인지 확인 (28.06.17 / 28.09.18)
+            if (value.matches(".*\\d{2}\\.\\d{2}\\.\\d{2}.*")) {
+                // 점 형식 날짜 -> "/" 또는 ","로 분리 가능
+                String[] parts = value.split("\\s*[/,]\\s*");
+                for (String part : parts) {
+                    part = part.trim();
+                    if (!part.isEmpty() && part.matches("\\d{2}\\.\\d{2}\\.\\d{2}")) {
+                        dateStrings.add(part);
                     }
-                    break;
-                case STRING:
-                    String value = cell.getStringCellValue().trim();
-                    if (value.isEmpty()) return null;
+                }
+                log.info("점 형식 날짜 분리: {}", dateStrings);
+            }
 
-                    log.info("=== 날짜 파싱 시작 === 원본값: [{}]", value);
+            // 2. 점 형식이 아니면 일반 분리 시도
+            if (dateStrings.isEmpty()) {
+                if (value.contains(" / ")) {
+                    // 공백 있는 슬래시로 분리
+                    String[] parts = value.split("\\s*/\\s*");
+                    for (String part : parts) {
+                        if (!part.trim().isEmpty()) dateStrings.add(part.trim());
+                    }
+                    log.info("공백슬래시로 분리: {}", dateStrings);
+                } else if (value.contains(",")) {
+                    String[] parts = value.split("\\s*,\\s*");
+                    for (String part : parts) {
+                        if (!part.trim().isEmpty()) dateStrings.add(part.trim());
+                    }
+                    log.info("쉼표로 분리: {}", dateStrings);
+                } else {
+                    dateStrings.add(value);
+                    log.info("단일 날짜: {}", value);
+                }
+            }
 
-                    // 여러 날짜 구분: " / " (공백-슬래시-공백) 또는 ", " (쉼표-공백) 패턴
-                    // 이 패턴은 명확한 다중 날짜 구분자
-                    String[] dateStrings;
-                    if (value.contains(" / ") || value.contains("/ ") || value.contains(" /")) {
-                        // 슬래시 주변 공백으로 분리 (날짜 내부 슬래시와 구분)
-                        dateStrings = value.split("\\s*/\\s*");
-                        log.info("슬래시로 분리: {}", java.util.Arrays.toString(dateStrings));
-                    } else if (value.contains(", ") || value.contains(",")) {
-                        dateStrings = value.split("\\s*,\\s*");
-                        log.info("쉼표로 분리: {}", java.util.Arrays.toString(dateStrings));
+            for (String dateStr : dateStrings) {
+                String trimmed = dateStr.trim();
+                if (!trimmed.isEmpty()) {
+                    LocalDate parsed = parseSingleDate(trimmed);
+                    if (parsed != null) {
+                        dates.add(parsed);
+                        log.info(">>> 날짜 파싱 성공: [{}] -> {}", trimmed, parsed);
                     } else {
-                        dateStrings = new String[]{value};
-                        log.info("단일 날짜: {}", value);
+                        log.warn(">>> 날짜 파싱 실패: [{}]", trimmed);
                     }
-
-                    for (String dateStr : dateStrings) {
-                        String trimmed = dateStr.trim();
-                        if (!trimmed.isEmpty()) {
-                            LocalDate parsed = parseSingleDate(trimmed);
-                            if (parsed != null) {
-                                dates.add(parsed);
-                                log.info(">>> 날짜 파싱 성공: [{}] -> {}", trimmed, parsed);
-                            } else {
-                                log.warn(">>> 날짜 파싱 실패: [{}]", trimmed);
-                            }
-                        }
-                    }
-                    log.info("=== 날짜 파싱 완료 === 총 {}개 날짜", dates.size());
-                    break;
-                default:
-                    break;
+                }
             }
+            log.info("=== 날짜 파싱 완료 === 총 {}개 날짜", dates.size());
+
         } catch (Exception e) {
-            log.debug("날짜 파싱 실패: {}", e.getMessage());
+            log.warn("날짜 파싱 실패: {}", e.getMessage());
             return null;
         }
 
