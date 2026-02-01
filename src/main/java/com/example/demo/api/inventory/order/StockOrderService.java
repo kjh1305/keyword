@@ -268,6 +268,40 @@ public class StockOrderService {
     }
 
     /**
+     * 수량 설정/수정
+     */
+    @Transactional
+    public StockOrderDTO setQuantity(Long id, BigDecimal quantity) {
+        StockOrder order = stockOrderRepository.findByIdWithProduct(id)
+                .orElseThrow(() -> new IllegalArgumentException("주문 정보를 찾을 수 없습니다: " + id));
+
+        BigDecimal oldQuantity = order.getRemainingQuantity();
+        order.setRemainingQuantity(quantity);
+
+        // 입고수량도 함께 업데이트 (처음 설정하는 경우)
+        if (order.getQuantity() == null || order.getQuantity().compareTo(BigDecimal.ZERO) == 0) {
+            order.setQuantity(quantity);
+        }
+
+        // 수량이 0이면 소진완료, 아니면 미소진
+        if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+            order.setConsumed(true);
+        } else {
+            order.setConsumed(false);
+        }
+
+        StockOrder saved = stockOrderRepository.save(order);
+
+        String logDetail = "유효기간 수량 수정 - " +
+                (oldQuantity != null ? oldQuantity : "미지정") + " → " + quantity +
+                " (유효기간: " + (order.getExpiryDate() != null ?
+                        order.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "미지정") + ")";
+        activityLogService.logUpdate("ORDER", saved.getId(), order.getProduct().getName(), logDetail);
+
+        return StockOrderDTO.fromEntity(saved);
+    }
+
+    /**
      * 제품의 활성 유효기간 목록 조회 (소진되지 않은 것만, 유효기간 빠른 순)
      */
     public List<StockOrderDTO> getActiveExpiryDatesByProduct(Long productId) {

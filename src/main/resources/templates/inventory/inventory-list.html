@@ -497,13 +497,26 @@
                             html += '<button class="btn btn-sm btn-outline-secondary" onclick="toggleConsume(' + order.id + ', false)">' +
                                 '<i class="bi bi-arrow-counterclockwise me-1"></i>복원</button>';
                         } else {
-                            html += '<button class="btn btn-sm btn-outline-danger" onclick="toggleConsume(' + order.id + ', true)">' +
-                                '<i class="bi bi-check-circle me-1"></i>소진완료</button>';
+                            // 수량 수정 버튼 (항상 표시)
+                            html += '<button class="btn btn-sm btn-outline-primary me-1" onclick="setOrderQuantity(' + order.id + ', \'' + (order.expiryDateStr || '') + '\', ' + (order.remainingQuantity || 'null') + ')" title="수량 수정">' +
+                                '<i class="bi bi-pencil"></i></button>';
+                            html += '<button class="btn btn-sm btn-outline-danger" onclick="toggleConsume(' + order.id + ', true)" title="소진완료">' +
+                                '<i class="bi bi-check-circle"></i></button>';
                         }
 
                         html += '</td></tr>';
                     });
                     html += '</tbody></table>';
+
+                    // 수량미상 안내
+                    const unknownCount = data.content.filter(o => o.remainingQuantity === null && !o.consumed).length;
+                    if (unknownCount > 0) {
+                        html += '<div class="alert alert-warning py-2 mt-2 small mb-0">' +
+                            '<i class="bi bi-exclamation-triangle me-1"></i>' +
+                            '<strong>수량미상 ' + unknownCount + '건</strong>: ' +
+                            '<i class="bi bi-pencil"></i> 버튼으로 수량을 입력하면 FIFO 자동 차감 대상이 됩니다.</div>';
+                    }
+
                     document.getElementById('expiryList').innerHTML = html;
 
                     // Update pagination
@@ -539,6 +552,34 @@
                     alert('처리에 실패했습니다.');
                     console.error(error);
                 });
+        }
+
+        // 수량 수정
+        function setOrderQuantity(orderId, expiryDate, currentQty) {
+            const defaultVal = currentQty !== null ? Math.floor(currentQty) : '';
+            const qty = prompt('유효기간: ' + (expiryDate || '미지정') + '\n현재 남은수량: ' + (defaultVal || '미지정') + '\n\n새로운 남은 수량을 입력하세요:', defaultVal);
+            if (qty === null) return;
+
+            const quantity = parseInt(qty);
+            if (isNaN(quantity) || quantity < 0) {
+                alert('올바른 수량을 입력해주세요. (0 이상)');
+                return;
+            }
+
+            fetch('/api/inventory/orders/' + orderId + '/set-quantity?quantity=' + quantity, {
+                method: 'POST'
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('처리 실패');
+                return response.json();
+            })
+            .then(() => {
+                loadExpiryData(); // 목록 새로고침
+            })
+            .catch(error => {
+                alert('수량 설정에 실패했습니다.');
+                console.error(error);
+            });
         }
 
         function loadExpiryPage(direction) {
