@@ -215,10 +215,15 @@
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center gap-1 flex-wrap">
-                                        <span th:if="${inv.expiryDates != null and !inv.expiryDates.isEmpty()}"
-                                              th:each="expDate : ${inv.expiryDates}"
-                                              class="badge bg-light text-dark border"
-                                              th:text="${expDate}"></span>
+                                        <th:block th:if="${inv.expiryDates != null and !inv.expiryDates.isEmpty()}">
+                                            <span th:each="expDate, stat : ${inv.expiryDates}"
+                                                  th:if="${stat.index < 3}"
+                                                  class="badge bg-light text-dark border"
+                                                  th:text="${expDate}"></span>
+                                            <span th:if="${#lists.size(inv.expiryDates) > 3}"
+                                                  class="badge bg-secondary"
+                                                  th:text="'+' + (${#lists.size(inv.expiryDates)} - 3)"></span>
+                                        </th:block>
                                         <span th:if="${inv.expiryDates == null or inv.expiryDates.isEmpty()}"
                                               class="text-muted small">-</span>
                                         <button class="btn btn-sm btn-outline-info expiry-btn ms-1"
