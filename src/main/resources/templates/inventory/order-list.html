@@ -135,11 +135,12 @@
                         <input type="hidden" id="orderId">
                         <div class="mb-3">
                             <label class="form-label">제품 <span class="text-danger">*</span></label>
-                            <select class="form-select" id="orderProductId" required>
-                                <option value="">제품을 선택하세요</option>
+                            <select class="form-select" id="orderProductId" required onchange="onProductSelect()">
+                                <option value="" data-note="">제품을 선택하세요</option>
                                 <option th:each="product : ${products}"
                                         th:value="${product.id}"
-                                        th:text="${product.name}"></option>
+                                        th:text="${product.name}"
+                                        th:data-note="${product.note}"></option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -175,6 +176,17 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script>
         let isEditMode = false;
+
+        // 제품 선택 시 비고 자동 세팅
+        function onProductSelect() {
+            if (isEditMode) return; // 수정 모드에서는 자동 세팅 안함
+
+            const select = document.getElementById('orderProductId');
+            const selectedOption = select.options[select.selectedIndex];
+            const productNote = selectedOption.dataset.note || '';
+
+            document.getElementById('orderNote').value = productNote;
+        }
 
         function openCreateModal() {
             isEditMode = false;
