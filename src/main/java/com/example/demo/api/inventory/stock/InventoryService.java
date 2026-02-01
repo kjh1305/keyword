@@ -48,13 +48,13 @@ public class InventoryService {
         String kw = (keyword == null || keyword.isEmpty()) ? null : keyword;
         String filter = (stockFilter == null || stockFilter.isEmpty()) ? null : stockFilter;
 
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Inventory> inventoryPage = inventoryRepository.searchInventoryPaged(yearMonth, cat, kw, pageable);
-
         LocalDate today = LocalDate.now();
         LocalDate thirtyDaysFromNow = today.plusDays(30);
 
-        List<InventoryDTO> content = inventoryPage.getContent().stream()
+        // 전체 데이터를 가져와서 DTO 변환 + 유효기간 정보 추가
+        List<Inventory> allInventories = inventoryRepository.searchInventory(yearMonth, cat, kw);
+
+        List<InventoryDTO> allDtos = allInventories.stream()
                 .map(inv -> {
                     InventoryDTO dto = InventoryDTO.fromEntity(inv);
                     // StockOrder에서 해당 제품의 유효기간 목록 가져오기 (유효기간 빠른 순)
@@ -97,9 +97,27 @@ public class InventoryService {
                 })
                 .collect(Collectors.toList());
 
+        // 통계 계산 (필터 적용 전 전체 데이터 기준)
+        long outOfStockCount = allDtos.stream()
+                .filter(dto -> dto.getRemainingStock() != null && dto.getRemainingStock().compareTo(BigDecimal.ZERO) <= 0)
+                .count();
+
+        long lowStockCount = allDtos.stream()
+                .filter(dto -> {
+                    BigDecimal remaining = dto.getRemainingStock() != null ? dto.getRemainingStock() : BigDecimal.ZERO;
+                    BigDecimal minQty = dto.getMinQuantity() != null ? new BigDecimal(dto.getMinQuantity()) : BigDecimal.ZERO;
+                    return remaining.compareTo(BigDecimal.ZERO) > 0 && remaining.compareTo(minQty) <= 0;
+                })
+                .count();
+
+        long expiryWarningCount = allDtos.stream()
+                .filter(InventoryDTO::isExpiryWarning)
+                .count();
+
         // stockFilter 적용
+        List<InventoryDTO> filteredDtos = allDtos;
         if (filter != null) {
-            content = content.stream()
+            filteredDtos = allDtos.stream()
                     .filter(dto -> {
                         switch (filter) {
                             case "outOfStock":
@@ -117,47 +135,27 @@ public class InventoryService {
                     .collect(Collectors.toList());
         }
 
-        // 전체 재고 부족/없음 수량 계산 (별도 쿼리)
-        List<Inventory> allInventories = inventoryRepository.searchInventory(yearMonth, cat, kw);
+        // 필터 적용 후 페이지네이션
+        int totalElements = filteredDtos.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, totalElements);
 
-        // 재고 없음 (0 이하)
-        long outOfStockCount = allInventories.stream()
-                .filter(inv -> {
-                    BigDecimal remaining = inv.getRemainingStock() != null ? inv.getRemainingStock() : BigDecimal.ZERO;
-                    return remaining.compareTo(BigDecimal.ZERO) <= 0;
-                })
-                .count();
-
-        // 재고 부족 (최소수량 이하, 0 초과)
-        long lowStockCount = allInventories.stream()
-                .filter(inv -> {
-                    BigDecimal remaining = inv.getRemainingStock() != null ? inv.getRemainingStock() : BigDecimal.ZERO;
-                    BigDecimal minQty = inv.getProduct().getMinQuantity() != null
-                            ? new BigDecimal(inv.getProduct().getMinQuantity())
-                            : BigDecimal.ZERO;
-                    return remaining.compareTo(BigDecimal.ZERO) > 0 && remaining.compareTo(minQty) <= 0;
-                })
-                .count();
-
-        // 유효기간 임박 (30일 이내) - StockOrder에서 확인
-        LocalDate thirtyDaysLater = LocalDate.now().plusDays(30);
-        long expiryWarningCount = allInventories.stream()
-                .filter(inv -> {
-                    List<StockOrder> orders = stockOrderRepository.findCompletedWithExpiryByProductId(inv.getProduct().getId());
-                    return orders.stream()
-                            .anyMatch(o -> o.getExpiryDate() != null
-                                    && !o.getExpiryDate().isBefore(LocalDate.now())
-                                    && !o.getExpiryDate().isAfter(thirtyDaysLater));
-                })
-                .count();
+        List<InventoryDTO> content;
+        if (fromIndex >= totalElements) {
+            content = new ArrayList<>();
+        } else {
+            content = filteredDtos.subList(fromIndex, toIndex);
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("content", content);
-        result.put("currentPage", inventoryPage.getNumber());
-        result.put("totalPages", inventoryPage.getTotalPages());
-        result.put("totalElements", inventoryPage.getTotalElements());
-        result.put("hasNext", inventoryPage.hasNext());
-        result.put("hasPrevious", inventoryPage.hasPrevious());
+        result.put("currentPage", page);
+        result.put("totalPages", totalPages);
+        result.put("totalElements", totalElements);  // 필터 적용 후 개수 (페이지네이션용)
+        result.put("totalProductCount", allDtos.size());  // 전체 제품 개수 (필터 무관)
+        result.put("hasNext", page < totalPages - 1);
+        result.put("hasPrevious", page > 0);
         result.put("outOfStockCount", outOfStockCount);
         result.put("lowStockCount", lowStockCount);
         result.put("expiryWarningCount", expiryWarningCount);
