@@ -177,13 +177,20 @@
 
             data.forEach(item => {
                 const tr = document.createElement('tr');
+                // 유효기간/입고일 여러 개 표시
+                let expiryDisplay = '';
+                if (item.expiryDates && item.expiryDates.length > 0) {
+                    expiryDisplay = item.expiryDates.join(' / ');
+                } else if (item.expiryDate) {
+                    expiryDisplay = item.expiryDate;
+                }
                 tr.innerHTML = `
                     <td>${item.rowNumber || '-'}</td>
                     <td>${item.productName || ''}</td>
                     <td><span class="badge bg-info">${item.category || ''}</span></td>
                     <td class="text-end">${item.initialStock || 0}</td>
                     <td class="text-end">${item.usedQuantity || 0}</td>
-                    <td>${item.expiryDate || ''}</td>
+                    <td>${expiryDisplay || '-'}</td>
                     <td>${item.unit || '개'}</td>
                     <td><small class="text-muted">${item.note || ''}</small></td>
                 `;
