@@ -321,16 +321,21 @@ public class ExcelService {
                     String value = cell.getStringCellValue().trim();
                     if (value.isEmpty()) return null;
 
-                    // 여러 날짜가 " / " 또는 ", " 또는 "," 등으로 구분된 경우 처리
-                    // 먼저 공백+구분자+공백 패턴으로 분리 시도
+                    log.info("=== 날짜 파싱 시작 === 원본값: [{}]", value);
+
+                    // 여러 날짜 구분: " / " (공백-슬래시-공백) 또는 ", " (쉼표-공백) 패턴
+                    // 이 패턴은 명확한 다중 날짜 구분자
                     String[] dateStrings;
-                    if (value.contains(" / ")) {
+                    if (value.contains(" / ") || value.contains("/ ") || value.contains(" /")) {
+                        // 슬래시 주변 공백으로 분리 (날짜 내부 슬래시와 구분)
                         dateStrings = value.split("\\s*/\\s*");
-                    } else if (value.contains(",")) {
+                        log.info("슬래시로 분리: {}", java.util.Arrays.toString(dateStrings));
+                    } else if (value.contains(", ") || value.contains(",")) {
                         dateStrings = value.split("\\s*,\\s*");
+                        log.info("쉼표로 분리: {}", java.util.Arrays.toString(dateStrings));
                     } else {
-                        // 구분자가 없으면 단일 날짜로 처리
                         dateStrings = new String[]{value};
+                        log.info("단일 날짜: {}", value);
                     }
 
                     for (String dateStr : dateStrings) {
@@ -339,12 +344,13 @@ public class ExcelService {
                             LocalDate parsed = parseSingleDate(trimmed);
                             if (parsed != null) {
                                 dates.add(parsed);
-                                log.debug("날짜 파싱 성공: {} -> {}", trimmed, parsed);
+                                log.info(">>> 날짜 파싱 성공: [{}] -> {}", trimmed, parsed);
                             } else {
-                                log.warn("날짜 파싱 실패: {}", trimmed);
+                                log.warn(">>> 날짜 파싱 실패: [{}]", trimmed);
                             }
                         }
                     }
+                    log.info("=== 날짜 파싱 완료 === 총 {}개 날짜", dates.size());
                     break;
                 default:
                     break;
