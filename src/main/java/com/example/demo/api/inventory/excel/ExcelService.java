@@ -321,13 +321,28 @@ public class ExcelService {
                     String value = cell.getStringCellValue().trim();
                     if (value.isEmpty()) return null;
 
-                    // 여러 날짜가 "/" 또는 ","로 구분된 경우 처리
-                    String[] dateStrings = value.split("[/,]");
+                    // 여러 날짜가 " / " 또는 ", " 또는 "," 등으로 구분된 경우 처리
+                    // 먼저 공백+구분자+공백 패턴으로 분리 시도
+                    String[] dateStrings;
+                    if (value.contains(" / ")) {
+                        dateStrings = value.split("\\s*/\\s*");
+                    } else if (value.contains(",")) {
+                        dateStrings = value.split("\\s*,\\s*");
+                    } else {
+                        // 구분자가 없으면 단일 날짜로 처리
+                        dateStrings = new String[]{value};
+                    }
 
                     for (String dateStr : dateStrings) {
-                        LocalDate parsed = parseSingleDate(dateStr.trim());
-                        if (parsed != null) {
-                            dates.add(parsed);
+                        String trimmed = dateStr.trim();
+                        if (!trimmed.isEmpty()) {
+                            LocalDate parsed = parseSingleDate(trimmed);
+                            if (parsed != null) {
+                                dates.add(parsed);
+                                log.debug("날짜 파싱 성공: {} -> {}", trimmed, parsed);
+                            } else {
+                                log.warn("날짜 파싱 실패: {}", trimmed);
+                            }
                         }
                     }
                     break;
@@ -380,6 +395,30 @@ public class ExcelService {
                 int mm = Integer.parseInt(numbersOnly.substring(4, 6));
                 int dd = Integer.parseInt(numbersOnly.substring(6, 8));
                 return LocalDate.of(yyyy, mm, dd);
+            } catch (Exception ignored) {}
+        }
+
+        // 마지막으로 구분자로 직접 분리해서 시도
+        String[] parts = value.split("[.\\-/]");
+        if (parts.length == 3) {
+            try {
+                int p1 = Integer.parseInt(parts[0].trim());
+                int p2 = Integer.parseInt(parts[1].trim());
+                int p3 = Integer.parseInt(parts[2].trim());
+
+                // yy.MM.dd 형식 (예: 28.06.17 = 2028-06-17)
+                if (p1 >= 20 && p1 <= 99 && p2 >= 1 && p2 <= 12 && p3 >= 1 && p3 <= 31) {
+                    return LocalDate.of(2000 + p1, p2, p3);
+                }
+                // yyyy.MM.dd 형식
+                if (p1 >= 2000 && p1 <= 2100 && p2 >= 1 && p2 <= 12 && p3 >= 1 && p3 <= 31) {
+                    return LocalDate.of(p1, p2, p3);
+                }
+                // dd.MM.yy 형식
+                if (p1 >= 1 && p1 <= 31 && p2 >= 1 && p2 <= 12 && p3 >= 0 && p3 <= 99) {
+                    int year = (p3 > 50) ? 1900 + p3 : 2000 + p3;
+                    return LocalDate.of(year, p2, p1);
+                }
             } catch (Exception ignored) {}
         }
 
@@ -508,6 +547,11 @@ public class ExcelService {
                 List<LocalDate> receivedDates = dto.getReceivedDates();
                 List<LocalDate> expiryDates = dto.getExpiryDates();
 
+                log.debug("제품 '{}' - 입고일 개수: {}, 유효기간 개수: {}",
+                        dto.getProductName(),
+                        receivedDates != null ? receivedDates.size() : 0,
+                        expiryDates != null ? expiryDates.size() : 0);
+
                 // 주문수량 결정: orderQuantity가 있으면 사용, 없으면 initialStock 사용
                 BigDecimal quantity = dto.getOrderQuantity() != null ? dto.getOrderQuantity() : dto.getInitialStock();
                 // 주문수량 원본 저장 (비고에 추가)
@@ -540,6 +584,8 @@ public class ExcelService {
                         StockOrder order = StockOrder.builder()
                                 .product(product)
                                 .quantity(orderQty)
+                                .remainingQuantity(orderQty)  // FIFO용 남은수량 초기화
+                                .consumed(false)
                                 .orderQuantity(dto.getOrderQuantityRaw())
                                 .orderDate(receivedDate)
                                 .receivedDate(receivedDate)
@@ -548,7 +594,10 @@ public class ExcelService {
                                 .note(orderNote)
                                 .build();
                         stockOrderRepository.save(order);
+                        log.info("StockOrder 생성 - 제품: {}, 입고일: {}, 유효기간: {}, 수량: {}",
+                                product.getName(), receivedDate, expiryDate, orderQty);
                     }
+                    log.info("제품 '{}' 총 {} 건의 StockOrder 생성됨", product.getName(), receivedDates.size());
                 } else if (expiryDates != null && !expiryDates.isEmpty()) {
                     // 입고일은 없고 유효기간만 있는 경우 - 가장 빠른 유효기간에만 수량
                     LocalDate earliestExpiry = expiryDates.stream().min(LocalDate::compareTo).orElse(null);
@@ -559,6 +608,8 @@ public class ExcelService {
                         StockOrder order = StockOrder.builder()
                                 .product(product)
                                 .quantity(orderQty)
+                                .remainingQuantity(orderQty)  // FIFO용 남은수량 초기화
+                                .consumed(false)
                                 .orderQuantity(dto.getOrderQuantityRaw())
                                 .expiryDate(expiryDate)
                                 .status("COMPLETED")

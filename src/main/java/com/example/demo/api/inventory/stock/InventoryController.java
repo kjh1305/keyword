@@ -7,6 +7,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.demo.api.inventory.order.StockOrderDTO;
+import com.example.demo.api.inventory.order.StockOrderService;
+
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -16,6 +20,7 @@ public class InventoryController {
 
     private final InventoryService inventoryService;
     private final ProductService productService;
+    private final StockOrderService stockOrderService;
 
     // View Controllers
     @GetMapping("/inventory/stocks")
@@ -110,5 +115,42 @@ public class InventoryController {
     @ResponseBody
     public ResponseEntity<List<InventoryDTO>> getProductHistory(@PathVariable Long productId) {
         return ResponseEntity.ok(inventoryService.getProductHistory(productId));
+    }
+
+    /**
+     * FIFO 방식으로 재고 차감
+     */
+    @PostMapping("/api/inventory/stocks/{id}/deduct")
+    @ResponseBody
+    public ResponseEntity<InventoryDTO> deductStock(@PathVariable Long id,
+                                                     @RequestParam BigDecimal quantity) {
+        return ResponseEntity.ok(inventoryService.deductStockWithFIFO(id, quantity));
+    }
+
+    /**
+     * 유효기간 소진완료 처리
+     */
+    @PostMapping("/api/inventory/orders/{orderId}/consume")
+    @ResponseBody
+    public ResponseEntity<StockOrderDTO> markAsConsumed(@PathVariable Long orderId) {
+        return ResponseEntity.ok(stockOrderService.markAsConsumed(orderId));
+    }
+
+    /**
+     * 유효기간 소진완료 취소
+     */
+    @PostMapping("/api/inventory/orders/{orderId}/unconsume")
+    @ResponseBody
+    public ResponseEntity<StockOrderDTO> unmarkAsConsumed(@PathVariable Long orderId) {
+        return ResponseEntity.ok(stockOrderService.unmarkAsConsumed(orderId));
+    }
+
+    /**
+     * 제품의 활성 유효기간 목록 조회
+     */
+    @GetMapping("/api/inventory/stocks/product/{productId}/expiry")
+    @ResponseBody
+    public ResponseEntity<List<StockOrderDTO>> getActiveExpiryDates(@PathVariable Long productId) {
+        return ResponseEntity.ok(stockOrderService.getActiveExpiryDatesByProduct(productId));
     }
 }

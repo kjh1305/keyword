@@ -43,6 +43,13 @@ public class StockOrder {
     @Column(name = "expiry_date")
     private LocalDate expiryDate;
 
+    @Column(name = "remaining_quantity", precision = 10, scale = 1)
+    private BigDecimal remainingQuantity;  // 남은 수량 (FIFO 차감용)
+
+    @Column(name = "consumed")
+    @Builder.Default
+    private Boolean consumed = false;  // 소진완료 여부
+
     @Column(columnDefinition = "TEXT")
     private String note;
 
