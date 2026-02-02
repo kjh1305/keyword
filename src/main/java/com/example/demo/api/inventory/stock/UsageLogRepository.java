@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -41,4 +42,13 @@ public interface UsageLogRepository extends JpaRepository<UsageLog, Long> {
      * 제품별 사용량 이력 삭제
      */
     void deleteByProductId(@Param("productId") Long productId);
+
+    /**
+     * 제품별 + 년월별 운영용 사용량 합계 (DEDUCT - RESTORE)
+     * actionDate가 yyyy-MM-dd 형식이므로 yyyy-MM으로 시작하는 것을 찾음
+     */
+    @Query("SELECT COALESCE(SUM(CASE WHEN u.action = 'DEDUCT' THEN u.quantity ELSE 0 END), 0) - " +
+           "COALESCE(SUM(CASE WHEN u.action = 'RESTORE' THEN u.quantity ELSE 0 END), 0) " +
+           "FROM UsageLog u WHERE u.product.id = :productId AND u.actionDate LIKE CONCAT(:yearMonth, '%')")
+    BigDecimal sumOperationalUsedByProductIdAndYearMonth(@Param("productId") Long productId, @Param("yearMonth") String yearMonth);
 }
