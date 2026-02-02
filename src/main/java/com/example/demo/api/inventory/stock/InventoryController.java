@@ -129,6 +129,16 @@ public class InventoryController {
     }
 
     /**
+     * 재고 복구 (역FIFO - 실수로 차감한 경우)
+     */
+    @PostMapping("/api/inventory/stocks/{id}/restore")
+    @ResponseBody
+    public ResponseEntity<InventoryDTO> restoreStock(@PathVariable Long id,
+                                                      @RequestParam BigDecimal quantity) {
+        return ResponseEntity.ok(inventoryService.restoreStock(id, quantity));
+    }
+
+    /**
      * 유효기간 소진완료 처리
      */
     @PostMapping("/api/inventory/orders/{orderId}/consume")
@@ -163,5 +173,15 @@ public class InventoryController {
     @ResponseBody
     public ResponseEntity<List<StockOrderDTO>> getActiveExpiryDates(@PathVariable Long productId) {
         return ResponseEntity.ok(stockOrderService.getActiveExpiryDatesByProduct(productId));
+    }
+
+    /**
+     * 제품별 + 년월별 사용량 변경 이력 조회
+     */
+    @GetMapping("/api/inventory/stocks/product/{productId}/usage-logs")
+    @ResponseBody
+    public ResponseEntity<List<UsageLogDTO>> getUsageLogs(@PathVariable Long productId,
+                                                           @RequestParam String yearMonth) {
+        return ResponseEntity.ok(inventoryService.getUsageLogsByProductIdAndYearMonth(productId, yearMonth));
     }
 }

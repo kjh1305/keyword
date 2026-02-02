@@ -1,6 +1,9 @@
 package com.example.demo.api.inventory.product;
 
 import com.example.demo.api.inventory.log.ActivityLogService;
+import com.example.demo.api.inventory.order.StockOrderRepository;
+import com.example.demo.api.inventory.stock.InventoryRepository;
+import com.example.demo.api.inventory.stock.UsageLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +19,9 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository;
+    private final StockOrderRepository stockOrderRepository;
+    private final UsageLogRepository usageLogRepository;
     private final ActivityLogService activityLogService;
 
     public Page<ProductDTO> getProducts(String category, String keyword, Pageable pageable) {
@@ -84,6 +90,12 @@ public class ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("제품을 찾을 수 없습니다: " + id));
         String productName = product.getName();
+
+        // 외래키 제약으로 인해 관련 데이터 먼저 삭제
+        usageLogRepository.deleteByProductId(id);
+        stockOrderRepository.deleteByProductId(id);
+        inventoryRepository.deleteByProductId(id);
+
         productRepository.deleteById(id);
         activityLogService.logDelete("PRODUCT", id, productName);
     }

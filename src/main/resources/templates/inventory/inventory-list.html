@@ -168,7 +168,7 @@
                                 <th style="width: 100px;">카테고리</th>
                                 <th style="min-width: 200px;">제품명</th>
                                 <th style="width: 90px;">월초재고</th>
-                                <th style="width: 90px;">추가재고</th>
+                                <th style="width: 120px;">주문재고</th>
                                 <th style="width: 90px;">사용량</th>
                                 <th style="width: 90px;">남은재고</th>
                                 <th style="width: 80px;"></th>
@@ -199,23 +199,45 @@
                                            th:value="${#numbers.formatInteger(inv.initialStock, 1)}"
                                            step="1" min="0">
                                 </td>
-                                <td class="text-end text-success">
-                                    <span th:text="${inv.addedStock != null ? #numbers.formatInteger(inv.addedStock, 1) : 0}"></span>
+                                <td class="text-center">
+                                    <div th:if="${inv.pendingStock > 0 or inv.completedStock > 0}">
+                                        <span th:if="${inv.completedStock > 0}" class="badge bg-success"
+                                              th:text="'입고 ' + ${#numbers.formatInteger(inv.completedStock, 1)}"></span>
+                                        <span th:if="${inv.pendingStock > 0}" class="badge bg-warning text-dark"
+                                              th:text="'대기 ' + ${#numbers.formatInteger(inv.pendingStock, 1)}"></span>
+                                    </div>
+                                    <span th:if="${inv.pendingStock <= 0 and inv.completedStock <= 0}" class="text-muted">-</span>
                                 </td>
                                 <td class="text-end">
                                     <span th:text="${#numbers.formatInteger(inv.usedQuantity, 1)}"></span>
+                                    <button class="btn btn-sm btn-link p-0 ms-1 usage-log-btn"
+                                            th:data-product-id="${inv.productId}"
+                                            th:data-name="${inv.productName}"
+                                            title="사용량 이력">
+                                        <i class="bi bi-clock-history text-secondary"></i>
+                                    </button>
                                 </td>
                                 <td class="text-end fw-bold"
                                     th:classappend="${inv.remainingStock <= 0} ? 'text-danger' : (${inv.lowStock} ? 'text-warning' : '')">
                                     <span th:text="${#numbers.formatInteger(inv.remainingStock, 1)}" th:id="'remaining-' + ${inv.id}"></span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-warning deduct-btn"
-                                            th:data-id="${inv.id}"
-                                            th:data-name="${inv.productName}"
-                                            th:data-used="${#numbers.formatInteger(inv.usedQuantity, 1)}">
-                                        <i class="bi bi-dash-circle me-1"></i>차감
-                                    </button>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-warning deduct-btn"
+                                                th:data-id="${inv.id}"
+                                                th:data-name="${inv.productName}"
+                                                th:data-used="${#numbers.formatInteger(inv.usedQuantity, 1)}"
+                                                title="차감">
+                                            <i class="bi bi-dash-circle"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success restore-btn"
+                                                th:data-id="${inv.id}"
+                                                th:data-name="${inv.productName}"
+                                                th:data-used="${#numbers.formatInteger(inv.usedQuantity, 1)}"
+                                                title="복구">
+                                            <i class="bi bi-plus-circle"></i>
+                                        </button>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center gap-1 flex-wrap">
@@ -363,6 +385,27 @@
         </div>
     </div>
 
+    <!-- Usage Log Modal -->
+    <div class="modal fade" id="usageLogModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">사용량 변경 이력</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3"><strong id="usageLogProductName"></strong></p>
+                    <div id="usageLogList">
+                        <p class="text-muted text-center">로딩 중...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script th:inline="javascript">
@@ -438,7 +481,9 @@
         // Note modal
         let noteModal;
         let expiryModal;
+        let usageLogModal;
         document.addEventListener('DOMContentLoaded', function() {
+            usageLogModal = new bootstrap.Modal(document.getElementById('usageLogModal'));
             noteModal = new bootstrap.Modal(document.getElementById('noteModal'));
             expiryModal = new bootstrap.Modal(document.getElementById('expiryModal'));
         });
@@ -460,6 +505,58 @@
                 expiryModal.show();
             });
         });
+
+        // Event listeners for usage log buttons
+        document.querySelectorAll('.usage-log-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const productId = this.dataset.productId;
+                const name = this.dataset.name;
+
+                document.getElementById('usageLogProductName').textContent = name + ' (' + selectedYearMonth + ')';
+                loadUsageLogData(productId, selectedYearMonth);
+                usageLogModal.show();
+            });
+        });
+
+        // 사용량 이력 데이터 로드
+        function loadUsageLogData(productId, yearMonth) {
+            document.getElementById('usageLogList').innerHTML = '<p class="text-muted text-center">로딩 중...</p>';
+
+            fetch('/api/inventory/stocks/product/' + productId + '/usage-logs?yearMonth=' + yearMonth)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        document.getElementById('usageLogList').innerHTML =
+                            '<p class="text-muted text-center">사용량 변경 이력이 없습니다.</p>';
+                        return;
+                    }
+
+                    let html = '<table class="table table-sm align-middle"><thead><tr>' +
+                        '<th>일시</th><th>구분</th><th>수량</th><th>사용량</th><th>남은재고</th><th>사용자</th></tr></thead><tbody>';
+
+                    data.forEach(log => {
+                        const actionClass = log.action === 'DEDUCT' ? 'text-danger' : 'text-success';
+                        const actionIcon = log.action === 'DEDUCT' ? '-' : '+';
+
+                        html += '<tr>' +
+                            '<td>' + (log.createdAtStr || '-') + '</td>' +
+                            '<td><span class="badge ' + (log.action === 'DEDUCT' ? 'bg-danger' : 'bg-success') + '">' + log.actionLabel + '</span></td>' +
+                            '<td class="' + actionClass + ' fw-bold">' + actionIcon + Math.floor(log.quantity) + '</td>' +
+                            '<td>' + Math.floor(log.beforeUsed) + ' → ' + Math.floor(log.afterUsed) + '</td>' +
+                            '<td>' + Math.floor(log.beforeRemaining) + ' → ' + Math.floor(log.afterRemaining) + '</td>' +
+                            '<td><small class="text-muted">' + (log.username || '-') + '</small></td>' +
+                            '</tr>';
+                    });
+
+                    html += '</tbody></table>';
+                    document.getElementById('usageLogList').innerHTML = html;
+                })
+                .catch(error => {
+                    document.getElementById('usageLogList').innerHTML =
+                        '<p class="text-danger text-center">조회 실패</p>';
+                    console.error(error);
+                });
+        }
 
         function loadExpiryData() {
             document.getElementById('expiryList').innerHTML = '<p class="text-muted text-center">로딩 중...</p>';
@@ -690,6 +787,51 @@
                 .catch(error => {
                     console.error('Deduct failed:', error);
                     alert('차감에 실패했습니다.');
+                });
+            });
+        });
+
+        // Restore stock (복구)
+        document.querySelectorAll('.restore-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const productName = this.dataset.name;
+                const currentUsed = parseInt(this.dataset.used) || 0;
+
+                if (currentUsed <= 0) {
+                    alert('복구할 사용량이 없습니다.');
+                    return;
+                }
+
+                const amount = prompt(productName + '\n현재 사용량: ' + currentUsed + '\n\n복구할 수량을 입력하세요:\n(유효기간 늦은 순으로 복구됩니다)');
+                if (amount === null) return;
+
+                const restoreAmount = parseInt(amount);
+                if (isNaN(restoreAmount) || restoreAmount <= 0) {
+                    alert('올바른 수량을 입력해주세요.');
+                    return;
+                }
+
+                if (restoreAmount > currentUsed) {
+                    alert('복구 수량이 현재 사용량(' + currentUsed + ')보다 클 수 없습니다.');
+                    return;
+                }
+
+                // 복구 API 호출
+                fetch('/api/inventory/stocks/' + id + '/restore?quantity=' + restoreAmount, {
+                    method: 'POST'
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('복구 실패');
+                    return response.json();
+                })
+                .then(inventory => {
+                    alert(productName + '\n복구: ' + restoreAmount + '개\n사용량: ' + currentUsed + ' → ' + Math.floor(inventory.usedQuantity) + '\n남은재고: ' + Math.floor(inventory.remainingStock));
+                    location.reload();
+                })
+                .catch(error => {
+                    console.error('Restore failed:', error);
+                    alert('복구에 실패했습니다.');
                 });
             });
         });

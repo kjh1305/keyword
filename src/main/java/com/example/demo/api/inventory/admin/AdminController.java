@@ -4,6 +4,7 @@ import com.example.demo.api.inventory.log.ActivityLogService;
 import com.example.demo.api.inventory.order.StockOrderRepository;
 import com.example.demo.api.inventory.product.ProductRepository;
 import com.example.demo.api.inventory.stock.InventoryRepository;
+import com.example.demo.api.inventory.stock.UsageLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,6 +22,7 @@ public class AdminController {
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final StockOrderRepository stockOrderRepository;
+    private final UsageLogRepository usageLogRepository;
     private final ActivityLogService activityLogService;
 
     // View - 관리자 페이지
@@ -50,28 +52,31 @@ public class AdminController {
         return ResponseEntity.ok(result);
     }
 
-    // API - 상품 데이터 전체 삭제 (재고, 주문도 함께 삭제)
+    // API - 상품 데이터 전체 삭제 (재고, 주문, 사용량 로그도 함께 삭제)
     @DeleteMapping("/api/inventory/admin/products")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> deleteAllProducts() {
+        long usageLogCount = usageLogRepository.count();
         long orderCount = stockOrderRepository.count();
         long inventoryCount = inventoryRepository.count();
         long productCount = productRepository.count();
 
-        // 순서대로 삭제 (외래키 제약)
+        // 순서대로 삭제 (외래키 제약 - usage_log -> product 참조)
+        usageLogRepository.deleteAll();
         stockOrderRepository.deleteAll();
         inventoryRepository.deleteAll();
         productRepository.deleteAll();
 
         activityLogService.log("DELETE", "SYSTEM", null, "전체 데이터 삭제",
-                "상품: " + productCount + ", 재고: " + inventoryCount + ", 주문: " + orderCount);
+                "상품: " + productCount + ", 재고: " + inventoryCount + ", 주문: " + orderCount + ", 사용로그: " + usageLogCount);
 
         Map<String, Object> result = new HashMap<>();
-        result.put("message", "상품 " + productCount + "건, 재고 " + inventoryCount + "건, 주문 " + orderCount + "건이 삭제되었습니다.");
+        result.put("message", "상품 " + productCount + "건, 재고 " + inventoryCount + "건, 주문 " + orderCount + "건, 사용로그 " + usageLogCount + "건이 삭제되었습니다.");
         result.put("deletedProducts", productCount);
         result.put("deletedInventories", inventoryCount);
         result.put("deletedOrders", orderCount);
+        result.put("deletedUsageLogs", usageLogCount);
         return ResponseEntity.ok(result);
     }
 

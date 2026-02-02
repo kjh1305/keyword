@@ -32,6 +32,7 @@ public class InventoryService {
     private final ProductRepository productRepository;
     private final ActivityLogService activityLogService;
     private final StockOrderRepository stockOrderRepository;
+    private final UsageLogRepository usageLogRepository;
 
     public List<InventoryDTO> getInventoryByMonth(String yearMonth, String category, String keyword) {
         String cat = (category == null || category.isEmpty()) ? null : category;
@@ -51,14 +52,48 @@ public class InventoryService {
         LocalDate today = LocalDate.now();
         LocalDate thirtyDaysFromNow = today.plusDays(30);
 
-        // 전체 데이터를 가져와서 DTO 변환 + 유효기간 정보 추가
-        List<Inventory> allInventories = inventoryRepository.searchInventory(yearMonth, cat, kw);
+        // 선택한 월과 이전 달 계산
+        // yearMonth = 선택한 달 (예: 2025-02) → 주문 조회용
+        // prevYearMonth = 이전 달 (예: 2025-01) → 재고 조회용
+        String prevYearMonth = yearMonth;
+        int orderYear = 0;
+        int orderMonth = 0;
+        if (yearMonth != null && !yearMonth.isEmpty()) {
+            YearMonth selectedYM = YearMonth.parse(yearMonth);
+            YearMonth prevYM = selectedYM.minusMonths(1);  // 재고는 이전 달 기준
+            prevYearMonth = prevYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            orderYear = selectedYM.getYear();  // 주문은 선택한 달 기준
+            orderMonth = selectedYM.getMonthValue();
+        }
+        final int finalOrderYear = orderYear;
+        final int finalOrderMonth = orderMonth;
+
+        // 재고 데이터는 이전 달 기준으로 조회 (2월 선택 시 1월 재고)
+        List<Inventory> allInventories = inventoryRepository.searchInventory(prevYearMonth, cat, kw);
 
         List<InventoryDTO> allDtos = allInventories.stream()
                 .map(inv -> {
                     InventoryDTO dto = InventoryDTO.fromEntity(inv);
+                    Long productId = inv.getProduct().getId();
+
+                    // 주문재고: 해당 월 기준 입고대기/입고완료 수량
+                    BigDecimal pendingStock = BigDecimal.ZERO;
+                    BigDecimal completedStock = BigDecimal.ZERO;
+                    if (finalOrderYear > 0 && finalOrderMonth > 0) {
+                        pendingStock = stockOrderRepository.sumPendingQuantityByProductIdAndMonth(productId, finalOrderYear, finalOrderMonth);
+                        completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(productId, finalOrderYear, finalOrderMonth);
+                    }
+                    dto.setPendingStock(pendingStock != null ? pendingStock : BigDecimal.ZERO);
+                    dto.setCompletedStock(completedStock != null ? completedStock : BigDecimal.ZERO);
+
+                    // 남은재고 재계산: 월초재고 + 입고완료된 주문재고 - 사용량
+                    BigDecimal initialStock = dto.getInitialStock() != null ? dto.getInitialStock() : BigDecimal.ZERO;
+                    BigDecimal completed = dto.getCompletedStock() != null ? dto.getCompletedStock() : BigDecimal.ZERO;
+                    BigDecimal used = dto.getUsedQuantity() != null ? dto.getUsedQuantity() : BigDecimal.ZERO;
+                    dto.setRemainingStock(initialStock.add(completed).subtract(used));
+
                     // StockOrder에서 해당 제품의 유효기간 목록 가져오기 (유효기간 빠른 순)
-                    List<StockOrder> orders = stockOrderRepository.findAllExpiryByProductId(inv.getProduct().getId());
+                    List<StockOrder> orders = stockOrderRepository.findAllExpiryByProductId(productId);
 
                     // 유효기간 문자열 목록 (미소진 + 유효기간 지나지 않은 것만)
                     List<String> expiryDates = orders.stream()
@@ -164,16 +199,33 @@ public class InventoryService {
     }
 
     public List<String> getAllYearMonths() {
-        List<String> months = inventoryRepository.findAllYearMonths();
-        if (months.isEmpty()) {
-            months = new ArrayList<>();
-            months.add(YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM")));
+        List<String> dbMonths = inventoryRepository.findAllYearMonths();
+
+        // DB에 있는 월들의 다음 달도 추가 (재고 현황에서 선택 가능하도록)
+        // 예: DB에 2026-01이 있으면 2026-02도 표시 (2026-02 선택 시 2026-01 재고 보임)
+        java.util.Set<String> monthSet = new java.util.TreeSet<>(dbMonths);
+
+        for (String month : dbMonths) {
+            YearMonth ym = YearMonth.parse(month);
+            String nextMonth = ym.plusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            monthSet.add(nextMonth);
         }
-        return months;
+
+        // 현재 월도 추가
+        String currentMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        monthSet.add(currentMonth);
+
+        List<String> result = new ArrayList<>(monthSet);
+        java.util.Collections.reverse(result);  // 최신순 정렬
+        return result;
     }
 
     public String getCurrentYearMonth() {
         return YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+    }
+
+    public String getCurrentDate() {
+        return java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 
     public InventoryDTO getInventoryById(Long id) {
@@ -295,6 +347,10 @@ public class InventoryService {
 
         Long productId = inventory.getProduct().getId();
 
+        // 변경 전 값 저장
+        BigDecimal beforeUsed = inventory.getUsedQuantity() != null ? inventory.getUsedQuantity() : BigDecimal.ZERO;
+        BigDecimal beforeRemaining = inventory.getRemainingStock() != null ? inventory.getRemainingStock() : BigDecimal.ZERO;
+
         // FIFO 차감 (유효기간 빠른 순으로)
         List<StockOrder> activeOrders = stockOrderRepository.findActiveExpiryByProductId(productId);
         BigDecimal remaining = quantityToDeduct;
@@ -326,8 +382,7 @@ public class InventoryService {
         }
 
         // Inventory 사용량 업데이트
-        BigDecimal currentUsed = inventory.getUsedQuantity() != null ? inventory.getUsedQuantity() : BigDecimal.ZERO;
-        inventory.setUsedQuantity(currentUsed.add(quantityToDeduct));
+        inventory.setUsedQuantity(beforeUsed.add(quantityToDeduct));
 
         // 남은재고 재계산
         BigDecimal addedStock = inventory.getAddedStock() != null ? inventory.getAddedStock() : BigDecimal.ZERO;
@@ -335,9 +390,130 @@ public class InventoryService {
         inventory.setRemainingStock(initialStock.add(addedStock).subtract(inventory.getUsedQuantity()));
 
         Inventory saved = inventoryRepository.save(inventory);
+
+        // 사용량 이력 저장 (차감 시점의 현재 일자로 저장)
+        UsageLog usageLog = UsageLog.builder()
+                .product(inventory.getProduct())
+                .actionDate(getCurrentDate())
+                .action("DEDUCT")
+                .quantity(quantityToDeduct)
+                .beforeUsed(beforeUsed)
+                .afterUsed(saved.getUsedQuantity())
+                .beforeRemaining(beforeRemaining)
+                .afterRemaining(saved.getRemainingStock())
+                .username(getCurrentUsername())
+                .build();
+        usageLogRepository.save(usageLog);
+
         activityLogService.logUpdate("INVENTORY", saved.getId(), saved.getProduct().getName(),
                 "재고 차감 - " + quantityToDeduct + " (FIFO)");
 
         return InventoryDTO.fromEntity(saved);
+    }
+
+    /**
+     * 재고 복구 (역FIFO - 유효기간 늦은 순으로)
+     */
+    @Transactional
+    public InventoryDTO restoreStock(Long inventoryId, BigDecimal quantityToRestore) {
+        Inventory inventory = inventoryRepository.findById(inventoryId)
+                .orElseThrow(() -> new IllegalArgumentException("재고 정보를 찾을 수 없습니다: " + inventoryId));
+
+        Long productId = inventory.getProduct().getId();
+
+        // 변경 전 값 저장
+        BigDecimal beforeUsed = inventory.getUsedQuantity() != null ? inventory.getUsedQuantity() : BigDecimal.ZERO;
+        BigDecimal beforeRemaining = inventory.getRemainingStock() != null ? inventory.getRemainingStock() : BigDecimal.ZERO;
+
+        // 역FIFO 복구 (유효기간 늦은 순으로, 소진된 것 포함)
+        List<StockOrder> orders = stockOrderRepository.findAllExpiryByProductIdDesc(productId);
+        BigDecimal remaining = quantityToRestore;
+
+        for (StockOrder order : orders) {
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
+
+            // 수량이 없는 경우 제외
+            if (order.getQuantity() == null) continue;
+
+            BigDecimal currentRemaining = order.getRemainingQuantity() != null ? order.getRemainingQuantity() : BigDecimal.ZERO;
+            BigDecimal maxQuantity = order.getQuantity();
+            BigDecimal canRestore = maxQuantity.subtract(currentRemaining);
+
+            if (canRestore.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+            BigDecimal toRestore = remaining.min(canRestore);
+            order.setRemainingQuantity(currentRemaining.add(toRestore));
+
+            // 복구 후 남은수량이 있으면 소진완료 해제
+            if (order.getRemainingQuantity().compareTo(BigDecimal.ZERO) > 0) {
+                order.setConsumed(false);
+            }
+
+            stockOrderRepository.save(order);
+            remaining = remaining.subtract(toRestore);
+
+            activityLogService.logUpdate("ORDER", order.getId(), order.getProduct().getName(),
+                    "재고 복구 - " + toRestore + " (유효기간: " +
+                            (order.getExpiryDate() != null ?
+                                    order.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "미지정") + ")");
+        }
+
+        // Inventory 사용량 감소
+        BigDecimal newUsed = beforeUsed.subtract(quantityToRestore);
+        if (newUsed.compareTo(BigDecimal.ZERO) < 0) {
+            newUsed = BigDecimal.ZERO;
+        }
+        inventory.setUsedQuantity(newUsed);
+
+        // 남은재고 재계산
+        BigDecimal addedStock = inventory.getAddedStock() != null ? inventory.getAddedStock() : BigDecimal.ZERO;
+        BigDecimal initialStock = inventory.getInitialStock() != null ? inventory.getInitialStock() : BigDecimal.ZERO;
+        inventory.setRemainingStock(initialStock.add(addedStock).subtract(inventory.getUsedQuantity()));
+
+        Inventory saved = inventoryRepository.save(inventory);
+
+        // 사용량 이력 저장 (복구 시점의 현재 일자로 저장)
+        UsageLog usageLog = UsageLog.builder()
+                .product(inventory.getProduct())
+                .actionDate(getCurrentDate())
+                .action("RESTORE")
+                .quantity(quantityToRestore)
+                .beforeUsed(beforeUsed)
+                .afterUsed(saved.getUsedQuantity())
+                .beforeRemaining(beforeRemaining)
+                .afterRemaining(saved.getRemainingStock())
+                .username(getCurrentUsername())
+                .build();
+        usageLogRepository.save(usageLog);
+
+        activityLogService.logUpdate("INVENTORY", saved.getId(), saved.getProduct().getName(),
+                "재고 복구 - " + quantityToRestore);
+
+        return InventoryDTO.fromEntity(saved);
+    }
+
+    /**
+     * 제품별 + 년월별 사용량 이력 조회
+     */
+    public List<UsageLogDTO> getUsageLogsByProductIdAndYearMonth(Long productId, String yearMonth) {
+        return usageLogRepository.findByProductIdAndYearMonth(productId, yearMonth).stream()
+                .map(UsageLogDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 현재 사용자명 조회
+     */
+    private String getCurrentUsername() {
+        try {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+                return auth.getName();
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+        return "SYSTEM";
     }
 }
