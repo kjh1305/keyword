@@ -94,10 +94,11 @@ public class InventoryService {
                     }
                     dto.setCurrentMonthUsedQuantity(operationalUsed);
 
-                    // 남은재고 재계산: 월초재고 + 입고완료된 주문재고 - 운영용 사용량
+                    // 남은재고 재계산: 월초재고 + 입고완료 - 전월사용량(보고용) - 당월사용량(운영용)
                     BigDecimal initialStock = dto.getInitialStock() != null ? dto.getInitialStock() : BigDecimal.ZERO;
                     BigDecimal completed = dto.getCompletedStock() != null ? dto.getCompletedStock() : BigDecimal.ZERO;
-                    dto.setRemainingStock(initialStock.add(completed).subtract(operationalUsed));
+                    BigDecimal reportUsed = dto.getUsedQuantity() != null ? dto.getUsedQuantity() : BigDecimal.ZERO;
+                    dto.setRemainingStock(initialStock.add(completed).subtract(reportUsed).subtract(operationalUsed));
 
                     // StockOrder에서 해당 제품의 유효기간 목록 가져오기 (유효기간 빠른 순)
                     List<StockOrder> orders = stockOrderRepository.findAllExpiryByProductId(productId);
@@ -300,26 +301,60 @@ public class InventoryService {
     public void initializeMonthlyInventory(String yearMonth) {
         List<Product> allProducts = productRepository.findAll();
 
+        // 월 계산
+        // yearMonth = 3월 (새로 생성할 달)
+        // displayYM = 2월 (마감할 화면 기준 달, UsageLog/입고 조회용)
+        // dataYM = 1월 (현재 Inventory 데이터 달)
+        YearMonth currentYM = YearMonth.parse(yearMonth);
+        YearMonth displayYM = currentYM.minusMonths(1);
+        YearMonth dataYM = displayYM.minusMonths(1);
+        String displayYearMonth = displayYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        String dataYearMonth = dataYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+
         for (Product product : allProducts) {
-            if (!inventoryRepository.existsByProductIdAndYearMonth(product.getId(), yearMonth)) {
-                Inventory previousInventory = getPreviousMonthInventory(product.getId(), yearMonth);
+            Long productId = product.getId();
 
-                Inventory.InventoryBuilder builder = Inventory.builder()
+            // 1월 Inventory 조회 (현재 화면의 데이터)
+            Inventory dataInventory = inventoryRepository.findByProductIdAndYearMonth(productId, dataYearMonth)
+                    .orElse(null);
+
+            // 2월 UsageLog 합계 (당월사용량)
+            BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(
+                    productId, displayYearMonth);
+            if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
+
+            // 2월 입고완료 수량
+            BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(
+                    productId, displayYM.getYear(), displayYM.getMonthValue());
+            if (completedStock == null) completedStock = BigDecimal.ZERO;
+
+            // 현재 남은수량 계산: 1월.월초재고 + 2월입고 - 1월.전월사용량 - 2월.당월사용량
+            BigDecimal prevInitialStock = BigDecimal.ZERO;
+            BigDecimal prevReportUsed = BigDecimal.ZERO;
+            if (dataInventory != null) {
+                prevInitialStock = dataInventory.getInitialStock() != null
+                        ? dataInventory.getInitialStock() : BigDecimal.ZERO;
+                prevReportUsed = dataInventory.getUsedQuantity() != null
+                        ? dataInventory.getUsedQuantity() : BigDecimal.ZERO;
+            }
+            BigDecimal remainingStock = prevInitialStock.add(completedStock).subtract(prevReportUsed).subtract(operationalUsed);
+
+            // 2월 Inventory 생성 (새 보고용 데이터)
+            // initialStock = remainingStock + usedQuantity
+            if (!inventoryRepository.existsByProductIdAndYearMonth(productId, displayYearMonth)) {
+                BigDecimal newInitialStock = remainingStock.add(operationalUsed);
+
+                Inventory newInventory = Inventory.builder()
                         .product(product)
-                        .yearMonth(yearMonth)
-                        .usedQuantity(BigDecimal.ZERO);
+                        .yearMonth(displayYearMonth)
+                        .initialStock(newInitialStock)
+                        .usedQuantity(operationalUsed)
+                        .remainingStock(remainingStock)
+                        .expiryDate(dataInventory != null ? dataInventory.getExpiryDate() : null)
+                        .note(dataInventory != null ? dataInventory.getNote() : null)
+                        .build();
 
-                if (previousInventory != null) {
-                    // 이전 달 데이터가 있으면 남은재고, 유효기간, 비고 이월
-                    builder.initialStock(previousInventory.getRemainingStock() != null
-                            ? previousInventory.getRemainingStock() : BigDecimal.ZERO)
-                           .expiryDate(previousInventory.getExpiryDate())
-                           .note(previousInventory.getNote());
-                } else {
-                    builder.initialStock(BigDecimal.ZERO);
-                }
-
-                inventoryRepository.save(builder.build());
+                inventoryRepository.save(newInventory);
             }
         }
     }
