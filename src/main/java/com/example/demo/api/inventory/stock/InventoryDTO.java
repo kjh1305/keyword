@@ -23,7 +23,8 @@ public class InventoryDTO {
     private BigDecimal addedStock;          // 기존 필드 유지 (DB 호환)
     private BigDecimal pendingStock;        // 입고대기 수량
     private BigDecimal completedStock;      // 입고완료 수량
-    private BigDecimal usedQuantity;
+    private BigDecimal usedQuantity;           // 보고용 사용량 (엑셀 업로드 데이터)
+    private BigDecimal currentMonthUsedQuantity; // 운영용 사용량 (UsageLog 기반, 실제 차감량)
     private BigDecimal remainingStock;
     private LocalDate expiryDate;
     private String expiryDateStr;

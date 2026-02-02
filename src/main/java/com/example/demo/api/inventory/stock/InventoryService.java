@@ -86,11 +86,18 @@ public class InventoryService {
                     dto.setPendingStock(pendingStock != null ? pendingStock : BigDecimal.ZERO);
                     dto.setCompletedStock(completedStock != null ? completedStock : BigDecimal.ZERO);
 
-                    // 남은재고 재계산: 월초재고 + 입고완료된 주문재고 - 사용량
+                    // 운영용 사용량: UsageLog 기반 (실제 차감량, 선택한 월 기준)
+                    BigDecimal operationalUsed = BigDecimal.ZERO;
+                    if (yearMonth != null && !yearMonth.isEmpty()) {
+                        operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(productId, yearMonth);
+                        if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
+                    }
+                    dto.setCurrentMonthUsedQuantity(operationalUsed);
+
+                    // 남은재고 재계산: 월초재고 + 입고완료된 주문재고 - 운영용 사용량
                     BigDecimal initialStock = dto.getInitialStock() != null ? dto.getInitialStock() : BigDecimal.ZERO;
                     BigDecimal completed = dto.getCompletedStock() != null ? dto.getCompletedStock() : BigDecimal.ZERO;
-                    BigDecimal used = dto.getUsedQuantity() != null ? dto.getUsedQuantity() : BigDecimal.ZERO;
-                    dto.setRemainingStock(initialStock.add(completed).subtract(used));
+                    dto.setRemainingStock(initialStock.add(completed).subtract(operationalUsed));
 
                     // StockOrder에서 해당 제품의 유효기간 목록 가져오기 (유효기간 빠른 순)
                     List<StockOrder> orders = stockOrderRepository.findAllExpiryByProductId(productId);
@@ -381,15 +388,8 @@ public class InventoryService {
                                     order.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "미지정") + ")");
         }
 
-        // Inventory 사용량 업데이트
-        inventory.setUsedQuantity(beforeUsed.add(quantityToDeduct));
-
-        // 남은재고 재계산
-        BigDecimal addedStock = inventory.getAddedStock() != null ? inventory.getAddedStock() : BigDecimal.ZERO;
-        BigDecimal initialStock = inventory.getInitialStock() != null ? inventory.getInitialStock() : BigDecimal.ZERO;
-        inventory.setRemainingStock(initialStock.add(addedStock).subtract(inventory.getUsedQuantity()));
-
-        Inventory saved = inventoryRepository.save(inventory);
+        // 운영용 사용량은 UsageLog로만 관리 (Inventory.usedQuantity는 보고용으로 유지)
+        // 남은재고는 조회 시 UsageLog 기반으로 계산되므로 여기서는 업데이트하지 않음
 
         // 사용량 이력 저장 (차감 시점의 현재 일자로 저장)
         UsageLog usageLog = UsageLog.builder()
@@ -398,17 +398,17 @@ public class InventoryService {
                 .action("DEDUCT")
                 .quantity(quantityToDeduct)
                 .beforeUsed(beforeUsed)
-                .afterUsed(saved.getUsedQuantity())
+                .afterUsed(beforeUsed.add(quantityToDeduct))
                 .beforeRemaining(beforeRemaining)
-                .afterRemaining(saved.getRemainingStock())
+                .afterRemaining(beforeRemaining.subtract(quantityToDeduct))
                 .username(getCurrentUsername())
                 .build();
         usageLogRepository.save(usageLog);
 
-        activityLogService.logUpdate("INVENTORY", saved.getId(), saved.getProduct().getName(),
+        activityLogService.logUpdate("INVENTORY", inventory.getId(), inventory.getProduct().getName(),
                 "재고 차감 - " + quantityToDeduct + " (FIFO)");
 
-        return InventoryDTO.fromEntity(saved);
+        return InventoryDTO.fromEntity(inventory);
     }
 
     /**
@@ -458,38 +458,32 @@ public class InventoryService {
                                     order.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "미지정") + ")");
         }
 
-        // Inventory 사용량 감소
+        // 운영용 사용량은 UsageLog로만 관리 (Inventory.usedQuantity는 보고용으로 유지)
+        // 남은재고는 조회 시 UsageLog 기반으로 계산되므로 여기서는 업데이트하지 않음
+
+        // 사용량 이력 저장 (복구 시점의 현재 일자로 저장)
         BigDecimal newUsed = beforeUsed.subtract(quantityToRestore);
         if (newUsed.compareTo(BigDecimal.ZERO) < 0) {
             newUsed = BigDecimal.ZERO;
         }
-        inventory.setUsedQuantity(newUsed);
 
-        // 남은재고 재계산
-        BigDecimal addedStock = inventory.getAddedStock() != null ? inventory.getAddedStock() : BigDecimal.ZERO;
-        BigDecimal initialStock = inventory.getInitialStock() != null ? inventory.getInitialStock() : BigDecimal.ZERO;
-        inventory.setRemainingStock(initialStock.add(addedStock).subtract(inventory.getUsedQuantity()));
-
-        Inventory saved = inventoryRepository.save(inventory);
-
-        // 사용량 이력 저장 (복구 시점의 현재 일자로 저장)
         UsageLog usageLog = UsageLog.builder()
                 .product(inventory.getProduct())
                 .actionDate(getCurrentDate())
                 .action("RESTORE")
                 .quantity(quantityToRestore)
                 .beforeUsed(beforeUsed)
-                .afterUsed(saved.getUsedQuantity())
+                .afterUsed(newUsed)
                 .beforeRemaining(beforeRemaining)
-                .afterRemaining(saved.getRemainingStock())
+                .afterRemaining(beforeRemaining.add(quantityToRestore))
                 .username(getCurrentUsername())
                 .build();
         usageLogRepository.save(usageLog);
 
-        activityLogService.logUpdate("INVENTORY", saved.getId(), saved.getProduct().getName(),
+        activityLogService.logUpdate("INVENTORY", inventory.getId(), inventory.getProduct().getName(),
                 "재고 복구 - " + quantityToRestore);
 
-        return InventoryDTO.fromEntity(saved);
+        return InventoryDTO.fromEntity(inventory);
     }
 
     /**
