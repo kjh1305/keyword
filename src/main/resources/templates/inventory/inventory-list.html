@@ -169,7 +169,7 @@
                                 <th style="min-width: 200px;">제품명</th>
                                 <th style="width: 90px;">월초재고</th>
                                 <th style="width: 120px;">주문재고</th>
-                                <th style="width: 90px;">사용량</th>
+                                <th style="width: 90px;">당월사용</th>
                                 <th style="width: 90px;">남은재고</th>
                                 <th style="width: 80px;"></th>
                                 <th style="min-width: 150px;">유효기간</th>
@@ -209,7 +209,9 @@
                                     <span th:if="${inv.pendingStock <= 0 and inv.completedStock <= 0}" class="text-muted">-</span>
                                 </td>
                                 <td class="text-end">
-                                    <span th:text="${#numbers.formatInteger(inv.usedQuantity, 1)}"></span>
+                                    <span th:text="${#numbers.formatInteger(inv.currentMonthUsedQuantity, 1)}" class="fw-bold"></span>
+                                    <small class="text-muted ms-1" style="font-size: 0.75rem;"
+                                           th:text="'(전월: ' + ${#numbers.formatInteger(inv.usedQuantity != null ? inv.usedQuantity : 0, 1)} + ')'"></small>
                                     <button class="btn btn-sm btn-link p-0 ms-1 usage-log-btn"
                                             th:data-product-id="${inv.productId}"
                                             th:data-name="${inv.productName}"
@@ -226,14 +228,14 @@
                                         <button class="btn btn-warning deduct-btn"
                                                 th:data-id="${inv.id}"
                                                 th:data-name="${inv.productName}"
-                                                th:data-used="${#numbers.formatInteger(inv.usedQuantity, 1)}"
+                                                th:data-used="${#numbers.formatInteger(inv.currentMonthUsedQuantity, 1)}"
                                                 title="차감">
                                             <i class="bi bi-dash-circle"></i>
                                         </button>
                                         <button class="btn btn-outline-success restore-btn"
                                                 th:data-id="${inv.id}"
                                                 th:data-name="${inv.productName}"
-                                                th:data-used="${#numbers.formatInteger(inv.usedQuantity, 1)}"
+                                                th:data-used="${#numbers.formatInteger(inv.currentMonthUsedQuantity, 1)}"
                                                 title="복구">
                                             <i class="bi bi-plus-circle"></i>
                                         </button>
@@ -781,7 +783,8 @@
                     return response.json();
                 })
                 .then(inventory => {
-                    alert(productName + '\n차감: ' + deductAmount + '개 (FIFO)\n사용량: ' + currentUsed + ' → ' + Math.floor(inventory.usedQuantity) + '\n남은재고: ' + Math.floor(inventory.remainingStock));
+                    const newUsed = currentUsed + deductAmount;
+                    alert(productName + '\n차감: ' + deductAmount + '개 (FIFO)\n운영 사용량: ' + currentUsed + ' → ' + newUsed);
                     location.reload();
                 })
                 .catch(error => {
@@ -826,7 +829,8 @@
                     return response.json();
                 })
                 .then(inventory => {
-                    alert(productName + '\n복구: ' + restoreAmount + '개\n사용량: ' + currentUsed + ' → ' + Math.floor(inventory.usedQuantity) + '\n남은재고: ' + Math.floor(inventory.remainingStock));
+                    const newUsed = currentUsed - restoreAmount;
+                    alert(productName + '\n복구: ' + restoreAmount + '개\n운영 사용량: ' + currentUsed + ' → ' + newUsed);
                     location.reload();
                 })
                 .catch(error => {
