@@ -17,28 +17,33 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-5">
                         <div class="mb-3">
                             <label class="form-label">엑셀 파일 선택</label>
                             <input type="file" class="form-control" id="excelFile"
-                                   accept=".xlsx,.xls">
+                                   accept=".xlsx,.xls" onchange="loadSheetList()">
                             <div class="form-text">
                                 .xlsx 또는 .xls 파일을 선택해주세요.
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <div class="mb-3">
+                            <label class="form-label">시트 선택</label>
+                            <select class="form-select" id="sheetSelect" disabled>
+                                <option value="0">파일을 먼저 선택하세요</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
                         <div class="mb-3">
                             <label class="form-label">적용 년월</label>
                             <input type="month" class="form-control" id="yearMonth"
                                    th:value="${currentYearMonth}">
-                            <div class="form-text">
-                                재고 데이터를 적용할 년월
-                            </div>
                         </div>
                     </div>
                     <div class="col-md-3 d-flex align-items-center">
-                        <button type="button" class="btn btn-primary w-100" onclick="parseFile()">
+                        <button type="button" class="btn btn-primary w-100" onclick="parseFile()" id="parseBtn" disabled>
                             <i class="bi bi-file-earmark-check me-1"></i>파일 분석
                         </button>
                     </div>
@@ -135,10 +140,68 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script>
         let parsedData = [];
+        let currentFile = null;
+
+        // 파일 선택 시 시트 목록 로드
+        function loadSheetList() {
+            const fileInput = document.getElementById('excelFile');
+            const file = fileInput.files[0];
+            const sheetSelect = document.getElementById('sheetSelect');
+            const parseBtn = document.getElementById('parseBtn');
+
+            if (!file) {
+                sheetSelect.innerHTML = '<option value="0">파일을 먼저 선택하세요</option>';
+                sheetSelect.disabled = true;
+                parseBtn.disabled = true;
+                currentFile = null;
+                return;
+            }
+
+            currentFile = file;
+            sheetSelect.innerHTML = '<option value="">로딩 중...</option>';
+            sheetSelect.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/inventory/import/sheets', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log('시트 목록 응답:', result);
+
+                if (result.error) {
+                    alert(result.error);
+                    sheetSelect.innerHTML = '<option value="0">시트 목록 조회 실패</option>';
+                    return;
+                }
+
+                console.log('시트 개수:', result.sheets.length);
+                result.sheets.forEach(s => console.log('시트:', s));
+
+                sheetSelect.innerHTML = '';
+                result.sheets.forEach(sheet => {
+                    const option = document.createElement('option');
+                    option.value = sheet.index;
+                    option.textContent = sheet.name + ' (' + sheet.rowCount + '행)';
+                    sheetSelect.appendChild(option);
+                });
+
+                sheetSelect.disabled = false;
+                parseBtn.disabled = false;
+            })
+            .catch(error => {
+                alert('시트 목록 조회 실패: ' + error.message);
+                sheetSelect.innerHTML = '<option value="0">조회 실패</option>';
+            });
+        }
 
         function parseFile() {
             const fileInput = document.getElementById('excelFile');
             const file = fileInput.files[0];
+            const sheetIndex = document.getElementById('sheetSelect').value;
 
             if (!file) {
                 alert('파일을 선택해주세요.');
@@ -147,6 +210,7 @@
 
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('sheetIndex', sheetIndex);
 
             fetch('/api/inventory/import/parse', {
                 method: 'POST',
@@ -198,8 +262,12 @@
 
         function clearPreview() {
             parsedData = [];
+            currentFile = null;
             document.getElementById('previewSection').style.display = 'none';
             document.getElementById('excelFile').value = '';
+            document.getElementById('sheetSelect').innerHTML = '<option value="0">파일을 먼저 선택하세요</option>';
+            document.getElementById('sheetSelect').disabled = true;
+            document.getElementById('parseBtn').disabled = true;
         }
 
         function importData() {

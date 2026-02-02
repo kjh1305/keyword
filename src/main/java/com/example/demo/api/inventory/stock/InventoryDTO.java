@@ -20,7 +20,9 @@ public class InventoryDTO {
     private String productUnit;
     private String yearMonth;
     private BigDecimal initialStock;
-    private BigDecimal addedStock;
+    private BigDecimal addedStock;          // 기존 필드 유지 (DB 호환)
+    private BigDecimal pendingStock;        // 입고대기 수량
+    private BigDecimal completedStock;      // 입고완료 수량
     private BigDecimal usedQuantity;
     private BigDecimal remainingStock;
     private LocalDate expiryDate;

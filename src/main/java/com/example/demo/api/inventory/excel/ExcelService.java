@@ -33,13 +33,47 @@ public class ExcelService {
     private final InventoryRepository inventoryRepository;
     private final StockOrderRepository stockOrderRepository;
 
+    /**
+     * 엑셀 파일의 시트 목록 조회
+     */
+    public List<Map<String, Object>> getSheetList(MultipartFile file) throws IOException {
+        List<Map<String, Object>> sheets = new ArrayList<>();
+
+        try (InputStream is = file.getInputStream();
+             Workbook workbook = WorkbookFactory.create(is)) {
+
+            int sheetCount = workbook.getNumberOfSheets();
+            log.info("엑셀 파일 시트 개수: {}", sheetCount);
+
+            for (int i = 0; i < sheetCount; i++) {
+                Sheet sheet = workbook.getSheetAt(i);
+                Map<String, Object> sheetInfo = new HashMap<>();
+                sheetInfo.put("index", i);
+                sheetInfo.put("name", sheet.getSheetName());
+                sheetInfo.put("rowCount", sheet.getLastRowNum() + 1);
+                sheets.add(sheetInfo);
+                log.info("시트 {}: {} ({}행)", i, sheet.getSheetName(), sheet.getLastRowNum() + 1);
+            }
+        }
+
+        return sheets;
+    }
+
     public List<ExcelImportDTO> parseExcel(MultipartFile file) throws IOException {
+        return parseExcel(file, 0); // 기본값: 첫 번째 시트
+    }
+
+    public List<ExcelImportDTO> parseExcel(MultipartFile file, int sheetIndex) throws IOException {
         List<ExcelImportDTO> result = new ArrayList<>();
 
         try (InputStream is = file.getInputStream();
              Workbook workbook = WorkbookFactory.create(is)) {
 
-            Sheet sheet = workbook.getSheetAt(0);
+            if (sheetIndex >= workbook.getNumberOfSheets()) {
+                throw new IllegalArgumentException("존재하지 않는 시트입니다: " + sheetIndex);
+            }
+
+            Sheet sheet = workbook.getSheetAt(sheetIndex);
             int headerRowIndex = findHeaderRow(sheet);
 
             if (headerRowIndex < 0) {
@@ -431,7 +465,7 @@ public class ExcelService {
 
     /**
      * 주문수량 파싱 - 특수 형식 지원
-     * 예: "3+1" -> 4, "1box(20개입)" -> 20, "10" -> 10
+     * 예: "3+1" -> 4, "15 (3 BOX)" -> 15, "10" -> 10
      */
     private BigDecimal parseOrderQuantity(Cell cell) {
         if (cell == null) return null;
@@ -459,20 +493,17 @@ public class ExcelService {
                 if (total > 0) return BigDecimal.valueOf(total);
             }
 
-            // 2. "1box(20개입)" 형식 처리 - 괄호 안 숫자 추출
-            if (value.contains("(") && value.contains(")")) {
-                int start = value.indexOf("(");
-                int end = value.indexOf(")");
-                if (start < end) {
-                    String insideParens = value.substring(start + 1, end);
-                    String numStr = insideParens.replaceAll("[^0-9]", "");
-                    if (!numStr.isEmpty()) {
-                        return new BigDecimal(numStr);
-                    }
+            // 2. "15 (3 BOX)" 형식 처리 - 괄호 앞 숫자 우선
+            if (value.contains("(")) {
+                int parenStart = value.indexOf("(");
+                String beforeParen = value.substring(0, parenStart).trim();
+                String numStr = beforeParen.replaceAll("[^0-9]", "");
+                if (!numStr.isEmpty()) {
+                    return new BigDecimal(numStr);
                 }
             }
 
-            // 3. 일반 숫자 추출
+            // 3. 일반 숫자 추출 (맨 앞 숫자)
             String numStr = value.replaceAll("[^0-9.]", "");
             if (!numStr.isEmpty() && !numStr.equals(".")) {
                 return new BigDecimal(numStr);
@@ -500,12 +531,27 @@ public class ExcelService {
     public ImportResult importData(List<ExcelImportDTO> data, String yearMonth, boolean updateExisting) {
         ImportResult result = new ImportResult();
 
+        // 선택한 월과 이전 달 계산
+        // yearMonth = 선택한 달 (예: 2025-02) → 주문 저장용
+        // prevYearMonth = 이전 달 (예: 2025-01) → 재고 데이터 저장용
+        String prevYearMonth = null;
+        LocalDate orderBaseDate = null; // 주문일 기본값 (선택한 달의 1일)
+
+        if (yearMonth != null && !yearMonth.isEmpty()) {
+            java.time.YearMonth currentYM = java.time.YearMonth.parse(yearMonth);
+            java.time.YearMonth prevYM = currentYM.minusMonths(1);
+            prevYearMonth = prevYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            orderBaseDate = currentYM.atDay(1); // 선택한 달의 1일
+            log.info("Import - 선택월: {}, 재고저장월(이전달): {}, 주문기준일: {}", yearMonth, prevYearMonth, orderBaseDate);
+        }
+
         for (ExcelImportDTO dto : data) {
             try {
                 Product product = productRepository.findByName(dto.getProductName())
                         .orElse(null);
 
                 if (product == null) {
+
                     product = Product.builder()
                             .name(dto.getProductName())
                             .category(dto.getCategory())
@@ -526,11 +572,12 @@ public class ExcelService {
                     result.setSkippedProducts(result.getSkippedProducts() + 1);
                 }
 
-                if (yearMonth != null && !yearMonth.isEmpty()) {
-                    Inventory inventory = inventoryRepository.findByProductIdAndYearMonth(product.getId(), yearMonth)
+                // 재고 데이터는 이전 달에 저장 (2월 보고서의 재고는 1월 데이터)
+                if (prevYearMonth != null) {
+                    Inventory inventory = inventoryRepository.findByProductIdAndYearMonth(product.getId(), prevYearMonth)
                             .orElse(Inventory.builder()
                                     .product(product)
-                                    .yearMonth(yearMonth)
+                                    .yearMonth(prevYearMonth)
                                     .build());
 
                     if (dto.getInitialStock() != null) {
@@ -543,79 +590,72 @@ public class ExcelService {
                         inventory.setExpiryDate(dto.getExpiryDate());
                     }
 
+                    // 남은재고 계산
+                    BigDecimal initial = inventory.getInitialStock() != null ? inventory.getInitialStock() : BigDecimal.ZERO;
+                    BigDecimal added = inventory.getAddedStock() != null ? inventory.getAddedStock() : BigDecimal.ZERO;
+                    BigDecimal used = inventory.getUsedQuantity() != null ? inventory.getUsedQuantity() : BigDecimal.ZERO;
+                    inventory.setRemainingStock(initial.add(added).subtract(used));
+
                     inventoryRepository.save(inventory);
                     result.setInventoryRecords(result.getInventoryRecords() + 1);
                 }
 
-                // 입고일/유효기간이 있으면 StockOrder 생성 (입고 완료 상태로)
-                List<LocalDate> receivedDates = dto.getReceivedDates();
-                List<LocalDate> expiryDates = dto.getExpiryDates();
-
-                log.debug("제품 '{}' - 입고일 개수: {}, 유효기간 개수: {}",
-                        dto.getProductName(),
-                        receivedDates != null ? receivedDates.size() : 0,
-                        expiryDates != null ? expiryDates.size() : 0);
-
-                // 주문수량 결정: orderQuantity가 있으면 사용, 없으면 initialStock 사용
-                BigDecimal quantity = dto.getOrderQuantity() != null ? dto.getOrderQuantity() : dto.getInitialStock();
-                // 주문수량 원본 저장 (비고에 추가)
-                String orderNote = dto.getNote();
-                if (dto.getOrderQuantityRaw() != null && !dto.getOrderQuantityRaw().isEmpty()
-                        && dto.getOrderQuantity() != null) {
-                    // 원본과 파싱된 값이 다르면 원본도 기록
-                    String rawNum = dto.getOrderQuantityRaw().replaceAll("[^0-9]", "");
-                    if (!rawNum.equals(dto.getOrderQuantity().stripTrailingZeros().toPlainString())) {
-                        orderNote = (orderNote != null ? orderNote + " / " : "") + "주문: " + dto.getOrderQuantityRaw();
+                // 주문수량이 있으면 StockOrder 생성 (입고대기 상태로 - 새 주문)
+                BigDecimal orderQuantity = dto.getOrderQuantity();
+                if (orderQuantity != null && orderQuantity.compareTo(BigDecimal.ZERO) > 0) {
+                    // 주문수량 원본 저장 (비고에 추가)
+                    String orderNote = dto.getNote();
+                    if (dto.getOrderQuantityRaw() != null && !dto.getOrderQuantityRaw().isEmpty()) {
+                        String rawNum = dto.getOrderQuantityRaw().replaceAll("[^0-9]", "");
+                        if (!rawNum.equals(orderQuantity.stripTrailingZeros().toPlainString())) {
+                            orderNote = (orderNote != null ? orderNote + " / " : "") + "주문: " + dto.getOrderQuantityRaw();
+                        }
                     }
+
+                    StockOrder order = StockOrder.builder()
+                            .product(product)
+                            .quantity(orderQuantity)
+                            .orderQuantity(dto.getOrderQuantityRaw())
+                            .orderDate(orderBaseDate)  // 주문일: 선택한 달의 1일
+                            .receivedDate(null)        // 입고일: 미입고
+                            .expiryDate(null)          // 유효기간: 미설정 (새 주문이므로)
+                            .status("PENDING")         // 입고대기 상태
+                            .note(orderNote)
+                            .build();
+                    stockOrderRepository.save(order);
+                    log.info("StockOrder 생성 (입고대기) - 제품: {}, 주문일: {}, 수량: {}",
+                            product.getName(), orderBaseDate, orderQuantity);
                 }
 
-                // 입고일/유효기간 중 더 많은 개수 기준으로 StockOrder 생성
-                int receivedCount = (receivedDates != null) ? receivedDates.size() : 0;
-                int expiryCount = (expiryDates != null) ? expiryDates.size() : 0;
-                int maxCount = Math.max(receivedCount, expiryCount);
+                // 유효기간이 있으면 기존 재고의 유효기간 추적용 StockOrder 생성
+                // (이전 달 재고의 남은 것들 - 입고완료 상태)
+                List<LocalDate> expiryDates = dto.getExpiryDates();
+                if (expiryDates != null && !expiryDates.isEmpty()) {
+                    // 이전 달 기준 주문일 (재고 데이터가 저장되는 달)
+                    LocalDate prevMonthDate = orderBaseDate.minusMonths(1).withDayOfMonth(1);
 
-                if (maxCount > 0) {
-                    // 가장 빠른 날짜 찾기 (수량 배분용)
-                    LocalDate earliestDate = null;
-                    if (receivedDates != null && !receivedDates.isEmpty()) {
-                        earliestDate = receivedDates.stream().min(LocalDate::compareTo).orElse(null);
-                    } else if (expiryDates != null && !expiryDates.isEmpty()) {
-                        earliestDate = expiryDates.stream().min(LocalDate::compareTo).orElse(null);
-                    }
+                    for (LocalDate expiryDate : expiryDates) {
+                        // 동일 제품, 동일 유효기간의 기존 주문이 있는지 확인
+                        boolean exists = stockOrderRepository.findByProductId(product.getId()).stream()
+                                .anyMatch(o -> expiryDate.equals(o.getExpiryDate()));
 
-                    for (int i = 0; i < maxCount; i++) {
-                        // 입고일: 인덱스 범위 내면 해당 값, 아니면 마지막 값 또는 null
-                        LocalDate receivedDate = null;
-                        if (receivedDates != null && !receivedDates.isEmpty()) {
-                            receivedDate = (i < receivedDates.size()) ? receivedDates.get(i) : receivedDates.get(receivedDates.size() - 1);
+                        if (!exists) {
+                            StockOrder expiryOrder = StockOrder.builder()
+                                    .product(product)
+                                    .quantity(null)            // 수량 미상 (기존 재고)
+                                    .remainingQuantity(null)   // 남은 수량 미상
+                                    .orderDate(prevMonthDate)  // 이전 달 기준
+                                    .receivedDate(prevMonthDate) // 입고일 = 이전 달 1일
+                                    .expiryDate(expiryDate)    // 유효기간
+                                    .status("COMPLETED")       // 입고완료 상태
+                                    .consumed(false)           // 아직 소진 안됨
+                                    .note("엑셀 업로드 - 기존 재고 유효기간")
+                                    .build();
+                            stockOrderRepository.save(expiryOrder);
+                            log.info("StockOrder 생성 (유효기간 추적) - 제품: {}, 유효기간: {}",
+                                    product.getName(), expiryDate);
                         }
-
-                        // 유효기간: 인덱스 범위 내면 해당 값, 아니면 마지막 값 또는 null
-                        LocalDate expiryDate = null;
-                        if (expiryDates != null && !expiryDates.isEmpty()) {
-                            expiryDate = (i < expiryDates.size()) ? expiryDates.get(i) : null;
-                        }
-
-                        // 첫 번째 항목에만 수량 저장
-                        BigDecimal orderQty = (i == 0) ? quantity : BigDecimal.ZERO;
-
-                        StockOrder order = StockOrder.builder()
-                                .product(product)
-                                .quantity(orderQty)
-                                .remainingQuantity(orderQty)
-                                .consumed(false)
-                                .orderQuantity(dto.getOrderQuantityRaw())
-                                .orderDate(receivedDate)
-                                .receivedDate(receivedDate)
-                                .expiryDate(expiryDate)
-                                .status("COMPLETED")
-                                .note(orderNote)
-                                .build();
-                        stockOrderRepository.save(order);
-                        log.info("StockOrder 생성 - 제품: {}, 입고일: {}, 유효기간: {}, 수량: {}",
-                                product.getName(), receivedDate, expiryDate, orderQty);
                     }
-                    log.info("제품 '{}' 총 {} 건의 StockOrder 생성됨", product.getName(), maxCount);
                 }
 
             } catch (Exception e) {
@@ -643,7 +683,17 @@ public class ExcelService {
     }
 
     public byte[] exportAllToExcel() throws IOException {
-        List<String> yearMonths = inventoryRepository.findAllYearMonths();
+        List<String> dbMonths = inventoryRepository.findAllYearMonths();
+
+        // DB에 있는 월들의 다음 달도 추가 (2월 선택 시 1월 재고를 보여주는 로직)
+        java.util.Set<String> monthSet = new java.util.TreeSet<>(dbMonths);
+        for (String month : dbMonths) {
+            java.time.YearMonth ym = java.time.YearMonth.parse(month);
+            String nextMonth = ym.plusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            monthSet.add(nextMonth);
+        }
+
+        List<String> yearMonths = new ArrayList<>(monthSet);
 
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -750,11 +800,17 @@ public class ExcelService {
     }
 
     private void createSheetForYearMonth(Workbook workbook, String yearMonth, Map<String, CellStyle> styles) {
-        List<Inventory> inventories = inventoryRepository.findByYearMonthWithProduct(yearMonth);
-
         // 해당 월 기준 연/월 파싱
         int targetYear = Integer.parseInt(yearMonth.substring(0, 4));
         int targetMonth = Integer.parseInt(yearMonth.substring(5, 7));
+
+        // 이전 달 계산 (재고 데이터용)
+        java.time.YearMonth currentYM = java.time.YearMonth.of(targetYear, targetMonth);
+        java.time.YearMonth prevYM = currentYM.minusMonths(1);
+        String prevYearMonth = prevYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+
+        // 재고 데이터는 이전 달 기준으로 조회
+        List<Inventory> inventories = inventoryRepository.findByYearMonthWithProduct(prevYearMonth);
 
         // 제품별 해당 월 입고 정보 조회 (합산 수량, 입고일 목록)
         Map<Long, BigDecimal> productOrderQtyMap = new HashMap<>();
@@ -770,24 +826,28 @@ public class ExcelService {
             List<String> expiryDates = new ArrayList<>();
 
             for (StockOrder order : orders) {
-                if (!"COMPLETED".equals(order.getStatus())) continue;
+                // 주문일이 해당 월(선택한 월)인 경우
+                boolean isTargetMonthOrder = order.getOrderDate() != null &&
+                        order.getOrderDate().getYear() == targetYear &&
+                        order.getOrderDate().getMonthValue() == targetMonth;
 
-                // 입고일이 있는 경우 해당 월 필터
-                if (order.getReceivedDate() != null) {
+                // 해당 월 주문이면 상태와 관계없이 수량 합산 (PENDING + COMPLETED)
+                if (isTargetMonthOrder && order.getQuantity() != null) {
+                    totalQty = totalQty.add(order.getQuantity());
+                }
+
+                // 입고완료(COMPLETED)인 경우 입고일 추가
+                if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
                     if (order.getReceivedDate().getYear() == targetYear &&
                         order.getReceivedDate().getMonthValue() == targetMonth) {
-
-                        if (order.getQuantity() != null) {
-                            totalQty = totalQty.add(order.getQuantity());
-                        }
                         receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-
-                        if (order.getExpiryDate() != null) {
-                            expiryDates.add(order.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
-                        }
                     }
-                } else if (order.getExpiryDate() != null) {
-                    // 입고일 없이 유효기간만 있는 경우도 추가
+                }
+
+                // 유효기간은 소진되지 않은 모든 COMPLETED 주문에서 가져옴 (재고의 유효기간)
+                if ("COMPLETED".equals(order.getStatus()) &&
+                    order.getExpiryDate() != null &&
+                    (order.getConsumed() == null || !order.getConsumed())) {
                     expiryDates.add(order.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
                 }
             }
@@ -805,11 +865,12 @@ public class ExcelService {
             }
         }
 
-        Sheet sheet = workbook.createSheet(yearMonth);
+        // 시트명과 타이틀은 이전 달 기준으로 표시
+        Sheet sheet = workbook.createSheet(prevYearMonth);
 
-        // 연/월 추출 (예: 2026-01 -> 2026년 1월)
-        String year = yearMonth.substring(0, 4);
-        String month = yearMonth.substring(5);
+        // 연/월 추출 (이전 달 기준, 예: 2026-01 -> 2026년 1월)
+        String year = prevYearMonth.substring(0, 4);
+        String month = prevYearMonth.substring(5);
         if (month.startsWith("0")) month = month.substring(1);
 
         // 타이틀 행
@@ -820,7 +881,7 @@ public class ExcelService {
         titleCell.setCellStyle(styles.get("title"));
 
         // 타이틀 셀 병합
-        String[] headers = {"번호", "카테고리", "제품명", "월초재고", "추가재고", "사용량", "남은재고", "주문수량", "입고일자", "유효기간", "단위", "비고"};
+        String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문재고", "입고일자", "유효기간", "단위", "비고"};
         sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
 
         // 헤더 행
@@ -849,62 +910,62 @@ public class ExcelService {
             cell0.setCellValue(seq);
             cell0.setCellStyle(styles.get("center"));
 
-            // 카테고리
-            Cell cell1 = row.createCell(1);
-            cell1.setCellValue(inv.getProduct().getCategory() != null ? inv.getProduct().getCategory() : "");
-            cell1.setCellStyle(styles.get("center"));
-
             // 제품명
-            Cell cell2 = row.createCell(2);
-            cell2.setCellValue(inv.getProduct().getName());
-            cell2.setCellStyle(styles.get("text"));
+            Cell cell1 = row.createCell(1);
+            cell1.setCellValue(inv.getProduct().getName());
+            cell1.setCellStyle(styles.get("text"));
 
             // 월초재고
-            Cell cell3 = row.createCell(3);
-            cell3.setCellValue(inv.getInitialStock() != null ? inv.getInitialStock().intValue() : 0);
-            cell3.setCellStyle(styles.get("number"));
-
-            // 추가재고
-            Cell cell4 = row.createCell(4);
-            cell4.setCellValue(inv.getAddedStock() != null ? inv.getAddedStock().intValue() : 0);
-            cell4.setCellStyle(styles.get("number"));
+            Cell cell2 = row.createCell(2);
+            cell2.setCellValue(inv.getInitialStock() != null ? inv.getInitialStock().intValue() : 0);
+            cell2.setCellStyle(styles.get("number"));
 
             // 사용량
-            Cell cell5 = row.createCell(5);
-            cell5.setCellValue(inv.getUsedQuantity() != null ? inv.getUsedQuantity().intValue() : 0);
-            cell5.setCellStyle(styles.get("number"));
+            Cell cell3 = row.createCell(3);
+            cell3.setCellValue(inv.getUsedQuantity() != null ? inv.getUsedQuantity().intValue() : 0);
+            cell3.setCellStyle(styles.get("number"));
 
             // 남은재고 (강조)
-            Cell cell6 = row.createCell(6);
-            cell6.setCellValue(inv.getRemainingStock() != null ? inv.getRemainingStock().intValue() : 0);
-            cell6.setCellStyle(styles.get("highlight"));
+            Cell cell4 = row.createCell(4);
+            cell4.setCellValue(inv.getRemainingStock() != null ? inv.getRemainingStock().intValue() : 0);
+            cell4.setCellStyle(styles.get("highlight"));
 
-            // 주문수량 (해당 월 합산)
-            Cell cell7 = row.createCell(7);
-            BigDecimal totalQty = productOrderQtyMap.get(productId);
-            cell7.setCellValue(totalQty != null && totalQty.compareTo(BigDecimal.ZERO) > 0 ? totalQty.intValue() : 0);
-            cell7.setCellStyle(styles.get("number"));
+            // 주문재고 (해당 월 주문수량 합산 - PENDING + COMPLETED)
+            Cell cell5 = row.createCell(5);
+            BigDecimal orderStock = productOrderQtyMap.get(productId);
+            cell5.setCellValue(orderStock != null && orderStock.compareTo(BigDecimal.ZERO) > 0 ? orderStock.intValue() : 0);
+            cell5.setCellStyle(styles.get("number"));
 
             // 입고일자 (줄바꿈으로 구분)
-            Cell cell8 = row.createCell(8);
-            cell8.setCellValue(dates != null && !dates.isEmpty() ? String.join("\n", dates) : "");
-            cell8.setCellStyle(styles.get("wrap"));
+            Cell cell6 = row.createCell(6);
+            cell6.setCellValue(dates != null && !dates.isEmpty() ? String.join("\n", dates) : "");
+            cell6.setCellStyle(styles.get("wrap"));
 
             // 유효기간
-            Cell cell9 = row.createCell(9);
+            Cell cell7 = row.createCell(7);
             String expiry = productExpiryMap.get(productId);
-            cell9.setCellValue(expiry != null ? expiry : "");
-            cell9.setCellStyle(styles.get("center"));
+            cell7.setCellValue(expiry != null ? expiry : "");
+            cell7.setCellStyle(styles.get("center"));
 
             // 단위
-            Cell cell10 = row.createCell(10);
-            cell10.setCellValue(inv.getProduct().getUnit() != null ? inv.getProduct().getUnit() : "");
-            cell10.setCellStyle(styles.get("center"));
+            Cell cell8 = row.createCell(8);
+            cell8.setCellValue(inv.getProduct().getUnit() != null ? inv.getProduct().getUnit() : "");
+            cell8.setCellStyle(styles.get("center"));
 
-            // 비고
-            Cell cell11 = row.createCell(11);
-            cell11.setCellValue(inv.getNote() != null ? inv.getNote() : "");
-            cell11.setCellStyle(styles.get("text"));
+            // 비고 (제품 비고 + 재고 비고)
+            Cell cell9 = row.createCell(9);
+            String productNote = inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "";
+            String inventoryNote = inv.getNote() != null ? inv.getNote() : "";
+            String combinedNote = "";
+            if (!productNote.isEmpty() && !inventoryNote.isEmpty()) {
+                combinedNote = productNote + "\n" + inventoryNote;
+            } else if (!productNote.isEmpty()) {
+                combinedNote = productNote;
+            } else {
+                combinedNote = inventoryNote;
+            }
+            cell9.setCellValue(combinedNote);
+            cell9.setCellStyle(styles.get("wrap"));
 
             rowNum++;
             seq++;
@@ -912,16 +973,14 @@ public class ExcelService {
 
         // 컬럼 너비 설정
         sheet.setColumnWidth(0, 2000);   // 번호
-        sheet.setColumnWidth(1, 3500);   // 카테고리
-        sheet.setColumnWidth(2, 7000);   // 제품명
-        sheet.setColumnWidth(3, 3000);   // 월초재고
-        sheet.setColumnWidth(4, 3000);   // 추가재고
-        sheet.setColumnWidth(5, 3000);   // 사용량
-        sheet.setColumnWidth(6, 3000);   // 남은재고
-        sheet.setColumnWidth(7, 3000);   // 주문수량
-        sheet.setColumnWidth(8, 4000);   // 입고일자
-        sheet.setColumnWidth(9, 3500);   // 유효기간
-        sheet.setColumnWidth(10, 2500);  // 단위
-        sheet.setColumnWidth(11, 5000);  // 비고
+        sheet.setColumnWidth(1, 7000);   // 제품명
+        sheet.setColumnWidth(2, 3000);   // 월초재고
+        sheet.setColumnWidth(3, 3000);   // 사용량
+        sheet.setColumnWidth(4, 3000);   // 남은재고
+        sheet.setColumnWidth(5, 3000);   // 주문재고
+        sheet.setColumnWidth(6, 4000);   // 입고일자
+        sheet.setColumnWidth(7, 3500);   // 유효기간
+        sheet.setColumnWidth(8, 2500);   // 단위
+        sheet.setColumnWidth(9, 5000);   // 비고
     }
 }
