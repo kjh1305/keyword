@@ -31,9 +31,12 @@ public class ExcelController {
         return "inventory/import";
     }
 
-    @PostMapping("/api/inventory/import/parse")
+    /**
+     * 엑셀 파일의 시트 목록 조회
+     */
+    @PostMapping("/api/inventory/import/sheets")
     @ResponseBody
-    public ResponseEntity<?> parseExcel(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> getSheetList(@RequestParam("file") MultipartFile file) {
         try {
             if (file.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "파일을 선택해주세요."));
@@ -44,7 +47,28 @@ public class ExcelController {
                 return ResponseEntity.badRequest().body(Map.of("error", "엑셀 파일(.xlsx, .xls)만 업로드 가능합니다."));
             }
 
-            List<ExcelImportDTO> data = excelService.parseExcel(file);
+            List<Map<String, Object>> sheets = excelService.getSheetList(file);
+            return ResponseEntity.ok(Map.of("sheets", sheets));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "시트 목록 조회 실패: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/api/inventory/import/parse")
+    @ResponseBody
+    public ResponseEntity<?> parseExcel(@RequestParam("file") MultipartFile file,
+                                         @RequestParam(value = "sheetIndex", defaultValue = "0") int sheetIndex) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "파일을 선택해주세요."));
+            }
+
+            String filename = file.getOriginalFilename();
+            if (filename == null || (!filename.endsWith(".xlsx") && !filename.endsWith(".xls"))) {
+                return ResponseEntity.badRequest().body(Map.of("error", "엑셀 파일(.xlsx, .xls)만 업로드 가능합니다."));
+            }
+
+            List<ExcelImportDTO> data = excelService.parseExcel(file, sheetIndex);
             return ResponseEntity.ok(Map.of(
                     "data", data,
                     "count", data.size()

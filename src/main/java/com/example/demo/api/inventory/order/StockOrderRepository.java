@@ -100,4 +100,52 @@ public interface StockOrderRepository extends JpaRepository<StockOrder, Long> {
            "WHERE o.product.id = :productId AND o.status = 'COMPLETED' " +
            "AND o.expiryDate IS NOT NULL")
     Page<StockOrder> findAllExpiryByProductIdPaged(@Param("productId") Long productId, Pageable pageable);
+
+    /**
+     * 제품의 모든 유효기간 목록 조회 (유효기간 늦은 순 - 복구용 역FIFO)
+     */
+    @Query("SELECT o FROM StockOrder o JOIN FETCH o.product " +
+           "WHERE o.product.id = :productId AND o.status = 'COMPLETED' " +
+           "AND o.expiryDate IS NOT NULL " +
+           "ORDER BY o.expiryDate DESC")
+    List<StockOrder> findAllExpiryByProductIdDesc(@Param("productId") Long productId);
+
+    /**
+     * 제품별 입고대기(PENDING) 주문수량 합계
+     */
+    @Query("SELECT COALESCE(SUM(o.quantity), 0) FROM StockOrder o " +
+           "WHERE o.product.id = :productId AND o.status = 'PENDING'")
+    java.math.BigDecimal sumPendingQuantityByProductId(@Param("productId") Long productId);
+
+    /**
+     * 제품별 입고완료(COMPLETED) 주문수량 합계
+     */
+    @Query("SELECT COALESCE(SUM(o.quantity), 0) FROM StockOrder o " +
+           "WHERE o.product.id = :productId AND o.status = 'COMPLETED'")
+    java.math.BigDecimal sumCompletedQuantityByProductId(@Param("productId") Long productId);
+
+    /**
+     * 해당 월에 주문된 입고대기 수량 합계
+     */
+    @Query("SELECT COALESCE(SUM(o.quantity), 0) FROM StockOrder o " +
+           "WHERE o.product.id = :productId AND o.status = 'PENDING' " +
+           "AND YEAR(o.orderDate) = :year AND MONTH(o.orderDate) = :month")
+    java.math.BigDecimal sumPendingQuantityByProductIdAndMonth(@Param("productId") Long productId,
+                                                                @Param("year") int year,
+                                                                @Param("month") int month);
+
+    /**
+     * 해당 월에 입고된 수량 합계
+     */
+    @Query("SELECT COALESCE(SUM(o.quantity), 0) FROM StockOrder o " +
+           "WHERE o.product.id = :productId AND o.status = 'COMPLETED' " +
+           "AND YEAR(o.receivedDate) = :year AND MONTH(o.receivedDate) = :month")
+    java.math.BigDecimal sumCompletedQuantityByProductIdAndMonth(@Param("productId") Long productId,
+                                                                  @Param("year") int year,
+                                                                  @Param("month") int month);
+
+    /**
+     * 제품별 주문 삭제
+     */
+    void deleteByProductId(@Param("productId") Long productId);
 }

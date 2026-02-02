@@ -47,4 +47,9 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     List<Inventory> findByProductIdOrderByYearMonthDesc(@Param("productId") Long productId);
 
     boolean existsByProductIdAndYearMonth(Long productId, String yearMonth);
+
+    /**
+     * 제품별 재고 삭제
+     */
+    void deleteByProductId(@Param("productId") Long productId);
 }
