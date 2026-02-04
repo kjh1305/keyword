@@ -683,32 +683,203 @@ public class ExcelService {
     }
 
     public byte[] exportAllToExcel() throws IOException {
+        // 재고 현황 드롭다운과 동일한 월 목록 가져오기
+        // 드롭다운 월 = DB yearMonth + 현재 월
         List<String> dbMonths = inventoryRepository.findAllYearMonths();
+        String currentMonth = java.time.YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
-        // DB에 있는 월들의 다음 달도 추가 (2월 선택 시 1월 재고를 보여주는 로직)
-        java.util.Set<String> monthSet = new java.util.TreeSet<>(dbMonths);
-        for (String month : dbMonths) {
-            java.time.YearMonth ym = java.time.YearMonth.parse(month);
-            String nextMonth = ym.plusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM"));
-            monthSet.add(nextMonth);
+        java.util.Set<String> dropdownMonths = new java.util.TreeSet<>(dbMonths);
+        dropdownMonths.add(currentMonth);
+
+        // 현재 월 이하만 포함 (미래 월 제외 - 보고 불가)
+        List<String> reportableDropdownMonths = new ArrayList<>();
+        for (String month : dropdownMonths) {
+            if (month.compareTo(currentMonth) <= 0) {
+                reportableDropdownMonths.add(month);
+            }
         }
 
-        List<String> yearMonths = new ArrayList<>(monthSet);
+        // 오름차순 정렬 (시트 순서)
+        java.util.Collections.sort(reportableDropdownMonths);
 
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
-            // 스타일 생성 (한 번만)
             Map<String, CellStyle> styles = createStyles(workbook);
 
-            // 각 년월별로 시트 생성
-            for (String yearMonth : yearMonths) {
-                createSheetForYearMonth(workbook, yearMonth, styles);
+            // 각 드롭다운 월에 대해 시트 생성
+            // 드롭다운 월 X → 시트는 X-1개월 (데이터 월)
+            // 예: 드롭다운 "2026-01", "2026-02" → 시트 "2025-12", "2026-01"
+            for (String dropdownMonth : reportableDropdownMonths) {
+                createSheetForYearMonth(workbook, dropdownMonth, styles);
             }
 
             workbook.write(out);
             return out.toByteArray();
         }
+    }
+
+    /**
+     * DB yearMonth를 직접 사용하여 시트 생성
+     */
+    private void createSheetForYearMonthDirect(Workbook workbook, String yearMonth, Map<String, CellStyle> styles) {
+        // yearMonth가 곧 Inventory의 yearMonth (시트명도 이걸로)
+        List<Inventory> inventories = inventoryRepository.findByYearMonthWithProduct(yearMonth);
+
+        // 제품별 주문 정보 조회 (해당 월 + 1개월 기준)
+        java.time.YearMonth targetYM = java.time.YearMonth.parse(yearMonth).plusMonths(1);
+        int targetYear = targetYM.getYear();
+        int targetMonth = targetYM.getMonthValue();
+
+        Map<Long, BigDecimal> productOrderQtyMap = new HashMap<>();
+        Map<Long, List<String>> productReceivedDatesMap = new HashMap<>();
+        Map<Long, String> productExpiryMap = new HashMap<>();
+
+        for (Inventory inv : inventories) {
+            Long productId = inv.getProduct().getId();
+            List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
+
+            BigDecimal totalQty = BigDecimal.ZERO;
+            List<String> receivedDates = new ArrayList<>();
+            List<String> expiryDates = new ArrayList<>();
+
+            for (StockOrder order : orders) {
+                boolean isTargetMonthOrder = order.getOrderDate() != null &&
+                        order.getOrderDate().getYear() == targetYear &&
+                        order.getOrderDate().getMonthValue() == targetMonth;
+
+                if (isTargetMonthOrder && order.getQuantity() != null) {
+                    totalQty = totalQty.add(order.getQuantity());
+                }
+
+                if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
+                    if (order.getReceivedDate().getYear() == targetYear &&
+                        order.getReceivedDate().getMonthValue() == targetMonth) {
+                        receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    }
+                }
+
+                if ("COMPLETED".equals(order.getStatus()) &&
+                    order.getExpiryDate() != null &&
+                    (order.getConsumed() == null || !order.getConsumed())) {
+                    expiryDates.add(order.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
+                }
+            }
+
+            if (expiryDates.isEmpty() && inv.getExpiryDate() != null) {
+                expiryDates.add(inv.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
+            }
+
+            productOrderQtyMap.put(productId, totalQty);
+            productReceivedDatesMap.put(productId, receivedDates);
+            if (!expiryDates.isEmpty()) {
+                productExpiryMap.put(productId, String.join(" / ", expiryDates));
+            }
+        }
+
+        // 시트 생성 (yearMonth가 시트명)
+        Sheet sheet = workbook.createSheet(yearMonth);
+
+        String year = yearMonth.substring(0, 4);
+        String month = yearMonth.substring(5);
+        if (month.startsWith("0")) month = month.substring(1);
+
+        // 타이틀 행
+        Row titleRow = sheet.createRow(0);
+        titleRow.setHeightInPoints(30);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue(year + "년 " + month + "월 피부 물품(보고용)");
+        titleCell.setCellStyle(styles.get("title"));
+
+        String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문재고", "입고일자", "유효기간", "단위", "비고"};
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
+
+        Row headerRow = sheet.createRow(1);
+        headerRow.setHeightInPoints(22);
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(styles.get("header"));
+        }
+
+        int rowNum = 2;
+        int seq = 1;
+        for (Inventory inv : inventories) {
+            Row row = sheet.createRow(rowNum);
+            Long productId = inv.getProduct().getId();
+
+            List<String> dates = productReceivedDatesMap.get(productId);
+            int dateCount = (dates != null) ? dates.size() : 0;
+            if (dateCount > 1) {
+                row.setHeightInPoints(dateCount * 15);
+            }
+
+            Cell cell0 = row.createCell(0);
+            cell0.setCellValue(seq);
+            cell0.setCellStyle(styles.get("center"));
+
+            Cell cell1 = row.createCell(1);
+            cell1.setCellValue(inv.getProduct().getName());
+            cell1.setCellStyle(styles.get("text"));
+
+            Cell cell2 = row.createCell(2);
+            cell2.setCellValue(inv.getInitialStock() != null ? inv.getInitialStock().intValue() : 0);
+            cell2.setCellStyle(styles.get("number"));
+
+            Cell cell3 = row.createCell(3);
+            cell3.setCellValue(inv.getUsedQuantity() != null ? inv.getUsedQuantity().intValue() : 0);
+            cell3.setCellStyle(styles.get("number"));
+
+            Cell cell4 = row.createCell(4);
+            cell4.setCellValue(inv.getRemainingStock() != null ? inv.getRemainingStock().intValue() : 0);
+            cell4.setCellStyle(styles.get("highlight"));
+
+            Cell cell5 = row.createCell(5);
+            BigDecimal orderStock = productOrderQtyMap.get(productId);
+            cell5.setCellValue(orderStock != null && orderStock.compareTo(BigDecimal.ZERO) > 0 ? orderStock.intValue() : 0);
+            cell5.setCellStyle(styles.get("number"));
+
+            Cell cell6 = row.createCell(6);
+            cell6.setCellValue(dates != null && !dates.isEmpty() ? String.join("\n", dates) : "");
+            cell6.setCellStyle(styles.get("wrap"));
+
+            Cell cell7 = row.createCell(7);
+            String expiry = productExpiryMap.get(productId);
+            cell7.setCellValue(expiry != null ? expiry : "");
+            cell7.setCellStyle(styles.get("center"));
+
+            Cell cell8 = row.createCell(8);
+            cell8.setCellValue(inv.getProduct().getUnit() != null ? inv.getProduct().getUnit() : "");
+            cell8.setCellStyle(styles.get("center"));
+
+            Cell cell9 = row.createCell(9);
+            String productNote = inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "";
+            String inventoryNote = inv.getNote() != null ? inv.getNote() : "";
+            String combinedNote = "";
+            if (!productNote.isEmpty() && !inventoryNote.isEmpty()) {
+                combinedNote = productNote + "\n" + inventoryNote;
+            } else if (!productNote.isEmpty()) {
+                combinedNote = productNote;
+            } else {
+                combinedNote = inventoryNote;
+            }
+            cell9.setCellValue(combinedNote);
+            cell9.setCellStyle(styles.get("wrap"));
+
+            rowNum++;
+            seq++;
+        }
+
+        sheet.setColumnWidth(0, 2000);
+        sheet.setColumnWidth(1, 7000);
+        sheet.setColumnWidth(2, 3000);
+        sheet.setColumnWidth(3, 3000);
+        sheet.setColumnWidth(4, 3000);
+        sheet.setColumnWidth(5, 3000);
+        sheet.setColumnWidth(6, 4000);
+        sheet.setColumnWidth(7, 3500);
+        sheet.setColumnWidth(8, 2500);
+        sheet.setColumnWidth(9, 5000);
     }
 
     private Map<String, CellStyle> createStyles(Workbook workbook) {
