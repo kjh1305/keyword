@@ -58,7 +58,7 @@
                                 <th style="width: 100px;">최소수량</th>
                                 <th style="width: 80px;">단위</th>
                                 <th>비고</th>
-                                <th style="width: 120px;">관리</th>
+                                <th style="width: 150px;">관리</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -74,6 +74,11 @@
                                     <small class="text-muted" th:text="${product.note}"></small>
                                 </td>
                                 <td>
+                                    <button class="btn btn-sm btn-outline-success me-1"
+                                            th:onclick="'addToInventory(' + ${product.id} + ')'"
+                                            title="재고 현황에 추가">
+                                        <i class="bi bi-box-seam"></i>
+                                    </button>
                                     <button class="btn btn-sm btn-outline-primary me-1"
                                             th:onclick="'openEditModal(' + ${product.id} + ')'">
                                         <i class="bi bi-pencil"></i>
@@ -245,6 +250,22 @@
                 })
                 .catch(error => {
                     alert('삭제에 실패했습니다.');
+                });
+        }
+
+        function addToInventory(id) {
+            fetch('/api/inventory/products/' + id + '/add-to-inventory', { method: 'POST' })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => { throw new Error(text); });
+                    }
+                    return response.text();
+                })
+                .then(message => {
+                    alert(message);
+                })
+                .catch(error => {
+                    alert(error.message);
                 });
         }
     </script>

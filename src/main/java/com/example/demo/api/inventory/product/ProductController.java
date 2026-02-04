@@ -87,4 +87,15 @@ public class ProductController {
         productService.deleteProduct(id);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping(value = "/api/inventory/products/{id}/add-to-inventory", produces = "text/plain;charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<String> addProductToInventory(@PathVariable Long id) {
+        try {
+            String message = productService.addProductToInventory(id);
+            return ResponseEntity.ok(message);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

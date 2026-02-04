@@ -3,6 +3,7 @@ package com.example.demo.api.inventory.stock;
 import com.example.demo.api.inventory.product.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -101,9 +102,13 @@ public class InventoryController {
 
     @PostMapping("/api/inventory/stocks/initialize")
     @ResponseBody
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> initializeMonth(@RequestParam String yearMonth) {
         inventoryService.initializeMonthlyInventory(yearMonth);
-        return ResponseEntity.ok(Map.of("message", yearMonth + " 재고가 생성되었습니다."));
+        // 재고 현황에서 선택할 월 계산 (생성된 월 + 1)
+        java.time.YearMonth ym = java.time.YearMonth.parse(yearMonth);
+        String displayMonth = ym.plusMonths(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+        return ResponseEntity.ok(Map.of("message", yearMonth + " 재고가 생성되었습니다.\n재고 현황에서 " + displayMonth + "을 선택하세요."));
     }
 
     @GetMapping("/api/inventory/stocks/months")
