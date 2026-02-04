@@ -209,17 +209,10 @@ public class InventoryService {
     public List<String> getAllYearMonths() {
         List<String> dbMonths = inventoryRepository.findAllYearMonths();
 
-        // DB에 있는 월들의 다음 달도 추가 (재고 현황에서 선택 가능하도록)
-        // 예: DB에 2026-01이 있으면 2026-02도 표시 (2026-02 선택 시 2026-01 재고 보임)
+        // DB에 있는 월들만 표시 (다음 달 자동 추가 제거)
         java.util.Set<String> monthSet = new java.util.TreeSet<>(dbMonths);
 
-        for (String month : dbMonths) {
-            YearMonth ym = YearMonth.parse(month);
-            String nextMonth = ym.plusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM"));
-            monthSet.add(nextMonth);
-        }
-
-        // 현재 월도 추가
+        // 현재 월도 추가 (새 달 생성 전에도 현재 월은 선택 가능)
         String currentMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
         monthSet.add(currentMonth);
 
@@ -302,60 +295,59 @@ public class InventoryService {
         List<Product> allProducts = productRepository.findAll();
 
         // 월 계산
-        // yearMonth = 3월 (새로 생성할 달)
-        // displayYM = 2월 (마감할 화면 기준 달, UsageLog/입고 조회용)
-        // dataYM = 1월 (현재 Inventory 데이터 달)
-        YearMonth currentYM = YearMonth.parse(yearMonth);
-        YearMonth displayYM = currentYM.minusMonths(1);
-        YearMonth dataYM = displayYM.minusMonths(1);
-        String displayYearMonth = displayYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
-        String dataYearMonth = dataYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        // yearMonth = 생성할 달 (예: 2026-02)
+        // prevYearMonth = 이전 달 (예: 2026-01) - 이전 데이터 참조용
+        YearMonth targetYM = YearMonth.parse(yearMonth);
+        YearMonth prevYM = targetYM.minusMonths(1);
+        String prevYearMonth = prevYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
         for (Product product : allProducts) {
             Long productId = product.getId();
 
-            // 1월 Inventory 조회 (현재 화면의 데이터)
-            Inventory dataInventory = inventoryRepository.findByProductIdAndYearMonth(productId, dataYearMonth)
+            // 이미 해당 월 데이터가 있으면 스킵
+            if (inventoryRepository.existsByProductIdAndYearMonth(productId, yearMonth)) {
+                continue;
+            }
+
+            // 이전 달 Inventory 조회
+            Inventory prevInventory = inventoryRepository.findByProductIdAndYearMonth(productId, prevYearMonth)
                     .orElse(null);
 
-            // 2월 UsageLog 합계 (당월사용량)
-            BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(
-                    productId, displayYearMonth);
-            if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
-
-            // 2월 입고완료 수량
-            BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(
-                    productId, displayYM.getYear(), displayYM.getMonthValue());
-            if (completedStock == null) completedStock = BigDecimal.ZERO;
-
-            // 현재 남은수량 계산: 1월.월초재고 + 2월입고 - 1월.전월사용량 - 2월.당월사용량
+            // 이전 달 데이터 기반으로 월초재고 계산
             BigDecimal prevInitialStock = BigDecimal.ZERO;
-            BigDecimal prevReportUsed = BigDecimal.ZERO;
-            if (dataInventory != null) {
-                prevInitialStock = dataInventory.getInitialStock() != null
-                        ? dataInventory.getInitialStock() : BigDecimal.ZERO;
-                prevReportUsed = dataInventory.getUsedQuantity() != null
-                        ? dataInventory.getUsedQuantity() : BigDecimal.ZERO;
+            BigDecimal prevUsedQuantity = BigDecimal.ZERO;
+            if (prevInventory != null) {
+                prevInitialStock = prevInventory.getInitialStock() != null
+                        ? prevInventory.getInitialStock() : BigDecimal.ZERO;
+                prevUsedQuantity = prevInventory.getUsedQuantity() != null
+                        ? prevInventory.getUsedQuantity() : BigDecimal.ZERO;
             }
-            BigDecimal remainingStock = prevInitialStock.add(completedStock).subtract(prevReportUsed).subtract(operationalUsed);
 
-            // 2월 Inventory 생성 (새 보고용 데이터)
-            // initialStock = remainingStock + usedQuantity
-            if (!inventoryRepository.existsByProductIdAndYearMonth(productId, displayYearMonth)) {
-                BigDecimal newInitialStock = remainingStock.add(operationalUsed);
+            // 이전 달 입고완료 수량
+            BigDecimal prevCompletedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(
+                    productId, prevYM.getYear(), prevYM.getMonthValue());
+            if (prevCompletedStock == null) prevCompletedStock = BigDecimal.ZERO;
 
-                Inventory newInventory = Inventory.builder()
-                        .product(product)
-                        .yearMonth(displayYearMonth)
-                        .initialStock(newInitialStock)
-                        .usedQuantity(operationalUsed)
-                        .remainingStock(remainingStock)
-                        .expiryDate(dataInventory != null ? dataInventory.getExpiryDate() : null)
-                        .note(dataInventory != null ? dataInventory.getNote() : null)
-                        .build();
+            // 이전 달 운영 사용량 (UsageLog 기반)
+            BigDecimal prevOperationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(
+                    productId, prevYearMonth);
+            if (prevOperationalUsed == null) prevOperationalUsed = BigDecimal.ZERO;
 
-                inventoryRepository.save(newInventory);
-            }
+            // 새 달 월초재고 = 이전 달 월초재고 + 이전 달 입고 - 이전 달 사용량(보고용) - 이전 달 운영 사용량
+            BigDecimal newInitialStock = prevInitialStock.add(prevCompletedStock)
+                    .subtract(prevUsedQuantity).subtract(prevOperationalUsed);
+
+            Inventory newInventory = Inventory.builder()
+                    .product(product)
+                    .yearMonth(yearMonth)
+                    .initialStock(newInitialStock)
+                    .usedQuantity(BigDecimal.ZERO)
+                    .remainingStock(newInitialStock)
+                    .expiryDate(prevInventory != null ? prevInventory.getExpiryDate() : null)
+                    .note(prevInventory != null ? prevInventory.getNote() : null)
+                    .build();
+
+            inventoryRepository.save(newInventory);
         }
     }
 

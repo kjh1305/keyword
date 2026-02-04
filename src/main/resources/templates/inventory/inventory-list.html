@@ -27,7 +27,7 @@
         <div class="top-bar">
             <h1 class="page-title">재고 현황</h1>
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-secondary" onclick="initializeMonth()">
+                <button class="btn btn-outline-secondary" onclick="initializeMonth()" sec:authorize="hasRole('ADMIN')">
                     <i class="bi bi-plus-circle me-1"></i>새 달 생성
                 </button>
                 <div class="btn-group">
@@ -280,7 +280,7 @@
                                 <td colspan="10" class="text-center py-4 text-muted">
                                     해당 월에 등록된 재고 정보가 없습니다.
                                     <br><br>
-                                    <button class="btn btn-primary btn-sm" onclick="initializeMonth()">
+                                    <button class="btn btn-primary btn-sm" onclick="initializeMonth()" sec:authorize="hasRole('ADMIN')">
                                         <i class="bi bi-plus-circle me-1"></i>새 달 재고 생성
                                     </button>
                                 </td>
@@ -738,12 +738,19 @@
             });
         }
 
-        // Initialize month (현재 날짜 기준 자동 계산)
+        // Initialize month (현재 월 기준으로 해당 월 재고 생성)
         function initializeMonth() {
             const now = new Date();
-            const yearMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            // 현재 월의 재고를 생성
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1; // 0-based이므로 +1
+            const yearMonth = currentYear + '-' + String(currentMonth).padStart(2, '0');
 
-            if (!confirm(yearMonth + ' 재고를 생성하시겠습니까?\n\n이전 달 남은재고가 새 달의 월초재고로 자동 이월됩니다.')) {
+            // 재고 현황에서 선택할 월 계산 (생성 월 + 1)
+            const nextDate = new Date(currentYear, currentMonth, 1); // 다음 달
+            const displayMonth = nextDate.getFullYear() + '-' + String(nextDate.getMonth() + 1).padStart(2, '0');
+
+            if (!confirm(yearMonth + ' 재고를 생성하시겠습니까?\n\n이전 달 남은재고가 월초재고로 자동 이월됩니다.\n(재고 현황에서 ' + displayMonth + ' 선택 시 표시됩니다)')) {
                 return;
             }
 
@@ -751,7 +758,8 @@
                 .then(response => response.json())
                 .then(data => {
                     alert(data.message);
-                    location.href = '/inventory/stocks?yearMonth=' + yearMonth;
+                    // 생성된 재고를 볼 수 있는 월로 이동 (생성 월 + 1)
+                    location.href = '/inventory/stocks?yearMonth=' + displayMonth;
                 })
                 .catch(error => {
                     alert('초기화에 실패했습니다.');
