@@ -98,7 +98,12 @@ public class InventoryService {
                     BigDecimal initialStock = dto.getInitialStock() != null ? dto.getInitialStock() : BigDecimal.ZERO;
                     BigDecimal completed = dto.getCompletedStock() != null ? dto.getCompletedStock() : BigDecimal.ZERO;
                     BigDecimal reportUsed = dto.getUsedQuantity() != null ? dto.getUsedQuantity() : BigDecimal.ZERO;
-                    dto.setRemainingStock(initialStock.add(completed).subtract(reportUsed).subtract(operationalUsed));
+                    BigDecimal newRemainingStock = initialStock.add(completed).subtract(reportUsed).subtract(operationalUsed);
+                    dto.setRemainingStock(newRemainingStock);
+
+                    // lowStock 재계산: 재계산된 remainingStock 기준으로 (0 < 남은재고 <= 최소수량)
+                    BigDecimal minQty = dto.getMinQuantity() != null ? new BigDecimal(dto.getMinQuantity()) : BigDecimal.ZERO;
+                    dto.setLowStock(newRemainingStock.compareTo(BigDecimal.ZERO) > 0 && newRemainingStock.compareTo(minQty) <= 0);
 
                     // StockOrder에서 해당 제품의 유효기간 목록 가져오기 (유효기간 빠른 순)
                     List<StockOrder> orders = stockOrderRepository.findAllExpiryByProductId(productId);
