@@ -7,6 +7,7 @@ import com.example.demo.api.inventory.product.ProductRepository;
 import com.example.demo.api.inventory.stock.Inventory;
 import com.example.demo.api.inventory.stock.InventoryDTO;
 import com.example.demo.api.inventory.stock.InventoryRepository;
+import com.example.demo.api.inventory.stock.UsageLogRepository;
 import org.apache.poi.ss.util.CellRangeAddress;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ public class ExcelService {
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final StockOrderRepository stockOrderRepository;
+    private final UsageLogRepository usageLogRepository;
 
     /**
      * 엑셀 파일의 시트 목록 조회
@@ -683,40 +685,343 @@ public class ExcelService {
     }
 
     public byte[] exportAllToExcel() throws IOException {
-        // 재고 현황 드롭다운과 동일한 월 목록 가져오기
-        // 드롭다운 월 = DB yearMonth + 현재 월
+        // 시트로 표시할 데이터 월 목록 (DB 월 + 현재 월)
         List<String> dbMonths = inventoryRepository.findAllYearMonths();
         String currentMonth = java.time.YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
-        java.util.Set<String> dropdownMonths = new java.util.TreeSet<>(dbMonths);
-        dropdownMonths.add(currentMonth);
+        java.util.Set<String> dataMonths = new java.util.TreeSet<>(dbMonths);
+        dataMonths.add(currentMonth);
 
-        // 현재 월 이하만 포함 (미래 월 제외 - 보고 불가)
-        List<String> reportableDropdownMonths = new ArrayList<>();
-        for (String month : dropdownMonths) {
+        // 현재 월 이하만 포함 (오름차순 정렬)
+        List<String> sortedDataMonths = new ArrayList<>();
+        for (String month : dataMonths) {
             if (month.compareTo(currentMonth) <= 0) {
-                reportableDropdownMonths.add(month);
+                sortedDataMonths.add(month);
             }
         }
-
-        // 오름차순 정렬 (시트 순서)
-        java.util.Collections.sort(reportableDropdownMonths);
 
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
             Map<String, CellStyle> styles = createStyles(workbook);
 
-            // 각 드롭다운 월에 대해 시트 생성
-            // 드롭다운 월 X → 시트는 X-1개월 (데이터 월)
-            // 예: 드롭다운 "2026-01", "2026-02" → 시트 "2025-12", "2026-01"
-            for (String dropdownMonth : reportableDropdownMonths) {
-                createSheetForYearMonth(workbook, dropdownMonth, styles);
+            // 각 데이터 월에 대해 시트 생성
+            // 데이터 월 → 보고 월(다음 달)로 변환하여 호출, 시트명은 데이터 월로 표시
+            for (String dataMonth : sortedDataMonths) {
+                String reportMonth = java.time.YearMonth.parse(dataMonth).plusMonths(1)
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                createSheetForYearMonth(workbook, reportMonth, styles);
             }
 
             workbook.write(out);
             return out.toByteArray();
         }
+    }
+
+    /**
+     * 주간 보고용 엑셀 - 간결한 6컬럼 (번호, 제품명, 월초재고, 사용량, 입고완료, 남은재고)
+     * 웹 UI(getInventoryByMonthPaged)와 동일한 계산 로직 사용
+     */
+    public byte[] exportWeeklyReport(String yearMonth) throws IOException {
+        // yearMonth = 선택한 달 (예: 2026-02)
+        java.time.YearMonth currentYM = java.time.YearMonth.parse(yearMonth);
+        java.time.YearMonth prevYM = currentYM.minusMonths(1);
+        String prevYearMonth = prevYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+
+        int targetYear = currentYM.getYear();
+        int targetMonth = currentYM.getMonthValue();
+
+        // 이전 달 재고 데이터 조회 (월초재고 = 이전 달 initialStock)
+        List<Inventory> inventories = inventoryRepository.findByYearMonthWithProduct(prevYearMonth);
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Map<String, CellStyle> styles = createStyles(workbook);
+            Sheet sheet = workbook.createSheet(yearMonth);
+
+            // 타이틀
+            String year = yearMonth.substring(0, 4);
+            String month = yearMonth.substring(5);
+            if (month.startsWith("0")) month = month.substring(1);
+
+            Row titleRow = sheet.createRow(0);
+            titleRow.setHeightInPoints(30);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue(year + "년 " + month + "월 피부 재고현황(주간보고)");
+            titleCell.setCellStyle(styles.get("title"));
+
+            String[] headers = {"번호", "제품명", "월초재고", "사용량", "입고완료", "남은재고"};
+            sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
+
+            // 헤더
+            Row headerRow = sheet.createRow(1);
+            headerRow.setHeightInPoints(22);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(styles.get("header"));
+            }
+
+            // 데이터 행
+            int rowNum = 2;
+            int seq = 1;
+            for (Inventory inv : inventories) {
+                Row row = sheet.createRow(rowNum);
+                Long productId = inv.getProduct().getId();
+
+                // 월초재고: 전월초재고 - 전월사용량 = 실제 당월 초 재고
+                BigDecimal prevInitial = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
+                BigDecimal prevUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
+                BigDecimal initialStock = prevInitial.subtract(prevUsed);
+
+                // 사용량: 당월 운영용(UsageLog 합계)만
+                BigDecimal totalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(productId, yearMonth);
+                if (totalUsed == null) totalUsed = BigDecimal.ZERO;
+
+                // 입고완료: 해당 월 COMPLETED 주문 수량 합계
+                BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(productId, targetYear, targetMonth);
+                if (completedStock == null) completedStock = BigDecimal.ZERO;
+
+                // 남은재고: 월초재고 + 입고완료 - 사용량
+                BigDecimal remainingStock = initialStock.add(completedStock).subtract(totalUsed);
+
+                // 번호
+                Cell cell0 = row.createCell(0);
+                cell0.setCellValue(seq);
+                cell0.setCellStyle(styles.get("center"));
+
+                // 제품명
+                Cell cell1 = row.createCell(1);
+                cell1.setCellValue(inv.getProduct().getName());
+                cell1.setCellStyle(styles.get("text"));
+
+                // 월초재고
+                Cell cell2 = row.createCell(2);
+                cell2.setCellValue(initialStock.intValue());
+                cell2.setCellStyle(styles.get("number"));
+
+                // 사용량
+                Cell cell3 = row.createCell(3);
+                cell3.setCellValue(totalUsed.intValue());
+                cell3.setCellStyle(styles.get("number"));
+
+                // 입고완료
+                Cell cell4 = row.createCell(4);
+                cell4.setCellValue(completedStock.intValue());
+                cell4.setCellStyle(styles.get("number"));
+
+                // 남은재고
+                Cell cell5 = row.createCell(5);
+                cell5.setCellValue(remainingStock.intValue());
+                cell5.setCellStyle(styles.get("highlight"));
+
+                rowNum++;
+                seq++;
+            }
+
+            // 컬럼 너비
+            sheet.setColumnWidth(0, 2000);   // 번호
+            sheet.setColumnWidth(1, 7000);   // 제품명
+            sheet.setColumnWidth(2, 3000);   // 월초재고
+            sheet.setColumnWidth(3, 3000);   // 사용량
+            sheet.setColumnWidth(4, 3000);   // 입고완료
+            sheet.setColumnWidth(5, 3000);   // 남은재고
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    /**
+     * 주별 분할 보고서 - 월초재고 1회 + 주마다 사용/입고/남은 컬럼
+     * 1주차는 1일부터, 이후 월요일 기준
+     */
+    public byte[] exportWeeklyBreakdownReport(String yearMonth) throws IOException {
+        java.time.YearMonth currentYM = java.time.YearMonth.parse(yearMonth);
+        java.time.YearMonth prevYM = currentYM.minusMonths(1);
+        String prevYearMonth = prevYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+
+        // 주 경계 계산: 1주차는 1일~첫 일요일, 이후 월~일
+        List<LocalDate[]> weeks = calculateWeekBoundaries(currentYM);
+
+        // 이전 달 재고 데이터 조회
+        List<Inventory> inventories = inventoryRepository.findByYearMonthWithProduct(prevYearMonth);
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Map<String, CellStyle> styles = createStyles(workbook);
+            Sheet sheet = workbook.createSheet(yearMonth);
+
+            String year = yearMonth.substring(0, 4);
+            String month = yearMonth.substring(5);
+            if (month.startsWith("0")) month = month.substring(1);
+
+            // 타이틀 행
+            int totalCols = 3 + (weeks.size() * 3); // 번호 + 제품명 + 월초재고 + (사용/입고/남은) * 주 수
+            Row titleRow = sheet.createRow(0);
+            titleRow.setHeightInPoints(30);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue(year + "년 " + month + "월 피부 재고현황(주간)");
+            titleCell.setCellStyle(styles.get("title"));
+            sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, totalCols - 1));
+
+            // 상단 헤더 행 (주차 그룹)
+            Row groupRow = sheet.createRow(1);
+            groupRow.setHeightInPoints(20);
+            // 번호/제품명/월초재고는 2행 병합
+            for (int i = 0; i < 3; i++) {
+                Cell cell = groupRow.createCell(i);
+                cell.setCellStyle(styles.get("header"));
+            }
+            // 주차 그룹 헤더
+            for (int w = 0; w < weeks.size(); w++) {
+                int startCol = 3 + (w * 3);
+                LocalDate[] range = weeks.get(w);
+                String weekLabel = (w + 1) + "주차 (" + range[0].getMonthValue() + "/" + range[0].getDayOfMonth()
+                        + "~" + range[1].getMonthValue() + "/" + range[1].getDayOfMonth() + ")";
+                Cell cell = groupRow.createCell(startCol);
+                cell.setCellValue(weekLabel);
+                cell.setCellStyle(styles.get("header"));
+                // 나머지 셀에도 스타일 적용
+                groupRow.createCell(startCol + 1).setCellStyle(styles.get("header"));
+                groupRow.createCell(startCol + 2).setCellStyle(styles.get("header"));
+                sheet.addMergedRegion(new CellRangeAddress(1, 1, startCol, startCol + 2));
+            }
+
+            // 하단 헤더 행 (세부 컬럼)
+            Row headerRow = sheet.createRow(2);
+            headerRow.setHeightInPoints(22);
+            String[] fixedHeaders = {"번호", "제품명", "월초재고"};
+            for (int i = 0; i < fixedHeaders.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(fixedHeaders[i]);
+                cell.setCellStyle(styles.get("header"));
+            }
+            // 번호, 제품명, 월초재고 2행 병합
+            for (int i = 0; i < 3; i++) {
+                sheet.addMergedRegion(new CellRangeAddress(1, 2, i, i));
+            }
+            for (int w = 0; w < weeks.size(); w++) {
+                int startCol = 3 + (w * 3);
+                String[] subHeaders = {"사용", "입고", "남은"};
+                for (int s = 0; s < subHeaders.length; s++) {
+                    Cell cell = headerRow.createCell(startCol + s);
+                    cell.setCellValue(subHeaders[s]);
+                    cell.setCellStyle(styles.get("header"));
+                }
+            }
+
+            // 데이터 행
+            int rowNum = 3;
+            int seq = 1;
+            for (Inventory inv : inventories) {
+                Row row = sheet.createRow(rowNum);
+                Long productId = inv.getProduct().getId();
+
+                // 월초재고 (실제 당월 초)
+                BigDecimal prevInitial = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
+                BigDecimal prevUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
+                BigDecimal initialStock = prevInitial.subtract(prevUsed);
+
+                Cell cell0 = row.createCell(0);
+                cell0.setCellValue(seq);
+                cell0.setCellStyle(styles.get("center"));
+
+                Cell cell1 = row.createCell(1);
+                cell1.setCellValue(inv.getProduct().getName());
+                cell1.setCellStyle(styles.get("text"));
+
+                Cell cell2 = row.createCell(2);
+                cell2.setCellValue(initialStock.intValue());
+                cell2.setCellStyle(styles.get("number"));
+
+                // 주별 데이터
+                BigDecimal weekStartStock = initialStock;
+                for (int w = 0; w < weeks.size(); w++) {
+                    LocalDate[] range = weeks.get(w);
+                    String startDateStr = range[0].format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                    String endDateStr = range[1].format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                    int startCol = 3 + (w * 3);
+
+                    // 해당 주 사용량
+                    BigDecimal weekUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, startDateStr, endDateStr);
+                    if (weekUsed == null) weekUsed = BigDecimal.ZERO;
+
+                    // 해당 주 입고완료
+                    BigDecimal weekCompleted = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, range[0], range[1]);
+                    if (weekCompleted == null) weekCompleted = BigDecimal.ZERO;
+
+                    // 남은재고
+                    BigDecimal weekRemaining = weekStartStock.add(weekCompleted).subtract(weekUsed);
+
+                    Cell usedCell = row.createCell(startCol);
+                    usedCell.setCellValue(weekUsed.intValue());
+                    usedCell.setCellStyle(styles.get("number"));
+
+                    Cell completedCell = row.createCell(startCol + 1);
+                    completedCell.setCellValue(weekCompleted.intValue());
+                    completedCell.setCellStyle(styles.get("number"));
+
+                    Cell remainingCell = row.createCell(startCol + 2);
+                    remainingCell.setCellValue(weekRemaining.intValue());
+                    remainingCell.setCellStyle(styles.get("highlight"));
+
+                    // 다음 주 시작재고 = 이번 주 남은재고
+                    weekStartStock = weekRemaining;
+                }
+
+                rowNum++;
+                seq++;
+            }
+
+            // 컬럼 너비
+            sheet.setColumnWidth(0, 2000);
+            sheet.setColumnWidth(1, 7000);
+            sheet.setColumnWidth(2, 3000);
+            for (int w = 0; w < weeks.size(); w++) {
+                int startCol = 3 + (w * 3);
+                sheet.setColumnWidth(startCol, 2500);
+                sheet.setColumnWidth(startCol + 1, 2500);
+                sheet.setColumnWidth(startCol + 2, 2500);
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    /**
+     * 월의 주 경계 계산: 1주차는 1일~첫 일요일, 이후 월~일, 마지막 주는 월~말일
+     */
+    private List<LocalDate[]> calculateWeekBoundaries(java.time.YearMonth ym) {
+        List<LocalDate[]> weeks = new ArrayList<>();
+        LocalDate firstDay = ym.atDay(1);
+        LocalDate lastDay = ym.atEndOfMonth();
+
+        LocalDate weekStart = firstDay;
+
+        // 1주차: 1일 ~ 첫 번째 일요일
+        // 첫날이 월요일이면 그 주 일요일까지, 그 외는 가장 가까운 일요일까지
+        LocalDate firstSunday = firstDay;
+        while (firstSunday.getDayOfWeek() != java.time.DayOfWeek.SUNDAY && firstSunday.isBefore(lastDay)) {
+            firstSunday = firstSunday.plusDays(1);
+        }
+        weeks.add(new LocalDate[]{firstDay, firstSunday.isAfter(lastDay) ? lastDay : firstSunday});
+        weekStart = firstSunday.plusDays(1); // 다음 월요일
+
+        // 이후 주: 월~일
+        while (!weekStart.isAfter(lastDay)) {
+            LocalDate weekEnd = weekStart.plusDays(6); // 일요일
+            if (weekEnd.isAfter(lastDay)) {
+                weekEnd = lastDay;
+            }
+            weeks.add(new LocalDate[]{weekStart, weekEnd});
+            weekStart = weekEnd.plusDays(1);
+        }
+
+        return weeks;
     }
 
     /**
@@ -1036,10 +1341,10 @@ public class ExcelService {
             }
         }
 
-        // 시트명과 타이틀은 이전 달 기준으로 표시
+        // 시트명과 타이틀은 데이터 월(이전 달) 기준으로 표시
         Sheet sheet = workbook.createSheet(prevYearMonth);
 
-        // 연/월 추출 (이전 달 기준, 예: 2026-01 -> 2026년 1월)
+        // 연/월 추출 (데이터 월 기준, 예: 2026-02 -> 2026년 2월)
         String year = prevYearMonth.substring(0, 4);
         String month = prevYearMonth.substring(5);
         if (month.startsWith("0")) month = month.substring(1);
