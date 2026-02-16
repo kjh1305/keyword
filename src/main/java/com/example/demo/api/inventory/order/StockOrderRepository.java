@@ -145,6 +145,16 @@ public interface StockOrderRepository extends JpaRepository<StockOrder, Long> {
                                                                   @Param("month") int month);
 
     /**
+     * 해당 날짜 범위에 입고된 수량 합계
+     */
+    @Query("SELECT COALESCE(SUM(o.quantity), 0) FROM StockOrder o " +
+           "WHERE o.product.id = :productId AND o.status = 'COMPLETED' " +
+           "AND o.receivedDate >= :startDate AND o.receivedDate <= :endDate")
+    java.math.BigDecimal sumCompletedQuantityByProductIdAndDateRange(@Param("productId") Long productId,
+                                                                     @Param("startDate") LocalDate startDate,
+                                                                     @Param("endDate") LocalDate endDate);
+
+    /**
      * 제품별 주문 삭제
      */
     void deleteByProductId(@Param("productId") Long productId);

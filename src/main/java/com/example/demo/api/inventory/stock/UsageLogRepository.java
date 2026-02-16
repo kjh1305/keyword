@@ -51,4 +51,15 @@ public interface UsageLogRepository extends JpaRepository<UsageLog, Long> {
            "COALESCE(SUM(CASE WHEN u.action = 'RESTORE' THEN u.quantity ELSE 0 END), 0) " +
            "FROM UsageLog u WHERE u.product.id = :productId AND u.actionDate LIKE CONCAT(:yearMonth, '%')")
     BigDecimal sumOperationalUsedByProductIdAndYearMonth(@Param("productId") Long productId, @Param("yearMonth") String yearMonth);
+
+    /**
+     * 제품별 날짜 범위 운영용 사용량 합계 (DEDUCT - RESTORE)
+     * actionDate가 yyyy-MM-dd 문자열이므로 문자열 비교
+     */
+    @Query("SELECT COALESCE(SUM(CASE WHEN u.action = 'DEDUCT' THEN u.quantity ELSE 0 END), 0) - " +
+           "COALESCE(SUM(CASE WHEN u.action = 'RESTORE' THEN u.quantity ELSE 0 END), 0) " +
+           "FROM UsageLog u WHERE u.product.id = :productId AND u.actionDate >= :startDate AND u.actionDate <= :endDate")
+    BigDecimal sumOperationalUsedByProductIdAndDateRange(@Param("productId") Long productId,
+                                                         @Param("startDate") String startDate,
+                                                         @Param("endDate") String endDate);
 }
