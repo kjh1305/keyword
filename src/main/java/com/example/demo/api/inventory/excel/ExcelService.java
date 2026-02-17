@@ -747,7 +747,7 @@ public class ExcelService {
             titleCell.setCellValue(year + "년 " + month + "월 피부 재고현황(당일보고)");
             titleCell.setCellStyle(styles.get("title"));
 
-            String[] headers = {"번호", "제품명", "월초재고", "사용량", "입고완료", "남은재고"};
+            String[] headers = {"번호", "제품명", "월초재고", "사용량", "입고완료", "남은재고", "주문재고", "입고일자"};
             sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
 
             // 헤더
@@ -782,6 +782,30 @@ public class ExcelService {
                 // 남은재고: 월초재고 + 입고완료 - 사용량
                 BigDecimal remainingStock = initialStock.add(completedStock).subtract(totalUsed);
 
+                // 주문재고: 해당 월 주문수량 합산 (PENDING + COMPLETED)
+                List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
+                BigDecimal orderStock = BigDecimal.ZERO;
+                List<String> receivedDates = new ArrayList<>();
+                for (StockOrder order : orders) {
+                    boolean isTargetMonthOrder = order.getOrderDate() != null &&
+                            order.getOrderDate().getYear() == targetYear &&
+                            order.getOrderDate().getMonthValue() == targetMonth;
+                    if (isTargetMonthOrder && order.getQuantity() != null) {
+                        orderStock = orderStock.add(order.getQuantity());
+                    }
+                    if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
+                        if (order.getReceivedDate().getYear() == targetYear &&
+                            order.getReceivedDate().getMonthValue() == targetMonth) {
+                            receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                        }
+                    }
+                }
+
+                int dateCount = receivedDates.size();
+                if (dateCount > 1) {
+                    row.setHeightInPoints(dateCount * 15);
+                }
+
                 // 번호
                 Cell cell0 = row.createCell(0);
                 cell0.setCellValue(seq);
@@ -812,6 +836,16 @@ public class ExcelService {
                 cell5.setCellValue(remainingStock.intValue());
                 cell5.setCellStyle(styles.get("highlight"));
 
+                // 주문재고
+                Cell cell6 = row.createCell(6);
+                cell6.setCellValue(orderStock.compareTo(BigDecimal.ZERO) > 0 ? orderStock.intValue() : 0);
+                cell6.setCellStyle(styles.get("number"));
+
+                // 입고일자
+                Cell cell7 = row.createCell(7);
+                cell7.setCellValue(!receivedDates.isEmpty() ? String.join("\n", receivedDates) : "");
+                cell7.setCellStyle(styles.get("wrap"));
+
                 rowNum++;
                 seq++;
             }
@@ -823,6 +857,8 @@ public class ExcelService {
             sheet.setColumnWidth(3, 3000);   // 사용량
             sheet.setColumnWidth(4, 3000);   // 입고완료
             sheet.setColumnWidth(5, 3000);   // 남은재고
+            sheet.setColumnWidth(6, 3000);   // 주문재고
+            sheet.setColumnWidth(7, 4000);   // 입고일자
 
             workbook.write(out);
             return out.toByteArray();
