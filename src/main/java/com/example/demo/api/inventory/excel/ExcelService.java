@@ -676,7 +676,7 @@ public class ExcelService {
             // 스타일 생성
             Map<String, CellStyle> styles = createStyles(workbook);
 
-            // 단일 시트 생성
+            // 단일 시트 생성 (전월 재고 기반, 웹 UI와 동일한 데이터)
             createSheetForYearMonth(workbook, yearMonth, styles);
 
             workbook.write(out);
@@ -690,12 +690,11 @@ public class ExcelService {
         String currentMonth = java.time.YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
         java.util.Set<String> dataMonths = new java.util.TreeSet<>(dbMonths);
-        dataMonths.add(currentMonth);
 
-        // 현재 월 이하만 포함 (오름차순 정렬)
+        // 현재 월 미만만 포함 (당월 제외, 오름차순 정렬)
         List<String> sortedDataMonths = new ArrayList<>();
         for (String month : dataMonths) {
-            if (month.compareTo(currentMonth) <= 0) {
+            if (month.compareTo(currentMonth) < 0) {
                 sortedDataMonths.add(month);
             }
         }
@@ -705,12 +704,9 @@ public class ExcelService {
 
             Map<String, CellStyle> styles = createStyles(workbook);
 
-            // 각 데이터 월에 대해 시트 생성
-            // 데이터 월 → 보고 월(다음 달)로 변환하여 호출, 시트명은 데이터 월로 표시
+            // 각 데이터 월에 대해 시트 생성 (해당 월 데이터 직접 조회)
             for (String dataMonth : sortedDataMonths) {
-                String reportMonth = java.time.YearMonth.parse(dataMonth).plusMonths(1)
-                        .format(DateTimeFormatter.ofPattern("yyyy-MM"));
-                createSheetForYearMonth(workbook, reportMonth, styles);
+                createSheetForYearMonthDirect(workbook, dataMonth, styles);
             }
 
             workbook.write(out);
@@ -748,7 +744,7 @@ public class ExcelService {
             Row titleRow = sheet.createRow(0);
             titleRow.setHeightInPoints(30);
             Cell titleCell = titleRow.createCell(0);
-            titleCell.setCellValue(year + "년 " + month + "월 피부 재고현황(주간보고)");
+            titleCell.setCellValue(year + "년 " + month + "월 피부 재고현황(당일보고)");
             titleCell.setCellStyle(styles.get("title"));
 
             String[] headers = {"번호", "제품명", "월초재고", "사용량", "입고완료", "남은재고"};
@@ -1031,8 +1027,8 @@ public class ExcelService {
         // yearMonth가 곧 Inventory의 yearMonth (시트명도 이걸로)
         List<Inventory> inventories = inventoryRepository.findByYearMonthWithProduct(yearMonth);
 
-        // 제품별 주문 정보 조회 (해당 월 + 1개월 기준)
-        java.time.YearMonth targetYM = java.time.YearMonth.parse(yearMonth).plusMonths(1);
+        // 제품별 주문 정보 조회 (해당 월 기준)
+        java.time.YearMonth targetYM = java.time.YearMonth.parse(yearMonth);
         int targetYear = targetYM.getYear();
         int targetMonth = targetYM.getMonthValue();
 
@@ -1096,7 +1092,7 @@ public class ExcelService {
         titleCell.setCellValue(year + "년 " + month + "월 피부 물품(보고용)");
         titleCell.setCellStyle(styles.get("title"));
 
-        String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문재고", "입고일자", "유효기간", "단위", "비고"};
+        String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문재고", "입고일자", "유효기간", "비고"};
         sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
 
         Row headerRow = sheet.createRow(1);
@@ -1106,6 +1102,9 @@ public class ExcelService {
             cell.setCellValue(headers[i]);
             cell.setCellStyle(styles.get("header"));
         }
+
+        // 보고 월 문자열 (입고완료, 운영사용량 조회용)
+        String reportYearMonth = targetYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
         int rowNum = 2;
         int seq = 1;
@@ -1119,6 +1118,18 @@ public class ExcelService {
                 row.setHeightInPoints(dateCount * 15);
             }
 
+            // 남은재고 동적 계산 (웹 UI와 동일한 로직)
+            BigDecimal initialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
+            BigDecimal reportUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
+
+            BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(productId, targetYear, targetMonth);
+            if (completedStock == null) completedStock = BigDecimal.ZERO;
+
+            BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(productId, reportYearMonth);
+            if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
+
+            BigDecimal remainingStock = initialStock.add(completedStock).subtract(reportUsed).subtract(operationalUsed);
+
             Cell cell0 = row.createCell(0);
             cell0.setCellValue(seq);
             cell0.setCellStyle(styles.get("center"));
@@ -1128,15 +1139,16 @@ public class ExcelService {
             cell1.setCellStyle(styles.get("text"));
 
             Cell cell2 = row.createCell(2);
-            cell2.setCellValue(inv.getInitialStock() != null ? inv.getInitialStock().intValue() : 0);
+            cell2.setCellValue(initialStock.intValue());
             cell2.setCellStyle(styles.get("number"));
 
             Cell cell3 = row.createCell(3);
-            cell3.setCellValue(inv.getUsedQuantity() != null ? inv.getUsedQuantity().intValue() : 0);
+            cell3.setCellValue(reportUsed.intValue());
             cell3.setCellStyle(styles.get("number"));
 
+            // 남은재고 (강조) - 동적 계산값 사용
             Cell cell4 = row.createCell(4);
-            cell4.setCellValue(inv.getRemainingStock() != null ? inv.getRemainingStock().intValue() : 0);
+            cell4.setCellValue(remainingStock.intValue());
             cell4.setCellStyle(styles.get("highlight"));
 
             Cell cell5 = row.createCell(5);
@@ -1153,11 +1165,8 @@ public class ExcelService {
             cell7.setCellValue(expiry != null ? expiry : "");
             cell7.setCellStyle(styles.get("center"));
 
+            // 비고 (제품 비고 + 재고 비고)
             Cell cell8 = row.createCell(8);
-            cell8.setCellValue(inv.getProduct().getUnit() != null ? inv.getProduct().getUnit() : "");
-            cell8.setCellStyle(styles.get("center"));
-
-            Cell cell9 = row.createCell(9);
             String productNote = inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "";
             String inventoryNote = inv.getNote() != null ? inv.getNote() : "";
             String combinedNote = "";
@@ -1168,8 +1177,8 @@ public class ExcelService {
             } else {
                 combinedNote = inventoryNote;
             }
-            cell9.setCellValue(combinedNote);
-            cell9.setCellStyle(styles.get("wrap"));
+            cell8.setCellValue(combinedNote);
+            cell8.setCellStyle(styles.get("wrap"));
 
             rowNum++;
             seq++;
@@ -1183,8 +1192,7 @@ public class ExcelService {
         sheet.setColumnWidth(5, 3000);
         sheet.setColumnWidth(6, 4000);
         sheet.setColumnWidth(7, 3500);
-        sheet.setColumnWidth(8, 2500);
-        sheet.setColumnWidth(9, 5000);
+        sheet.setColumnWidth(8, 5000);
     }
 
     private Map<String, CellStyle> createStyles(Workbook workbook) {
@@ -1344,7 +1352,7 @@ public class ExcelService {
         // 시트명과 타이틀은 데이터 월(이전 달) 기준으로 표시
         Sheet sheet = workbook.createSheet(prevYearMonth);
 
-        // 연/월 추출 (데이터 월 기준, 예: 2026-02 -> 2026년 2월)
+        // 연/월 추출 (데이터 월 기준)
         String year = prevYearMonth.substring(0, 4);
         String month = prevYearMonth.substring(5);
         if (month.startsWith("0")) month = month.substring(1);
@@ -1357,7 +1365,7 @@ public class ExcelService {
         titleCell.setCellStyle(styles.get("title"));
 
         // 타이틀 셀 병합
-        String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문재고", "입고일자", "유효기간", "단위", "비고"};
+        String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문재고", "입고일자", "유효기간", "비고"};
         sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
 
         // 헤더 행
@@ -1368,6 +1376,9 @@ public class ExcelService {
             cell.setCellValue(headers[i]);
             cell.setCellStyle(styles.get("header"));
         }
+
+        // yearMonth(보고 월) 기준으로 연/월 값 (입고완료, 운영사용량 조회용)
+        String reportYearMonth = currentYM.format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
         int rowNum = 2;
         int seq = 1;
@@ -1381,6 +1392,18 @@ public class ExcelService {
                 row.setHeightInPoints(dateCount * 15);
             }
 
+            // 남은재고 동적 계산 (웹 UI와 동일한 로직)
+            BigDecimal initialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
+            BigDecimal reportUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
+
+            BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(productId, targetYear, targetMonth);
+            if (completedStock == null) completedStock = BigDecimal.ZERO;
+
+            BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(productId, reportYearMonth);
+            if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
+
+            BigDecimal remainingStock = initialStock.add(completedStock).subtract(reportUsed).subtract(operationalUsed);
+
             // 번호
             Cell cell0 = row.createCell(0);
             cell0.setCellValue(seq);
@@ -1393,17 +1416,17 @@ public class ExcelService {
 
             // 월초재고
             Cell cell2 = row.createCell(2);
-            cell2.setCellValue(inv.getInitialStock() != null ? inv.getInitialStock().intValue() : 0);
+            cell2.setCellValue(initialStock.intValue());
             cell2.setCellStyle(styles.get("number"));
 
             // 사용량
             Cell cell3 = row.createCell(3);
-            cell3.setCellValue(inv.getUsedQuantity() != null ? inv.getUsedQuantity().intValue() : 0);
+            cell3.setCellValue(reportUsed.intValue());
             cell3.setCellStyle(styles.get("number"));
 
-            // 남은재고 (강조)
+            // 남은재고 (강조) - 동적 계산값 사용
             Cell cell4 = row.createCell(4);
-            cell4.setCellValue(inv.getRemainingStock() != null ? inv.getRemainingStock().intValue() : 0);
+            cell4.setCellValue(remainingStock.intValue());
             cell4.setCellStyle(styles.get("highlight"));
 
             // 주문재고 (해당 월 주문수량 합산 - PENDING + COMPLETED)
@@ -1423,13 +1446,8 @@ public class ExcelService {
             cell7.setCellValue(expiry != null ? expiry : "");
             cell7.setCellStyle(styles.get("center"));
 
-            // 단위
-            Cell cell8 = row.createCell(8);
-            cell8.setCellValue(inv.getProduct().getUnit() != null ? inv.getProduct().getUnit() : "");
-            cell8.setCellStyle(styles.get("center"));
-
             // 비고 (제품 비고 + 재고 비고)
-            Cell cell9 = row.createCell(9);
+            Cell cell8 = row.createCell(8);
             String productNote = inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "";
             String inventoryNote = inv.getNote() != null ? inv.getNote() : "";
             String combinedNote = "";
@@ -1440,8 +1458,8 @@ public class ExcelService {
             } else {
                 combinedNote = inventoryNote;
             }
-            cell9.setCellValue(combinedNote);
-            cell9.setCellStyle(styles.get("wrap"));
+            cell8.setCellValue(combinedNote);
+            cell8.setCellStyle(styles.get("wrap"));
 
             rowNum++;
             seq++;
@@ -1456,7 +1474,6 @@ public class ExcelService {
         sheet.setColumnWidth(5, 3000);   // 주문재고
         sheet.setColumnWidth(6, 4000);   // 입고일자
         sheet.setColumnWidth(7, 3500);   // 유효기간
-        sheet.setColumnWidth(8, 2500);   // 단위
-        sheet.setColumnWidth(9, 5000);   // 비고
+        sheet.setColumnWidth(8, 5000);   // 비고
     }
 }

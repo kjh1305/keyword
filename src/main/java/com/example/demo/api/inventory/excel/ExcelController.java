@@ -124,7 +124,7 @@ public class ExcelController {
     @GetMapping("/api/inventory/export/weekly-report")
     public ResponseEntity<byte[]> exportWeeklyReport(@RequestParam String yearMonth) throws IOException {
         byte[] excelData = excelService.exportWeeklyReport(yearMonth);
-        String filename = URLEncoder.encode("주간보고_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
+        String filename = URLEncoder.encode("당일보고_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + filename)
@@ -135,7 +135,7 @@ public class ExcelController {
     @GetMapping("/api/inventory/export/weekly-breakdown")
     public ResponseEntity<byte[]> exportWeeklyBreakdown(@RequestParam String yearMonth) throws IOException {
         byte[] excelData = excelService.exportWeeklyBreakdownReport(yearMonth);
-        String filename = URLEncoder.encode("주간분할_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
+        String filename = URLEncoder.encode("주간보고_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + filename)
