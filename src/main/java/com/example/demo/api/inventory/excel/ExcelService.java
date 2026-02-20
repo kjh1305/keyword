@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Comparator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -1462,6 +1463,20 @@ public class ExcelService {
 
         List<Inventory> inventories = inventoryRepository.findByReportPeriodIdWithProduct(periodId);
 
+        // 사용량 기준 정렬을 위해 미리 계산
+        String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String endDateStr = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        Map<Long, BigDecimal> usageMap = new HashMap<>();
+        for (Inventory inv : inventories) {
+            BigDecimal used = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(
+                    inv.getProduct().getId(), startDateStr, endDateStr);
+            usageMap.put(inv.getProduct().getId(), used != null ? used : BigDecimal.ZERO);
+        }
+        // 정렬: 사용량 많은순 → 제품명 가나다순
+        inventories.sort(Comparator
+                .<Inventory, BigDecimal>comparing(inv -> usageMap.getOrDefault(inv.getProduct().getId(), BigDecimal.ZERO), Comparator.reverseOrder())
+                .thenComparing(inv -> inv.getProduct().getName() != null ? inv.getProduct().getName() : ""));
+
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
@@ -1485,9 +1500,6 @@ public class ExcelService {
                 cell.setCellValue(headers[i]);
                 cell.setCellStyle(styles.get("header"));
             }
-
-            String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            String endDateStr = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
             int rowNum = 2;
             int seq = 1;
@@ -1594,6 +1606,19 @@ public class ExcelService {
 
         List<LocalDate[]> weeks = calculateWeekBoundariesForRange(startDate, endDate);
         List<Inventory> inventories = inventoryRepository.findByReportPeriodIdWithProduct(periodId);
+
+        // 사용량 기준 정렬
+        String sortStartStr = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String sortEndStr = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        Map<Long, BigDecimal> usageMap = new HashMap<>();
+        for (Inventory inv : inventories) {
+            BigDecimal used = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(
+                    inv.getProduct().getId(), sortStartStr, sortEndStr);
+            usageMap.put(inv.getProduct().getId(), used != null ? used : BigDecimal.ZERO);
+        }
+        inventories.sort(Comparator
+                .<Inventory, BigDecimal>comparing(inv -> usageMap.getOrDefault(inv.getProduct().getId(), BigDecimal.ZERO), Comparator.reverseOrder())
+                .thenComparing(inv -> inv.getProduct().getName() != null ? inv.getProduct().getName() : ""));
 
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -1757,6 +1782,17 @@ public class ExcelService {
 
         String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String endDateStr = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        // 사용량 기준 정렬
+        Map<Long, BigDecimal> usageSortMap = new HashMap<>();
+        for (Inventory inv : inventories) {
+            BigDecimal used = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(
+                    inv.getProduct().getId(), startDateStr, endDateStr);
+            usageSortMap.put(inv.getProduct().getId(), used != null ? used : BigDecimal.ZERO);
+        }
+        inventories.sort(Comparator
+                .<Inventory, BigDecimal>comparing(inv -> usageSortMap.getOrDefault(inv.getProduct().getId(), BigDecimal.ZERO), Comparator.reverseOrder())
+                .thenComparing(inv -> inv.getProduct().getName() != null ? inv.getProduct().getName() : ""));
 
         Map<Long, BigDecimal> productOrderQtyMap = new HashMap<>();
         Map<Long, List<String>> productReceivedDatesMap = new HashMap<>();

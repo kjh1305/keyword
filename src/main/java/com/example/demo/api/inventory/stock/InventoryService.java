@@ -387,6 +387,15 @@ public class InventoryService {
                     .collect(Collectors.toList());
         }
 
+        // 정렬: 사용량 많은순 → 제품명 가나다순
+        filteredDtos = filteredDtos.stream()
+                .sorted(java.util.Comparator
+                        .<InventoryDTO, BigDecimal>comparing(
+                                dto -> dto.getCurrentMonthUsedQuantity() != null ? dto.getCurrentMonthUsedQuantity() : BigDecimal.ZERO,
+                                java.util.Comparator.reverseOrder())
+                        .thenComparing(dto -> dto.getProductName() != null ? dto.getProductName() : ""))
+                .collect(Collectors.toList());
+
         // 페이지네이션
         int totalElements = filteredDtos.size();
         int totalPages = (int) Math.ceil((double) totalElements / size);
