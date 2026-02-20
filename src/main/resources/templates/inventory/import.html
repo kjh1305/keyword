@@ -17,7 +17,7 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <div class="mb-3">
                             <label class="form-label">엑셀 파일 선택</label>
                             <input type="file" class="form-control" id="excelFile"
@@ -35,11 +35,15 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <div class="mb-3">
-                            <label class="form-label">적용 년월</label>
-                            <input type="month" class="form-control" id="yearMonth"
-                                   th:value="${currentYearMonth}">
+                            <label class="form-label">적용 기간</label>
+                            <select class="form-select" id="periodSelect">
+                                <option th:each="p : ${periods}"
+                                        th:value="${p.id}"
+                                        th:text="${p.displayLabel}"
+                                        th:selected="${p.id == currentPeriodId}"></option>
+                            </select>
                         </div>
                     </div>
                     <div class="col-md-3 d-flex align-items-center">
@@ -170,16 +174,11 @@
             })
             .then(response => response.json())
             .then(result => {
-                console.log('시트 목록 응답:', result);
-
                 if (result.error) {
                     alert(result.error);
                     sheetSelect.innerHTML = '<option value="0">시트 목록 조회 실패</option>';
                     return;
                 }
-
-                console.log('시트 개수:', result.sheets.length);
-                result.sheets.forEach(s => console.log('시트:', s));
 
                 sheetSelect.innerHTML = '';
                 result.sheets.forEach(sheet => {
@@ -241,7 +240,6 @@
 
             data.forEach(item => {
                 const tr = document.createElement('tr');
-                // 유효기간/입고일 여러 개 표시
                 let expiryDisplay = '';
                 if (item.expiryDateStrings && item.expiryDateStrings.length > 0) {
                     expiryDisplay = item.expiryDateStrings.join(' / ');
@@ -276,15 +274,16 @@
                 return;
             }
 
-            const yearMonth = document.getElementById('yearMonth').value;
-            if (!yearMonth) {
-                alert('적용 년월을 선택해주세요.');
+            const periodId = document.getElementById('periodSelect').value;
+            if (!periodId) {
+                alert('적용 기간을 선택해주세요.');
                 return;
             }
 
             const updateExisting = document.getElementById('updateExisting').checked;
+            const periodText = document.getElementById('periodSelect').options[document.getElementById('periodSelect').selectedIndex].text;
 
-            if (!confirm(`${parsedData.length}개의 데이터를 ${yearMonth}에 Import하시겠습니까?`)) {
+            if (!confirm(`${parsedData.length}개의 데이터를 "${periodText}"에 Import하시겠습니까?`)) {
                 return;
             }
 
@@ -293,7 +292,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     data: parsedData,
-                    yearMonth: yearMonth,
+                    periodId: parseInt(periodId),
                     updateExisting: updateExisting
                 })
             })

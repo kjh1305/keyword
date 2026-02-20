@@ -31,6 +31,7 @@ public class StockOrderService {
     private final ProductRepository productRepository;
     private final ActivityLogService activityLogService;
     private final InventoryRepository inventoryRepository;
+    private final com.example.demo.api.inventory.stock.ReportPeriodRepository reportPeriodRepository;
 
     public List<StockOrderDTO> getAllOrders() {
         return stockOrderRepository.findAllWithProduct().stream()
@@ -123,33 +124,62 @@ public class StockOrderService {
         order.setRemainingQuantity(quantityToAdd);
         order.setConsumed(false);
 
-        // 현재 월의 재고에 추가재고 반영
+        // 현재 OPEN 기간의 재고에 추가재고 반영
         if (quantityToAdd != null && quantityToAdd.compareTo(BigDecimal.ZERO) > 0) {
-            String currentYearMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
             Long productId = order.getProduct().getId();
 
-            Inventory inventory = inventoryRepository.findByProductIdAndYearMonth(productId, currentYearMonth)
-                    .orElseGet(() -> {
-                        Inventory newInv = Inventory.builder()
-                                .product(order.getProduct())
-                                .yearMonth(currentYearMonth)
-                                .initialStock(BigDecimal.ZERO)
-                                .addedStock(BigDecimal.ZERO)
-                                .usedQuantity(BigDecimal.ZERO)
-                                .build();
-                        return inventoryRepository.save(newInv);
-                    });
+            // OPEN 기간 조회
+            com.example.demo.api.inventory.stock.ReportPeriod openPeriod = reportPeriodRepository.findOpenPeriod().orElse(null);
 
-            BigDecimal currentAdded = inventory.getAddedStock() != null ? inventory.getAddedStock() : BigDecimal.ZERO;
-            inventory.setAddedStock(currentAdded.add(quantityToAdd));
+            if (openPeriod != null) {
+                Inventory inventory = inventoryRepository.findByProductIdAndReportPeriodId(productId, openPeriod.getId())
+                        .orElseGet(() -> {
+                            String currentYearMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                            Inventory newInv = Inventory.builder()
+                                    .product(order.getProduct())
+                                    .yearMonth(currentYearMonth)
+                                    .reportPeriod(openPeriod)
+                                    .initialStock(BigDecimal.ZERO)
+                                    .addedStock(BigDecimal.ZERO)
+                                    .usedQuantity(BigDecimal.ZERO)
+                                    .build();
+                            return inventoryRepository.save(newInv);
+                        });
 
-            // 남은재고 재계산
-            BigDecimal remaining = inventory.getInitialStock()
-                    .add(inventory.getAddedStock())
-                    .subtract(inventory.getUsedQuantity());
-            inventory.setRemainingStock(remaining);
+                BigDecimal currentAdded = inventory.getAddedStock() != null ? inventory.getAddedStock() : BigDecimal.ZERO;
+                inventory.setAddedStock(currentAdded.add(quantityToAdd));
 
-            inventoryRepository.save(inventory);
+                BigDecimal remaining = inventory.getInitialStock()
+                        .add(inventory.getAddedStock())
+                        .subtract(inventory.getUsedQuantity());
+                inventory.setRemainingStock(remaining);
+
+                inventoryRepository.save(inventory);
+            } else {
+                // Fallback: OPEN 기간이 없으면 기존 방식 사용
+                String currentYearMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                Inventory inventory = inventoryRepository.findByProductIdAndYearMonth(productId, currentYearMonth)
+                        .orElseGet(() -> {
+                            Inventory newInv = Inventory.builder()
+                                    .product(order.getProduct())
+                                    .yearMonth(currentYearMonth)
+                                    .initialStock(BigDecimal.ZERO)
+                                    .addedStock(BigDecimal.ZERO)
+                                    .usedQuantity(BigDecimal.ZERO)
+                                    .build();
+                            return inventoryRepository.save(newInv);
+                        });
+
+                BigDecimal currentAdded = inventory.getAddedStock() != null ? inventory.getAddedStock() : BigDecimal.ZERO;
+                inventory.setAddedStock(currentAdded.add(quantityToAdd));
+
+                BigDecimal remaining = inventory.getInitialStock()
+                        .add(inventory.getAddedStock())
+                        .subtract(inventory.getUsedQuantity());
+                inventory.setRemainingStock(remaining);
+
+                inventoryRepository.save(inventory);
+            }
         }
 
         StockOrder saved = stockOrderRepository.save(order);

@@ -48,6 +48,23 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     boolean existsByProductIdAndYearMonth(Long productId, String yearMonth);
 
+    // ===== ReportPeriod 기반 쿼리 =====
+
+    @Query("SELECT i FROM Inventory i JOIN FETCH i.product WHERE i.reportPeriod.id = :periodId ORDER BY i.product.category, i.product.name")
+    List<Inventory> findByReportPeriodIdWithProduct(@Param("periodId") Long periodId);
+
+    @Query("SELECT i FROM Inventory i JOIN FETCH i.product p WHERE i.reportPeriod.id = :periodId " +
+           "AND (:category IS NULL OR p.category = :category) " +
+           "AND (:keyword IS NULL OR p.name LIKE %:keyword%) " +
+           "ORDER BY p.category, p.name")
+    List<Inventory> searchInventoryByPeriod(@Param("periodId") Long periodId,
+                                             @Param("category") String category,
+                                             @Param("keyword") String keyword);
+
+    Optional<Inventory> findByProductIdAndReportPeriodId(Long productId, Long reportPeriodId);
+
+    boolean existsByProductIdAndReportPeriodId(Long productId, Long reportPeriodId);
+
     /**
      * 제품별 재고 삭제
      */

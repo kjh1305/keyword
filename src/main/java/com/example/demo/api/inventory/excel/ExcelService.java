@@ -7,6 +7,8 @@ import com.example.demo.api.inventory.product.ProductRepository;
 import com.example.demo.api.inventory.stock.Inventory;
 import com.example.demo.api.inventory.stock.InventoryDTO;
 import com.example.demo.api.inventory.stock.InventoryRepository;
+import com.example.demo.api.inventory.stock.ReportPeriod;
+import com.example.demo.api.inventory.stock.ReportPeriodRepository;
 import com.example.demo.api.inventory.stock.UsageLogRepository;
 import org.apache.poi.ss.util.CellRangeAddress;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -34,6 +37,7 @@ public class ExcelService {
     private final InventoryRepository inventoryRepository;
     private final StockOrderRepository stockOrderRepository;
     private final UsageLogRepository usageLogRepository;
+    private final ReportPeriodRepository reportPeriodRepository;
 
     /**
      * 엑셀 파일의 시트 목록 조회
@@ -747,7 +751,7 @@ public class ExcelService {
             titleCell.setCellValue(year + "년 " + month + "월 피부 재고현황(당일보고)");
             titleCell.setCellStyle(styles.get("title"));
 
-            String[] headers = {"번호", "제품명", "월초재고", "사용량", "입고완료", "남은재고", "주문재고", "입고일자"};
+            String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문수량", "입고완료", "입고일자", "유효기간", "비고"};
             sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
 
             // 헤더
@@ -766,33 +770,30 @@ public class ExcelService {
                 Row row = sheet.createRow(rowNum);
                 Long productId = inv.getProduct().getId();
 
-                // 월초재고: 전월초재고 - 전월사용량 = 실제 당월 초 재고
-                BigDecimal prevInitial = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
-                BigDecimal prevUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
-                BigDecimal initialStock = prevInitial.subtract(prevUsed);
-
-                // 사용량: 당월 운영용(UsageLog 합계)만
-                BigDecimal totalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(productId, yearMonth);
-                if (totalUsed == null) totalUsed = BigDecimal.ZERO;
+                // 주문수량: 해당 월 전체 주문수량 합산 (PENDING + COMPLETED)
+                BigDecimal totalOrderQty = stockOrderRepository.sumAllQuantityByProductIdAndMonth(productId, targetYear, targetMonth);
+                if (totalOrderQty == null) totalOrderQty = BigDecimal.ZERO;
 
                 // 입고완료: 해당 월 COMPLETED 주문 수량 합계
                 BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(productId, targetYear, targetMonth);
                 if (completedStock == null) completedStock = BigDecimal.ZERO;
 
-                // 남은재고: 월초재고 + 입고완료 - 사용량
-                BigDecimal remainingStock = initialStock.add(completedStock).subtract(totalUsed);
+                // 월초재고: 전월초재고 - 전월사용량 + 주문수량
+                BigDecimal prevInitial = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
+                BigDecimal prevUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
+                BigDecimal initialStock = prevInitial.subtract(prevUsed).add(totalOrderQty);
 
-                // 주문재고: 해당 월 주문수량 합산 (PENDING + COMPLETED)
+                // 사용량: 당월 운영용(UsageLog 합계)만
+                BigDecimal totalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(productId, yearMonth);
+                if (totalUsed == null) totalUsed = BigDecimal.ZERO;
+
+                // 남은재고: 월초재고 - 사용량 (주문수량은 이미 월초재고에 포함)
+                BigDecimal remainingStock = initialStock.subtract(totalUsed);
+
+                // 입고일자 조회
                 List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
-                BigDecimal orderStock = BigDecimal.ZERO;
                 List<String> receivedDates = new ArrayList<>();
                 for (StockOrder order : orders) {
-                    boolean isTargetMonthOrder = order.getOrderDate() != null &&
-                            order.getOrderDate().getYear() == targetYear &&
-                            order.getOrderDate().getMonthValue() == targetMonth;
-                    if (isTargetMonthOrder && order.getQuantity() != null) {
-                        orderStock = orderStock.add(order.getQuantity());
-                    }
                     if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
                         if (order.getReceivedDate().getYear() == targetYear &&
                             order.getReceivedDate().getMonthValue() == targetMonth) {
@@ -826,25 +827,35 @@ public class ExcelService {
                 cell3.setCellValue(totalUsed.intValue());
                 cell3.setCellStyle(styles.get("number"));
 
-                // 입고완료
-                Cell cell4 = row.createCell(4);
-                cell4.setCellValue(completedStock.intValue());
-                cell4.setCellStyle(styles.get("number"));
-
                 // 남은재고
-                Cell cell5 = row.createCell(5);
-                cell5.setCellValue(remainingStock.intValue());
-                cell5.setCellStyle(styles.get("highlight"));
+                Cell cell4 = row.createCell(4);
+                cell4.setCellValue(remainingStock.intValue());
+                cell4.setCellStyle(styles.get("highlight"));
 
-                // 주문재고
+                // 주문수량
+                Cell cell5 = row.createCell(5);
+                cell5.setCellValue(totalOrderQty.intValue());
+                cell5.setCellStyle(styles.get("number"));
+
+                // 입고완료
                 Cell cell6 = row.createCell(6);
-                cell6.setCellValue(orderStock.compareTo(BigDecimal.ZERO) > 0 ? orderStock.intValue() : 0);
+                cell6.setCellValue(completedStock.intValue());
                 cell6.setCellStyle(styles.get("number"));
 
                 // 입고일자
                 Cell cell7 = row.createCell(7);
                 cell7.setCellValue(!receivedDates.isEmpty() ? String.join("\n", receivedDates) : "");
                 cell7.setCellStyle(styles.get("wrap"));
+
+                // 유효기간
+                Cell cell8 = row.createCell(8);
+                cell8.setCellValue(inv.getExpiryDate() != null ? inv.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "");
+                cell8.setCellStyle(styles.get("center"));
+
+                // 비고 (상품의 비고)
+                Cell cell9 = row.createCell(9);
+                cell9.setCellValue(inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "");
+                cell9.setCellStyle(styles.get("text"));
 
                 rowNum++;
                 seq++;
@@ -855,10 +866,12 @@ public class ExcelService {
             sheet.setColumnWidth(1, 7000);   // 제품명
             sheet.setColumnWidth(2, 3000);   // 월초재고
             sheet.setColumnWidth(3, 3000);   // 사용량
-            sheet.setColumnWidth(4, 3000);   // 입고완료
-            sheet.setColumnWidth(5, 3000);   // 남은재고
-            sheet.setColumnWidth(6, 3000);   // 주문재고
+            sheet.setColumnWidth(4, 3000);   // 남은재고
+            sheet.setColumnWidth(5, 3000);   // 주문재고
+            sheet.setColumnWidth(6, 3000);   // 입고완료
             sheet.setColumnWidth(7, 4000);   // 입고일자
+            sheet.setColumnWidth(8, 4000);   // 유효기간
+            sheet.setColumnWidth(9, 5000);   // 비고
 
             workbook.write(out);
             return out.toByteArray();
@@ -902,9 +915,11 @@ public class ExcelService {
             // 상단 헤더 행 (주차 그룹)
             Row groupRow = sheet.createRow(1);
             groupRow.setHeightInPoints(20);
-            // 번호/제품명/월초재고는 2행 병합
+            // 번호/제품명/월초재고는 2행 병합 (병합 시 상단 셀에 값 설정)
+            String[] fixedGroupHeaders = {"번호", "제품명", "월초재고"};
             for (int i = 0; i < 3; i++) {
                 Cell cell = groupRow.createCell(i);
+                cell.setCellValue(fixedGroupHeaders[i]);
                 cell.setCellStyle(styles.get("header"));
             }
             // 주차 그룹 헤더
@@ -952,10 +967,14 @@ public class ExcelService {
                 Row row = sheet.createRow(rowNum);
                 Long productId = inv.getProduct().getId();
 
-                // 월초재고 (실제 당월 초)
+                // 주문수량: 해당 월 전체 주문수량 합산 (PENDING + COMPLETED)
+                BigDecimal totalOrderQty = stockOrderRepository.sumAllQuantityByProductIdAndMonth(productId, currentYM.getYear(), currentYM.getMonthValue());
+                if (totalOrderQty == null) totalOrderQty = BigDecimal.ZERO;
+
+                // 월초재고: 전월초재고 - 전월사용량 + 주문수량
                 BigDecimal prevInitial = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
                 BigDecimal prevUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
-                BigDecimal initialStock = prevInitial.subtract(prevUsed);
+                BigDecimal initialStock = prevInitial.subtract(prevUsed).add(totalOrderQty);
 
                 Cell cell0 = row.createCell(0);
                 cell0.setCellValue(seq);
@@ -1317,6 +1336,586 @@ public class ExcelService {
         styles.put("highlight", highlightStyle);
 
         return styles;
+    }
+
+    // ===== ReportPeriod 기반 메서드 =====
+
+    @Transactional
+    public ImportResult importDataByPeriod(List<ExcelImportDTO> data, Long periodId, boolean updateExisting) {
+        ReportPeriod period = reportPeriodRepository.findById(periodId)
+                .orElseThrow(() -> new IllegalArgumentException("기간을 찾을 수 없습니다: " + periodId));
+
+        ImportResult result = new ImportResult();
+        LocalDate orderBaseDate = period.getStartDate();
+
+        for (ExcelImportDTO dto : data) {
+            try {
+                Product product = productRepository.findByName(dto.getProductName()).orElse(null);
+
+                if (product == null) {
+                    product = Product.builder()
+                            .name(dto.getProductName())
+                            .category(dto.getCategory())
+                            .unit(dto.getUnit() != null ? dto.getUnit() : "개")
+                            .minQuantity(dto.getMinQuantity() != null ? dto.getMinQuantity() : 0)
+                            .note(dto.getNote())
+                            .build();
+                    productRepository.save(product);
+                    result.setNewProducts(result.getNewProducts() + 1);
+                } else if (updateExisting) {
+                    if (dto.getCategory() != null) product.setCategory(dto.getCategory());
+                    if (dto.getUnit() != null) product.setUnit(dto.getUnit());
+                    if (dto.getMinQuantity() != null) product.setMinQuantity(dto.getMinQuantity());
+                    if (dto.getNote() != null) product.setNote(dto.getNote());
+                    productRepository.save(product);
+                    result.setUpdatedProducts(result.getUpdatedProducts() + 1);
+                } else {
+                    result.setSkippedProducts(result.getSkippedProducts() + 1);
+                }
+
+                // 기간 기반으로 Inventory 생성/수정
+                Inventory inventory = inventoryRepository.findByProductIdAndReportPeriodId(product.getId(), periodId)
+                        .orElse(Inventory.builder()
+                                .product(product)
+                                .yearMonth(period.getName())
+                                .reportPeriod(period)
+                                .build());
+
+                if (dto.getInitialStock() != null) inventory.setInitialStock(dto.getInitialStock());
+                if (dto.getUsedQuantity() != null) inventory.setUsedQuantity(dto.getUsedQuantity());
+                if (dto.getExpiryDate() != null) inventory.setExpiryDate(dto.getExpiryDate());
+
+                BigDecimal initial = inventory.getInitialStock() != null ? inventory.getInitialStock() : BigDecimal.ZERO;
+                BigDecimal added = inventory.getAddedStock() != null ? inventory.getAddedStock() : BigDecimal.ZERO;
+                BigDecimal used = inventory.getUsedQuantity() != null ? inventory.getUsedQuantity() : BigDecimal.ZERO;
+                inventory.setRemainingStock(initial.add(added).subtract(used));
+
+                inventoryRepository.save(inventory);
+                result.setInventoryRecords(result.getInventoryRecords() + 1);
+
+                // 주문수량이 있으면 StockOrder 생성
+                BigDecimal orderQuantity = dto.getOrderQuantity();
+                if (orderQuantity != null && orderQuantity.compareTo(BigDecimal.ZERO) > 0) {
+                    String orderNote = dto.getNote();
+                    if (dto.getOrderQuantityRaw() != null && !dto.getOrderQuantityRaw().isEmpty()) {
+                        String rawNum = dto.getOrderQuantityRaw().replaceAll("[^0-9]", "");
+                        if (!rawNum.equals(orderQuantity.stripTrailingZeros().toPlainString())) {
+                            orderNote = (orderNote != null ? orderNote + " / " : "") + "주문: " + dto.getOrderQuantityRaw();
+                        }
+                    }
+
+                    StockOrder order = StockOrder.builder()
+                            .product(product)
+                            .quantity(orderQuantity)
+                            .orderQuantity(dto.getOrderQuantityRaw())
+                            .orderDate(orderBaseDate)
+                            .status("PENDING")
+                            .note(orderNote)
+                            .build();
+                    stockOrderRepository.save(order);
+                }
+
+                // 유효기간 처리
+                List<LocalDate> expiryDates = dto.getExpiryDates();
+                if (expiryDates != null && !expiryDates.isEmpty()) {
+                    for (LocalDate expiryDate : expiryDates) {
+                        boolean exists = stockOrderRepository.findByProductId(product.getId()).stream()
+                                .anyMatch(o -> expiryDate.equals(o.getExpiryDate()));
+
+                        if (!exists) {
+                            StockOrder expiryOrder = StockOrder.builder()
+                                    .product(product)
+                                    .quantity(null)
+                                    .remainingQuantity(null)
+                                    .orderDate(orderBaseDate)
+                                    .receivedDate(orderBaseDate)
+                                    .expiryDate(expiryDate)
+                                    .status("COMPLETED")
+                                    .consumed(false)
+                                    .note("엑셀 업로드 - 기존 재고 유효기간")
+                                    .build();
+                            stockOrderRepository.save(expiryOrder);
+                        }
+                    }
+                }
+
+            } catch (Exception e) {
+                log.error("행 {} Import 실패: {}", dto.getRowNumber(), e.getMessage());
+                result.getErrors().add("행 " + dto.getRowNumber() + ": " + e.getMessage());
+            }
+        }
+
+        return result;
+    }
+
+    public byte[] exportToExcelByPeriod(Long periodId) throws IOException {
+        ReportPeriod period = reportPeriodRepository.findById(periodId)
+                .orElseThrow(() -> new IllegalArgumentException("기간을 찾을 수 없습니다: " + periodId));
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Map<String, CellStyle> styles = createStyles(workbook);
+            createSheetForPeriod(workbook, period, styles);
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    public byte[] exportWeeklyReportByPeriod(Long periodId) throws IOException {
+        ReportPeriod period = reportPeriodRepository.findById(periodId)
+                .orElseThrow(() -> new IllegalArgumentException("기간을 찾을 수 없습니다: " + periodId));
+
+        LocalDate startDate = period.getStartDate();
+        LocalDate endDate = period.getEndDate() != null ? period.getEndDate() : LocalDate.now();
+
+        List<Inventory> inventories = inventoryRepository.findByReportPeriodIdWithProduct(periodId);
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Map<String, CellStyle> styles = createStyles(workbook);
+            Sheet sheet = workbook.createSheet(period.getName());
+
+            // 타이틀
+            Row titleRow = sheet.createRow(0);
+            titleRow.setHeightInPoints(30);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue(period.getName() + " 피부 재고현황(당일보고)");
+            titleCell.setCellStyle(styles.get("title"));
+
+            String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문수량", "입고완료", "입고일자", "유효기간", "비고"};
+            sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
+
+            Row headerRow = sheet.createRow(1);
+            headerRow.setHeightInPoints(22);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(styles.get("header"));
+            }
+
+            String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            String endDateStr = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+            int rowNum = 2;
+            int seq = 1;
+            for (Inventory inv : inventories) {
+                Row row = sheet.createRow(rowNum);
+                Long productId = inv.getProduct().getId();
+
+                BigDecimal totalOrderQty = stockOrderRepository.sumAllQuantityByProductIdAndDateRange(productId, startDate, endDate);
+                if (totalOrderQty == null) totalOrderQty = BigDecimal.ZERO;
+
+                BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, startDate, endDate);
+                if (completedStock == null) completedStock = BigDecimal.ZERO;
+
+                // 월초재고: DB이월값 + 주문수량
+                BigDecimal rawInitialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
+                BigDecimal initialStock = rawInitialStock.add(totalOrderQty);
+
+                BigDecimal totalUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, startDateStr, endDateStr);
+                if (totalUsed == null) totalUsed = BigDecimal.ZERO;
+
+                // 남은재고: 월초재고(주문포함) - 운영사용량
+                BigDecimal remainingStock = initialStock.subtract(totalUsed);
+
+                // 입고일자 조회
+                List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
+                List<String> receivedDates = new ArrayList<>();
+                for (StockOrder order : orders) {
+                    if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
+                        if (!order.getReceivedDate().isBefore(startDate) && !order.getReceivedDate().isAfter(endDate)) {
+                            receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                        }
+                    }
+                }
+
+                int dateCount = receivedDates.size();
+                if (dateCount > 1) row.setHeightInPoints(dateCount * 15);
+
+                Cell cell0 = row.createCell(0);
+                cell0.setCellValue(seq);
+                cell0.setCellStyle(styles.get("center"));
+
+                Cell cell1 = row.createCell(1);
+                cell1.setCellValue(inv.getProduct().getName());
+                cell1.setCellStyle(styles.get("text"));
+
+                Cell cell2 = row.createCell(2);
+                cell2.setCellValue(initialStock.intValue());
+                cell2.setCellStyle(styles.get("number"));
+
+                Cell cell3 = row.createCell(3);
+                cell3.setCellValue(totalUsed.intValue());
+                cell3.setCellStyle(styles.get("number"));
+
+                Cell cell4 = row.createCell(4);
+                cell4.setCellValue(remainingStock.intValue());
+                cell4.setCellStyle(styles.get("highlight"));
+
+                Cell cell5 = row.createCell(5);
+                cell5.setCellValue(totalOrderQty.intValue());
+                cell5.setCellStyle(styles.get("number"));
+
+                Cell cell6 = row.createCell(6);
+                cell6.setCellValue(completedStock.intValue());
+                cell6.setCellStyle(styles.get("number"));
+
+                Cell cell7 = row.createCell(7);
+                cell7.setCellValue(!receivedDates.isEmpty() ? String.join("\n", receivedDates) : "");
+                cell7.setCellStyle(styles.get("wrap"));
+
+                Cell cell8 = row.createCell(8);
+                cell8.setCellValue(inv.getExpiryDate() != null ? inv.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "");
+                cell8.setCellStyle(styles.get("center"));
+
+                Cell cell9 = row.createCell(9);
+                cell9.setCellValue(inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "");
+                cell9.setCellStyle(styles.get("text"));
+
+                rowNum++;
+                seq++;
+            }
+
+            sheet.setColumnWidth(0, 2000);
+            sheet.setColumnWidth(1, 7000);
+            sheet.setColumnWidth(2, 3000);
+            sheet.setColumnWidth(3, 3000);
+            sheet.setColumnWidth(4, 3000);
+            sheet.setColumnWidth(5, 3000);
+            sheet.setColumnWidth(6, 3000);
+            sheet.setColumnWidth(7, 4000);
+            sheet.setColumnWidth(8, 4000);
+            sheet.setColumnWidth(9, 5000);
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    public byte[] exportWeeklyBreakdownReportByPeriod(Long periodId) throws IOException {
+        ReportPeriod period = reportPeriodRepository.findById(periodId)
+                .orElseThrow(() -> new IllegalArgumentException("기간을 찾을 수 없습니다: " + periodId));
+
+        LocalDate startDate = period.getStartDate();
+        LocalDate endDate = period.getEndDate() != null ? period.getEndDate() : LocalDate.now();
+
+        List<LocalDate[]> weeks = calculateWeekBoundariesForRange(startDate, endDate);
+        List<Inventory> inventories = inventoryRepository.findByReportPeriodIdWithProduct(periodId);
+
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            Map<String, CellStyle> styles = createStyles(workbook);
+            Sheet sheet = workbook.createSheet(period.getName());
+
+            int totalCols = 3 + (weeks.size() * 3);
+            Row titleRow = sheet.createRow(0);
+            titleRow.setHeightInPoints(30);
+            Cell titleCell = titleRow.createCell(0);
+            titleCell.setCellValue(period.getName() + " 피부 재고현황(주간)");
+            titleCell.setCellStyle(styles.get("title"));
+            sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, totalCols - 1));
+
+            Row groupRow = sheet.createRow(1);
+            groupRow.setHeightInPoints(20);
+            String[] fixedGroupHeaders = {"번호", "제품명", "월초재고"};
+            for (int i = 0; i < 3; i++) {
+                Cell cell = groupRow.createCell(i);
+                cell.setCellValue(fixedGroupHeaders[i]);
+                cell.setCellStyle(styles.get("header"));
+            }
+            for (int w = 0; w < weeks.size(); w++) {
+                int startCol = 3 + (w * 3);
+                LocalDate[] range = weeks.get(w);
+                String weekLabel = (w + 1) + "주차 (" + range[0].getMonthValue() + "/" + range[0].getDayOfMonth()
+                        + "~" + range[1].getMonthValue() + "/" + range[1].getDayOfMonth() + ")";
+                Cell cell = groupRow.createCell(startCol);
+                cell.setCellValue(weekLabel);
+                cell.setCellStyle(styles.get("header"));
+                groupRow.createCell(startCol + 1).setCellStyle(styles.get("header"));
+                groupRow.createCell(startCol + 2).setCellStyle(styles.get("header"));
+                sheet.addMergedRegion(new CellRangeAddress(1, 1, startCol, startCol + 2));
+            }
+
+            Row headerRow = sheet.createRow(2);
+            headerRow.setHeightInPoints(22);
+            String[] fixedHeaders = {"번호", "제품명", "월초재고"};
+            for (int i = 0; i < fixedHeaders.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(fixedHeaders[i]);
+                cell.setCellStyle(styles.get("header"));
+            }
+            for (int i = 0; i < 3; i++) {
+                sheet.addMergedRegion(new CellRangeAddress(1, 2, i, i));
+            }
+            for (int w = 0; w < weeks.size(); w++) {
+                int startCol = 3 + (w * 3);
+                String[] subHeaders = {"사용", "입고", "남은"};
+                for (int s = 0; s < subHeaders.length; s++) {
+                    Cell cell = headerRow.createCell(startCol + s);
+                    cell.setCellValue(subHeaders[s]);
+                    cell.setCellStyle(styles.get("header"));
+                }
+            }
+
+            int rowNum = 3;
+            int seq = 1;
+            for (Inventory inv : inventories) {
+                Row row = sheet.createRow(rowNum);
+                Long productId = inv.getProduct().getId();
+
+                // 월초재고: DB이월값 + 주문수량
+                BigDecimal rawInitialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
+                BigDecimal totalOrderQty = stockOrderRepository.sumAllQuantityByProductIdAndDateRange(productId, startDate, endDate);
+                if (totalOrderQty == null) totalOrderQty = BigDecimal.ZERO;
+                BigDecimal initialStock = rawInitialStock.add(totalOrderQty);
+
+                Cell cell0 = row.createCell(0);
+                cell0.setCellValue(seq);
+                cell0.setCellStyle(styles.get("center"));
+
+                Cell cell1 = row.createCell(1);
+                cell1.setCellValue(inv.getProduct().getName());
+                cell1.setCellStyle(styles.get("text"));
+
+                Cell cell2 = row.createCell(2);
+                cell2.setCellValue(initialStock.intValue());
+                cell2.setCellStyle(styles.get("number"));
+
+                BigDecimal weekStartStock = initialStock;
+                for (int w = 0; w < weeks.size(); w++) {
+                    LocalDate[] range = weeks.get(w);
+                    String wStartDateStr = range[0].format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                    String wEndDateStr = range[1].format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                    int startCol = 3 + (w * 3);
+
+                    BigDecimal weekUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, wStartDateStr, wEndDateStr);
+                    if (weekUsed == null) weekUsed = BigDecimal.ZERO;
+
+                    BigDecimal weekCompleted = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, range[0], range[1]);
+                    if (weekCompleted == null) weekCompleted = BigDecimal.ZERO;
+
+                    BigDecimal weekRemaining = weekStartStock.subtract(weekUsed);
+
+                    Cell usedCell = row.createCell(startCol);
+                    usedCell.setCellValue(weekUsed.intValue());
+                    usedCell.setCellStyle(styles.get("number"));
+
+                    Cell completedCell = row.createCell(startCol + 1);
+                    completedCell.setCellValue(weekCompleted.intValue());
+                    completedCell.setCellStyle(styles.get("number"));
+
+                    Cell remainingCell = row.createCell(startCol + 2);
+                    remainingCell.setCellValue(weekRemaining.intValue());
+                    remainingCell.setCellStyle(styles.get("highlight"));
+
+                    weekStartStock = weekRemaining;
+                }
+
+                rowNum++;
+                seq++;
+            }
+
+            sheet.setColumnWidth(0, 2000);
+            sheet.setColumnWidth(1, 7000);
+            sheet.setColumnWidth(2, 3000);
+            for (int w = 0; w < weeks.size(); w++) {
+                int startCol = 3 + (w * 3);
+                sheet.setColumnWidth(startCol, 2500);
+                sheet.setColumnWidth(startCol + 1, 2500);
+                sheet.setColumnWidth(startCol + 2, 2500);
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    /**
+     * 날짜 범위에 대한 주 경계 계산
+     */
+    private List<LocalDate[]> calculateWeekBoundariesForRange(LocalDate startDate, LocalDate endDate) {
+        List<LocalDate[]> weeks = new ArrayList<>();
+        LocalDate weekStart = startDate;
+
+        // 1주차: startDate ~ 첫 번째 일요일
+        LocalDate firstSunday = startDate;
+        while (firstSunday.getDayOfWeek() != java.time.DayOfWeek.SUNDAY && firstSunday.isBefore(endDate)) {
+            firstSunday = firstSunday.plusDays(1);
+        }
+        weeks.add(new LocalDate[]{startDate, firstSunday.isAfter(endDate) ? endDate : firstSunday});
+        weekStart = firstSunday.plusDays(1);
+
+        while (!weekStart.isAfter(endDate)) {
+            LocalDate weekEnd = weekStart.plusDays(6);
+            if (weekEnd.isAfter(endDate)) weekEnd = endDate;
+            weeks.add(new LocalDate[]{weekStart, weekEnd});
+            weekStart = weekEnd.plusDays(1);
+        }
+
+        return weeks;
+    }
+
+    private void createSheetForPeriod(Workbook workbook, ReportPeriod period, Map<String, CellStyle> styles) {
+        LocalDate startDate = period.getStartDate();
+        LocalDate endDate = period.getEndDate() != null ? period.getEndDate() : LocalDate.now();
+
+        List<Inventory> inventories = inventoryRepository.findByReportPeriodIdWithProduct(period.getId());
+
+        String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String endDateStr = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        Map<Long, BigDecimal> productOrderQtyMap = new HashMap<>();
+        Map<Long, List<String>> productReceivedDatesMap = new HashMap<>();
+        Map<Long, String> productExpiryMap = new HashMap<>();
+
+        for (Inventory inv : inventories) {
+            Long productId = inv.getProduct().getId();
+            List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
+
+            BigDecimal totalQty = BigDecimal.ZERO;
+            List<String> receivedDates = new ArrayList<>();
+            List<String> expiryDates = new ArrayList<>();
+
+            for (StockOrder order : orders) {
+                boolean isInRange = order.getOrderDate() != null &&
+                        !order.getOrderDate().isBefore(startDate) && !order.getOrderDate().isAfter(endDate);
+
+                if (isInRange && order.getQuantity() != null) {
+                    totalQty = totalQty.add(order.getQuantity());
+                }
+
+                if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
+                    if (!order.getReceivedDate().isBefore(startDate) && !order.getReceivedDate().isAfter(endDate)) {
+                        receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    }
+                }
+
+                if ("COMPLETED".equals(order.getStatus()) &&
+                    order.getExpiryDate() != null &&
+                    (order.getConsumed() == null || !order.getConsumed())) {
+                    expiryDates.add(order.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
+                }
+            }
+
+            if (expiryDates.isEmpty() && inv.getExpiryDate() != null) {
+                expiryDates.add(inv.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
+            }
+
+            productOrderQtyMap.put(productId, totalQty);
+            productReceivedDatesMap.put(productId, receivedDates);
+            if (!expiryDates.isEmpty()) {
+                productExpiryMap.put(productId, String.join(" / ", expiryDates));
+            }
+        }
+
+        Sheet sheet = workbook.createSheet(period.getName());
+
+        Row titleRow = sheet.createRow(0);
+        titleRow.setHeightInPoints(30);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue(period.getName() + " 피부 물품(보고용)");
+        titleCell.setCellStyle(styles.get("title"));
+
+        String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문재고", "입고일자", "유효기간", "비고"};
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
+
+        Row headerRow = sheet.createRow(1);
+        headerRow.setHeightInPoints(22);
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(styles.get("header"));
+        }
+
+        int rowNum = 2;
+        int seq = 1;
+        for (Inventory inv : inventories) {
+            Row row = sheet.createRow(rowNum);
+            Long productId = inv.getProduct().getId();
+
+            List<String> dates = productReceivedDatesMap.get(productId);
+            int dateCount = (dates != null) ? dates.size() : 0;
+            if (dateCount > 1) row.setHeightInPoints(dateCount * 15);
+
+            // 월초재고: DB이월값 + 주문수량
+            BigDecimal rawInitialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
+            BigDecimal totalOrderQty = productOrderQtyMap.get(productId);
+            if (totalOrderQty == null) totalOrderQty = BigDecimal.ZERO;
+            BigDecimal initialStock = rawInitialStock.add(totalOrderQty);
+
+            BigDecimal reportUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
+
+            BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, startDateStr, endDateStr);
+            if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
+
+            // 남은재고: 월초재고(주문포함) - 보고용사용량 - 운영사용량
+            BigDecimal remainingStock = initialStock.subtract(reportUsed).subtract(operationalUsed);
+
+            Cell cell0 = row.createCell(0);
+            cell0.setCellValue(seq);
+            cell0.setCellStyle(styles.get("center"));
+
+            Cell cell1 = row.createCell(1);
+            cell1.setCellValue(inv.getProduct().getName());
+            cell1.setCellStyle(styles.get("text"));
+
+            Cell cell2 = row.createCell(2);
+            cell2.setCellValue(initialStock.intValue());
+            cell2.setCellStyle(styles.get("number"));
+
+            Cell cell3 = row.createCell(3);
+            cell3.setCellValue(reportUsed.intValue());
+            cell3.setCellStyle(styles.get("number"));
+
+            Cell cell4 = row.createCell(4);
+            cell4.setCellValue(remainingStock.intValue());
+            cell4.setCellStyle(styles.get("highlight"));
+
+            Cell cell5 = row.createCell(5);
+            BigDecimal orderStock = productOrderQtyMap.get(productId);
+            cell5.setCellValue(orderStock != null && orderStock.compareTo(BigDecimal.ZERO) > 0 ? orderStock.intValue() : 0);
+            cell5.setCellStyle(styles.get("number"));
+
+            Cell cell6 = row.createCell(6);
+            cell6.setCellValue(dates != null && !dates.isEmpty() ? String.join("\n", dates) : "");
+            cell6.setCellStyle(styles.get("wrap"));
+
+            Cell cell7 = row.createCell(7);
+            String expiry = productExpiryMap.get(productId);
+            cell7.setCellValue(expiry != null ? expiry : "");
+            cell7.setCellStyle(styles.get("center"));
+
+            Cell cell8 = row.createCell(8);
+            String productNote = inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "";
+            String inventoryNote = inv.getNote() != null ? inv.getNote() : "";
+            String combinedNote = "";
+            if (!productNote.isEmpty() && !inventoryNote.isEmpty()) {
+                combinedNote = productNote + "\n" + inventoryNote;
+            } else if (!productNote.isEmpty()) {
+                combinedNote = productNote;
+            } else {
+                combinedNote = inventoryNote;
+            }
+            cell8.setCellValue(combinedNote);
+            cell8.setCellStyle(styles.get("wrap"));
+
+            rowNum++;
+            seq++;
+        }
+
+        sheet.setColumnWidth(0, 2000);
+        sheet.setColumnWidth(1, 7000);
+        sheet.setColumnWidth(2, 3000);
+        sheet.setColumnWidth(3, 3000);
+        sheet.setColumnWidth(4, 3000);
+        sheet.setColumnWidth(5, 3000);
+        sheet.setColumnWidth(6, 4000);
+        sheet.setColumnWidth(7, 3500);
+        sheet.setColumnWidth(8, 5000);
     }
 
     private void createSheetForYearMonth(Workbook workbook, String yearMonth, Map<String, CellStyle> styles) {

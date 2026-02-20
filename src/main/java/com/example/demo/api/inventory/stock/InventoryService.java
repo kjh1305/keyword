@@ -33,6 +33,7 @@ public class InventoryService {
     private final ActivityLogService activityLogService;
     private final StockOrderRepository stockOrderRepository;
     private final UsageLogRepository usageLogRepository;
+    private final ReportPeriodRepository reportPeriodRepository;
 
     public List<InventoryDTO> getInventoryByMonth(String yearMonth, String category, String keyword) {
         String cat = (category == null || category.isEmpty()) ? null : category;
@@ -232,6 +233,268 @@ public class InventoryService {
 
     public String getCurrentDate() {
         return java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+    }
+
+    // ===== ReportPeriod 기반 메서드 =====
+
+    public List<ReportPeriodDTO> getAllPeriods() {
+        return reportPeriodRepository.findAllByOrderByStartDateDesc().stream()
+                .map(ReportPeriodDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    public ReportPeriodDTO getCurrentPeriod() {
+        return reportPeriodRepository.findOpenPeriod()
+                .map(ReportPeriodDTO::fromEntity)
+                .orElse(null);
+    }
+
+    public Map<String, Object> getInventoryByPeriodPaged(Long periodId, String category, String keyword, String stockFilter, int page, int size) {
+        String cat = (category == null || category.isEmpty()) ? null : category;
+        String kw = (keyword == null || keyword.isEmpty()) ? null : keyword;
+        String filter = (stockFilter == null || stockFilter.isEmpty()) ? null : stockFilter;
+
+        ReportPeriod period = reportPeriodRepository.findById(periodId)
+                .orElseThrow(() -> new IllegalArgumentException("기간을 찾을 수 없습니다: " + periodId));
+
+        LocalDate startDate = period.getStartDate();
+        LocalDate endDate = period.getEndDate();
+        // OPEN 기간이면 오늘까지
+        if (endDate == null || "OPEN".equals(period.getStatus())) {
+            endDate = LocalDate.now();
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate thirtyDaysFromNow = today.plusDays(30);
+
+        // 날짜 범위 문자열 (UsageLog 조회용)
+        String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String endDateStr = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        List<Inventory> allInventories = inventoryRepository.searchInventoryByPeriod(periodId, cat, kw);
+
+        final LocalDate finalStartDate = startDate;
+        final LocalDate finalEndDate = endDate;
+        final String finalStartDateStr = startDateStr;
+        final String finalEndDateStr = endDateStr;
+
+        List<InventoryDTO> allDtos = allInventories.stream()
+                .map(inv -> {
+                    InventoryDTO dto = InventoryDTO.fromEntity(inv);
+                    Long productId = inv.getProduct().getId();
+
+                    // 주문수량: 기간 날짜 범위 기준
+                    BigDecimal pendingStock = stockOrderRepository.sumPendingQuantityByProductIdAndDateRange(productId, finalStartDate, finalEndDate);
+                    BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, finalStartDate, finalEndDate);
+                    dto.setPendingStock(pendingStock != null ? pendingStock : BigDecimal.ZERO);
+                    dto.setCompletedStock(completedStock != null ? completedStock : BigDecimal.ZERO);
+
+                    // 주문수량 (입고대기 + 입고완료)
+                    BigDecimal totalOrderQty = stockOrderRepository.sumAllQuantityByProductIdAndDateRange(productId, finalStartDate, finalEndDate);
+                    if (totalOrderQty == null) totalOrderQty = BigDecimal.ZERO;
+                    dto.setTotalOrderQty(totalOrderQty);
+
+                    // 운영용 사용량: UsageLog 기반 (기간 날짜 범위)
+                    BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, finalStartDateStr, finalEndDateStr);
+                    if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
+                    dto.setCurrentMonthUsedQuantity(operationalUsed);
+
+                    // 월초재고: DB이월값 + 주문수량
+                    BigDecimal rawInitialStock = dto.getInitialStock() != null ? dto.getInitialStock() : BigDecimal.ZERO;
+                    BigDecimal initialStockWithOrders = rawInitialStock.add(totalOrderQty);
+                    dto.setInitialStock(initialStockWithOrders);
+
+                    // 남은재고: 월초재고(주문포함) - 운영사용량
+                    BigDecimal newRemainingStock = initialStockWithOrders.subtract(operationalUsed);
+                    dto.setRemainingStock(newRemainingStock);
+
+                    // lowStock 재계산
+                    BigDecimal minQty = dto.getMinQuantity() != null ? new BigDecimal(dto.getMinQuantity()) : BigDecimal.ZERO;
+                    dto.setLowStock(newRemainingStock.compareTo(BigDecimal.ZERO) > 0 && newRemainingStock.compareTo(minQty) <= 0);
+
+                    // StockOrder에서 해당 제품의 유효기간 목록
+                    List<com.example.demo.api.inventory.order.StockOrder> orders = stockOrderRepository.findAllExpiryByProductId(productId);
+
+                    List<String> expiryDates = orders.stream()
+                            .filter(o -> o.getExpiryDate() != null
+                                    && !o.getExpiryDate().isBefore(today)
+                                    && (o.getConsumed() == null || !o.getConsumed()))
+                            .map(o -> o.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")))
+                            .distinct()
+                            .collect(Collectors.toList());
+                    dto.setExpiryDates(expiryDates);
+
+                    List<InventoryDTO.ExpiryInfo> expiryInfoList = orders.stream()
+                            .map(o -> InventoryDTO.ExpiryInfo.builder()
+                                    .orderId(o.getId())
+                                    .expiryDate(o.getExpiryDate())
+                                    .expiryDateStr(o.getExpiryDate() != null ?
+                                            o.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")) : null)
+                                    .quantity(o.getQuantity())
+                                    .remainingQuantity(o.getRemainingQuantity())
+                                    .consumed(o.getConsumed() != null ? o.getConsumed() : false)
+                                    .hasQuantity(o.getRemainingQuantity() != null)
+                                    .build())
+                            .collect(Collectors.toList());
+                    dto.setExpiryInfoList(expiryInfoList);
+
+                    boolean hasExpiryWarning = orders.stream()
+                            .anyMatch(o -> o.getExpiryDate() != null
+                                    && !o.getExpiryDate().isBefore(today)
+                                    && !o.getExpiryDate().isAfter(thirtyDaysFromNow)
+                                    && (o.getConsumed() == null || !o.getConsumed()));
+                    dto.setExpiryWarning(hasExpiryWarning);
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        // 통계 계산
+        long outOfStockCount = allDtos.stream()
+                .filter(dto -> dto.getRemainingStock() != null && dto.getRemainingStock().compareTo(BigDecimal.ZERO) <= 0)
+                .count();
+
+        long lowStockCount = allDtos.stream()
+                .filter(dto -> {
+                    BigDecimal remaining = dto.getRemainingStock() != null ? dto.getRemainingStock() : BigDecimal.ZERO;
+                    BigDecimal minQty = dto.getMinQuantity() != null ? new BigDecimal(dto.getMinQuantity()) : BigDecimal.ZERO;
+                    return remaining.compareTo(BigDecimal.ZERO) > 0 && remaining.compareTo(minQty) <= 0;
+                })
+                .count();
+
+        long expiryWarningCount = allDtos.stream()
+                .filter(InventoryDTO::isExpiryWarning)
+                .count();
+
+        // stockFilter 적용
+        List<InventoryDTO> filteredDtos = allDtos;
+        if (filter != null) {
+            filteredDtos = allDtos.stream()
+                    .filter(dto -> {
+                        switch (filter) {
+                            case "outOfStock":
+                                return dto.getRemainingStock() != null && dto.getRemainingStock().compareTo(BigDecimal.ZERO) <= 0;
+                            case "lowStock":
+                                BigDecimal remaining = dto.getRemainingStock() != null ? dto.getRemainingStock() : BigDecimal.ZERO;
+                                BigDecimal minQty = dto.getMinQuantity() != null ? new BigDecimal(dto.getMinQuantity()) : BigDecimal.ZERO;
+                                return remaining.compareTo(BigDecimal.ZERO) > 0 && remaining.compareTo(minQty) <= 0;
+                            case "expiryWarning":
+                                return dto.isExpiryWarning();
+                            default:
+                                return true;
+                        }
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        // 페이지네이션
+        int totalElements = filteredDtos.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, totalElements);
+
+        List<InventoryDTO> content;
+        if (fromIndex >= totalElements) {
+            content = new ArrayList<>();
+        } else {
+            content = filteredDtos.subList(fromIndex, toIndex);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", content);
+        result.put("currentPage", page);
+        result.put("totalPages", totalPages);
+        result.put("totalElements", totalElements);
+        result.put("totalProductCount", allDtos.size());
+        result.put("hasNext", page < totalPages - 1);
+        result.put("hasPrevious", page > 0);
+        result.put("outOfStockCount", outOfStockCount);
+        result.put("lowStockCount", lowStockCount);
+        result.put("expiryWarningCount", expiryWarningCount);
+
+        return result;
+    }
+
+    @Transactional
+    public void confirmPeriodAndCreateNext(Long periodId, LocalDate reportDate, String nextPeriodName) {
+        ReportPeriod currentPeriod = reportPeriodRepository.findById(periodId)
+                .orElseThrow(() -> new IllegalArgumentException("기간을 찾을 수 없습니다: " + periodId));
+
+        if (!"OPEN".equals(currentPeriod.getStatus())) {
+            throw new IllegalArgumentException("이미 확정된 기간입니다.");
+        }
+
+        // 현재 기간 확정: endDate = reportDate - 1
+        currentPeriod.setEndDate(reportDate.minusDays(1));
+        currentPeriod.setStatus("CONFIRMED");
+        currentPeriod.setConfirmedAt(java.time.LocalDateTime.now());
+        reportPeriodRepository.save(currentPeriod);
+
+        // 새 기간 생성: startDate = reportDate
+        ReportPeriod nextPeriod = ReportPeriod.builder()
+                .name(nextPeriodName)
+                .startDate(reportDate)
+                .endDate(null)
+                .status("OPEN")
+                .build();
+        reportPeriodRepository.save(nextPeriod);
+
+        // 각 상품별 새 Inventory 생성
+        LocalDate prevStartDate = currentPeriod.getStartDate();
+        LocalDate prevEndDate = reportDate.minusDays(1);
+        String prevStartDateStr = prevStartDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String prevEndDateStr = prevEndDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        List<Inventory> prevInventories = inventoryRepository.findByReportPeriodIdWithProduct(periodId);
+        for (Inventory prevInv : prevInventories) {
+            Long productId = prevInv.getProduct().getId();
+
+            BigDecimal prevInitialStock = prevInv.getInitialStock() != null ? prevInv.getInitialStock() : BigDecimal.ZERO;
+
+            BigDecimal completedOrders = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, prevStartDate, prevEndDate);
+            if (completedOrders == null) completedOrders = BigDecimal.ZERO;
+
+            BigDecimal reportUsed = prevInv.getUsedQuantity() != null ? prevInv.getUsedQuantity() : BigDecimal.ZERO;
+
+            BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, prevStartDateStr, prevEndDateStr);
+            if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
+
+            BigDecimal newInitialStock = prevInitialStock.add(completedOrders).subtract(reportUsed).subtract(operationalUsed);
+
+            // yearMonth는 새 기간의 시작 월로 설정 (호환성)
+            String newYearMonth = YearMonth.from(reportDate).format(DateTimeFormatter.ofPattern("yyyy-MM"));
+
+            Inventory newInventory = Inventory.builder()
+                    .product(prevInv.getProduct())
+                    .yearMonth(newYearMonth)
+                    .reportPeriod(nextPeriod)
+                    .initialStock(newInitialStock)
+                    .usedQuantity(BigDecimal.ZERO)
+                    .remainingStock(newInitialStock)
+                    .expiryDate(prevInv.getExpiryDate())
+                    .note(prevInv.getNote())
+                    .build();
+
+            inventoryRepository.save(newInventory);
+        }
+    }
+
+    /**
+     * 기간의 날짜 범위로 UsageLog 조회
+     */
+    public List<UsageLogDTO> getUsageLogsByProductIdAndPeriod(Long productId, Long periodId) {
+        ReportPeriod period = reportPeriodRepository.findById(periodId).orElse(null);
+        if (period == null) return new ArrayList<>();
+
+        String startDateStr = period.getStartDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String endDateStr = period.getEndDate() != null
+                ? period.getEndDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                : LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        // actionDate가 yyyy-MM-dd 형식이므로 문자열 범위로 조회
+        return usageLogRepository.findByProductIdAndDateRangeStr(productId, startDateStr, endDateStr).stream()
+                .map(UsageLogDTO::fromEntity)
+                .collect(Collectors.toList());
     }
 
     public InventoryDTO getInventoryById(Long id) {

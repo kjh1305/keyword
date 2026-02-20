@@ -1,6 +1,7 @@
 package com.example.demo.api.inventory.excel;
 
 import com.example.demo.api.inventory.stock.InventoryService;
+import com.example.demo.api.inventory.stock.ReportPeriodDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -26,8 +27,9 @@ public class ExcelController {
     @GetMapping("/inventory/import")
     public String importPage(Model model) {
         model.addAttribute("menu", "import");
-        model.addAttribute("yearMonths", inventoryService.getAllYearMonths());
-        model.addAttribute("currentYearMonth", inventoryService.getCurrentYearMonth());
+        model.addAttribute("periods", inventoryService.getAllPeriods());
+        ReportPeriodDTO currentPeriod = inventoryService.getCurrentPeriod();
+        model.addAttribute("currentPeriodId", currentPeriod != null ? currentPeriod.getId() : null);
         return "inventory/import";
     }
 
@@ -82,11 +84,20 @@ public class ExcelController {
     @ResponseBody
     public ResponseEntity<?> importData(@RequestBody ImportRequest request) {
         try {
-            ImportResult result = excelService.importData(
-                    request.getData(),
-                    request.getYearMonth(),
-                    request.isUpdateExisting()
-            );
+            ImportResult result;
+            if (request.getPeriodId() != null) {
+                result = excelService.importDataByPeriod(
+                        request.getData(),
+                        request.getPeriodId(),
+                        request.isUpdateExisting()
+                );
+            } else {
+                result = excelService.importData(
+                        request.getData(),
+                        request.getYearMonth(),
+                        request.isUpdateExisting()
+                );
+            }
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", result.getSummary(),
@@ -101,16 +112,18 @@ public class ExcelController {
     }
 
     @GetMapping("/api/inventory/export/excel")
-    public ResponseEntity<byte[]> exportExcel(@RequestParam(required = false) String yearMonth) throws IOException {
+    public ResponseEntity<byte[]> exportExcel(@RequestParam(required = false) String yearMonth,
+                                                @RequestParam(required = false) Long periodId) throws IOException {
         byte[] excelData;
         String filename;
 
-        if (yearMonth == null || yearMonth.isEmpty() || "all".equals(yearMonth)) {
-            // 전체 년월 내보내기 (시트별로 분리)
+        if (periodId != null) {
+            excelData = excelService.exportToExcelByPeriod(periodId);
+            filename = URLEncoder.encode("재고현황_기간" + periodId + ".xlsx", StandardCharsets.UTF_8);
+        } else if (yearMonth == null || yearMonth.isEmpty() || "all".equals(yearMonth)) {
             excelData = excelService.exportAllToExcel();
             filename = URLEncoder.encode("재고현황_전체.xlsx", StandardCharsets.UTF_8);
         } else {
-            // 단일 년월 내보내기
             excelData = excelService.exportToExcel(yearMonth);
             filename = URLEncoder.encode("재고현황_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
         }
@@ -122,9 +135,18 @@ public class ExcelController {
     }
 
     @GetMapping("/api/inventory/export/weekly-report")
-    public ResponseEntity<byte[]> exportWeeklyReport(@RequestParam String yearMonth) throws IOException {
-        byte[] excelData = excelService.exportWeeklyReport(yearMonth);
-        String filename = URLEncoder.encode("당일보고_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
+    public ResponseEntity<byte[]> exportWeeklyReport(@RequestParam(required = false) String yearMonth,
+                                                       @RequestParam(required = false) Long periodId) throws IOException {
+        byte[] excelData;
+        String filename;
+
+        if (periodId != null) {
+            excelData = excelService.exportWeeklyReportByPeriod(periodId);
+            filename = URLEncoder.encode("당일보고_기간" + periodId + ".xlsx", StandardCharsets.UTF_8);
+        } else {
+            excelData = excelService.exportWeeklyReport(yearMonth);
+            filename = URLEncoder.encode("당일보고_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
+        }
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + filename)
@@ -133,9 +155,18 @@ public class ExcelController {
     }
 
     @GetMapping("/api/inventory/export/weekly-breakdown")
-    public ResponseEntity<byte[]> exportWeeklyBreakdown(@RequestParam String yearMonth) throws IOException {
-        byte[] excelData = excelService.exportWeeklyBreakdownReport(yearMonth);
-        String filename = URLEncoder.encode("주간보고_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
+    public ResponseEntity<byte[]> exportWeeklyBreakdown(@RequestParam(required = false) String yearMonth,
+                                                          @RequestParam(required = false) Long periodId) throws IOException {
+        byte[] excelData;
+        String filename;
+
+        if (periodId != null) {
+            excelData = excelService.exportWeeklyBreakdownReportByPeriod(periodId);
+            filename = URLEncoder.encode("주간보고_기간" + periodId + ".xlsx", StandardCharsets.UTF_8);
+        } else {
+            excelData = excelService.exportWeeklyBreakdownReport(yearMonth);
+            filename = URLEncoder.encode("주간보고_" + yearMonth + ".xlsx", StandardCharsets.UTF_8);
+        }
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + filename)
@@ -147,6 +178,7 @@ public class ExcelController {
     public static class ImportRequest {
         private List<ExcelImportDTO> data;
         private String yearMonth;
+        private Long periodId;
         private boolean updateExisting;
     }
 }
