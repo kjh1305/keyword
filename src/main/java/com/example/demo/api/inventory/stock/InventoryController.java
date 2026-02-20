@@ -12,6 +12,8 @@ import com.example.demo.api.inventory.order.StockOrderDTO;
 import com.example.demo.api.inventory.order.StockOrderService;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -26,35 +28,50 @@ public class InventoryController {
     // View Controllers
     @GetMapping("/inventory/stocks")
     public String stockList(Model model,
-                            @RequestParam(required = false) String yearMonth,
+                            @RequestParam(required = false) Long periodId,
                             @RequestParam(required = false) String category,
                             @RequestParam(required = false) String keyword,
                             @RequestParam(required = false) String stockFilter,
                             @RequestParam(defaultValue = "0") int page,
                             @RequestParam(defaultValue = "20") int size) {
-        if (yearMonth == null || yearMonth.isEmpty()) {
-            yearMonth = inventoryService.getCurrentYearMonth();
+        // periodId가 없으면 현재 OPEN 기간 사용
+        if (periodId == null) {
+            ReportPeriodDTO currentPeriod = inventoryService.getCurrentPeriod();
+            if (currentPeriod != null) {
+                periodId = currentPeriod.getId();
+            }
         }
 
-        java.util.Map<String, Object> pageData = inventoryService.getInventoryByMonthPaged(yearMonth, category, keyword, stockFilter, page, size);
-        List<String> yearMonths = inventoryService.getAllYearMonths();
+        List<ReportPeriodDTO> periods = inventoryService.getAllPeriods();
 
-        if (!yearMonths.contains(yearMonth)) {
-            yearMonths.add(0, yearMonth);
+        if (periodId != null) {
+            Map<String, Object> pageData = inventoryService.getInventoryByPeriodPaged(periodId, category, keyword, stockFilter, page, size);
+
+            model.addAttribute("inventories", pageData.get("content"));
+            model.addAttribute("currentPage", pageData.get("currentPage"));
+            model.addAttribute("totalPages", pageData.get("totalPages"));
+            model.addAttribute("totalElements", pageData.get("totalElements"));
+            model.addAttribute("totalProductCount", pageData.get("totalProductCount"));
+            model.addAttribute("hasNext", pageData.get("hasNext"));
+            model.addAttribute("hasPrevious", pageData.get("hasPrevious"));
+            model.addAttribute("outOfStockCount", pageData.get("outOfStockCount"));
+            model.addAttribute("lowStockCount", pageData.get("lowStockCount"));
+            model.addAttribute("expiryWarningCount", pageData.get("expiryWarningCount"));
+        } else {
+            model.addAttribute("inventories", List.of());
+            model.addAttribute("currentPage", 0);
+            model.addAttribute("totalPages", 0);
+            model.addAttribute("totalElements", 0);
+            model.addAttribute("totalProductCount", 0);
+            model.addAttribute("hasNext", false);
+            model.addAttribute("hasPrevious", false);
+            model.addAttribute("outOfStockCount", 0L);
+            model.addAttribute("lowStockCount", 0L);
+            model.addAttribute("expiryWarningCount", 0L);
         }
 
-        model.addAttribute("inventories", pageData.get("content"));
-        model.addAttribute("currentPage", pageData.get("currentPage"));
-        model.addAttribute("totalPages", pageData.get("totalPages"));
-        model.addAttribute("totalElements", pageData.get("totalElements"));
-        model.addAttribute("totalProductCount", pageData.get("totalProductCount"));
-        model.addAttribute("hasNext", pageData.get("hasNext"));
-        model.addAttribute("hasPrevious", pageData.get("hasPrevious"));
-        model.addAttribute("outOfStockCount", pageData.get("outOfStockCount"));
-        model.addAttribute("lowStockCount", pageData.get("lowStockCount"));
-        model.addAttribute("expiryWarningCount", pageData.get("expiryWarningCount"));
-        model.addAttribute("yearMonths", yearMonths);
-        model.addAttribute("selectedYearMonth", yearMonth);
+        model.addAttribute("periods", periods);
+        model.addAttribute("selectedPeriodId", periodId);
         model.addAttribute("categories", productService.getAllCategories());
         model.addAttribute("selectedCategory", category);
         model.addAttribute("keyword", keyword);
@@ -100,21 +117,45 @@ public class InventoryController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/api/inventory/stocks/confirm-period")
+    @ResponseBody
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, String>> confirmPeriod(@RequestParam Long periodId,
+                                                               @RequestParam String reportDate,
+                                                               @RequestParam String nextPeriodName) {
+        LocalDate date = LocalDate.parse(reportDate);
+        inventoryService.confirmPeriodAndCreateNext(periodId, date, nextPeriodName);
+        return ResponseEntity.ok(Map.of("message", "기간이 확정되었습니다. 새 기간 '" + nextPeriodName + "'이 생성되었습니다."));
+    }
+
+    @GetMapping("/api/inventory/stocks/periods")
+    @ResponseBody
+    public ResponseEntity<List<ReportPeriodDTO>> getPeriods() {
+        return ResponseEntity.ok(inventoryService.getAllPeriods());
+    }
+
+    @GetMapping("/api/inventory/stocks/current-period")
+    @ResponseBody
+    public ResponseEntity<ReportPeriodDTO> getCurrentPeriod() {
+        return ResponseEntity.ok(inventoryService.getCurrentPeriod());
+    }
+
+    // 하위호환: 기존 months API 유지
+    @GetMapping("/api/inventory/stocks/months")
+    @ResponseBody
+    public ResponseEntity<List<String>> getYearMonths() {
+        return ResponseEntity.ok(inventoryService.getAllYearMonths());
+    }
+
+    // 하위호환: 기존 initialize API 유지
     @PostMapping("/api/inventory/stocks/initialize")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> initializeMonth(@RequestParam String yearMonth) {
         inventoryService.initializeMonthlyInventory(yearMonth);
-        // 재고 현황에서 선택할 월 계산 (생성된 월 + 1)
         java.time.YearMonth ym = java.time.YearMonth.parse(yearMonth);
-        String displayMonth = ym.plusMonths(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+        String displayMonth = ym.plusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM"));
         return ResponseEntity.ok(Map.of("message", yearMonth + " 재고가 생성되었습니다.\n재고 현황에서 " + displayMonth + "을 선택하세요."));
-    }
-
-    @GetMapping("/api/inventory/stocks/months")
-    @ResponseBody
-    public ResponseEntity<List<String>> getYearMonths() {
-        return ResponseEntity.ok(inventoryService.getAllYearMonths());
     }
 
     @GetMapping("/api/inventory/stocks/product/{productId}/history")
@@ -181,12 +222,17 @@ public class InventoryController {
     }
 
     /**
-     * 제품별 + 년월별 사용량 변경 이력 조회
+     * 제품별 + 기간별 사용량 변경 이력 조회
      */
     @GetMapping("/api/inventory/stocks/product/{productId}/usage-logs")
     @ResponseBody
     public ResponseEntity<List<UsageLogDTO>> getUsageLogs(@PathVariable Long productId,
-                                                           @RequestParam String yearMonth) {
+                                                           @RequestParam(required = false) Long periodId,
+                                                           @RequestParam(required = false) String yearMonth) {
+        if (periodId != null) {
+            return ResponseEntity.ok(inventoryService.getUsageLogsByProductIdAndPeriod(productId, periodId));
+        }
+        // 하위호환: yearMonth로도 조회 가능
         return ResponseEntity.ok(inventoryService.getUsageLogsByProductIdAndYearMonth(productId, yearMonth));
     }
 }

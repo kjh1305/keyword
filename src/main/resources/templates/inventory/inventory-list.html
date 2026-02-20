@@ -27,8 +27,8 @@
         <div class="top-bar">
             <h1 class="page-title">재고 현황</h1>
             <div class="d-flex gap-2">
-                <button class="btn btn-outline-secondary" onclick="initializeMonth()" sec:authorize="hasRole('ADMIN')">
-                    <i class="bi bi-plus-circle me-1"></i>새 달 생성
+                <button class="btn btn-outline-secondary" onclick="confirmPeriod()" sec:authorize="hasRole('ADMIN')">
+                    <i class="bi bi-check-circle me-1"></i>최종보고완료
                 </button>
                 <div class="btn-group">
                     <button class="btn btn-success" onclick="exportAllExcel()">
@@ -57,13 +57,13 @@
         <div class="card mb-4">
             <div class="card-body">
                 <form class="row g-3" method="get" th:action="@{/inventory/stocks}" id="filterForm">
-                    <div class="col-md-2">
-                        <label class="form-label">년월</label>
-                        <select name="yearMonth" class="form-select" id="yearMonthSelect" onchange="resetPageAndSubmit()">
-                            <option th:each="ym : ${yearMonths}"
-                                    th:value="${ym}"
-                                    th:text="${ym}"
-                                    th:selected="${ym == selectedYearMonth}"></option>
+                    <div class="col-md-3">
+                        <label class="form-label">기간</label>
+                        <select name="periodId" class="form-select" id="periodSelect" onchange="resetPageAndSubmit()">
+                            <option th:each="p : ${periods}"
+                                    th:value="${p.id}"
+                                    th:text="${p.displayLabel}"
+                                    th:selected="${p.id == selectedPeriodId}"></option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -103,7 +103,7 @@
         <!-- Summary Stats -->
         <div class="row mb-4" th:if="${totalProductCount > 0}">
             <div class="col-6 col-md-3 mb-2">
-                <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size})}"
+                <a th:href="@{/inventory/stocks(periodId=${selectedPeriodId}, category=${selectedCategory}, keyword=${keyword}, size=${size})}"
                    class="card text-center text-decoration-none stat-card"
                    th:classappend="${stockFilter == null} ? 'border-primary' : ''">
                     <div class="card-body py-2">
@@ -113,7 +113,7 @@
                 </a>
             </div>
             <div class="col-6 col-md-3 mb-2">
-                <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='outOfStock')}"
+                <a th:href="@{/inventory/stocks(periodId=${selectedPeriodId}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='outOfStock')}"
                    class="card text-center text-decoration-none stat-card border-danger"
                    th:classappend="${stockFilter == 'outOfStock'} ? 'bg-danger text-white' : ''">
                     <div class="card-body py-2">
@@ -124,7 +124,7 @@
                 </a>
             </div>
             <div class="col-6 col-md-3 mb-2">
-                <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='lowStock')}"
+                <a th:href="@{/inventory/stocks(periodId=${selectedPeriodId}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='lowStock')}"
                    class="card text-center text-decoration-none stat-card border-warning"
                    th:classappend="${stockFilter == 'lowStock'} ? 'bg-warning' : ''">
                     <div class="card-body py-2">
@@ -135,7 +135,7 @@
                 </a>
             </div>
             <div class="col-6 col-md-3 mb-2">
-                <a th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='expiryWarning')}"
+                <a th:href="@{/inventory/stocks(periodId=${selectedPeriodId}, category=${selectedCategory}, keyword=${keyword}, size=${size}, stockFilter='expiryWarning')}"
                    class="card text-center text-decoration-none stat-card border-purple"
                    th:classappend="${stockFilter == 'expiryWarning'} ? 'bg-purple text-white' : ''">
                     <div class="card-body py-2">
@@ -151,12 +151,12 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2">
-                    <span><span th:text="${selectedYearMonth}"></span> 재고 현황</span>
+                    <span>재고 현황</span>
                     <span th:if="${stockFilter == 'outOfStock'}" class="badge bg-danger">재고 없음 필터</span>
                     <span th:if="${stockFilter == 'lowStock'}" class="badge bg-warning text-dark">재고 부족 필터</span>
                     <span th:if="${stockFilter == 'expiryWarning'}" class="badge bg-purple">유효기간 임박 필터</span>
                     <a th:if="${stockFilter != null}"
-                       th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, size=${size})}"
+                       th:href="@{/inventory/stocks(periodId=${selectedPeriodId}, category=${selectedCategory}, keyword=${keyword}, size=${size})}"
                        class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-x-lg"></i> 필터 해제
                     </a>
@@ -172,8 +172,8 @@
                                 <th style="width: 100px;">카테고리</th>
                                 <th style="min-width: 200px;">제품명</th>
                                 <th style="width: 90px;">월초재고</th>
-                                <th style="width: 120px;">주문재고</th>
-                                <th style="width: 90px;">당월사용</th>
+                                <th style="width: 120px;">주문수량</th>
+                                <th style="width: 90px;">사용량</th>
                                 <th style="width: 90px;">남은재고</th>
                                 <th style="width: 80px;"></th>
                                 <th style="min-width: 150px;">유효기간</th>
@@ -204,18 +204,22 @@
                                            step="1" min="0">
                                 </td>
                                 <td class="text-center">
-                                    <div th:if="${inv.pendingStock > 0 or inv.completedStock > 0}">
-                                        <span th:if="${inv.completedStock > 0}" class="badge bg-success"
-                                              th:text="'입고 ' + ${#numbers.formatInteger(inv.completedStock, 1)}"></span>
-                                        <span th:if="${inv.pendingStock > 0}" class="badge bg-warning text-dark"
-                                              th:text="'대기 ' + ${#numbers.formatInteger(inv.pendingStock, 1)}"></span>
+                                    <div th:if="${inv.totalOrderQty > 0}">
+                                        <div>
+                                            <span class="badge bg-primary" th:text="'주문 ' + ${#numbers.formatInteger(inv.totalOrderQty, 1)}"></span>
+                                        </div>
+                                        <div class="mt-1" style="font-size: 0.7rem;" th:if="${inv.completedStock > 0 or inv.pendingStock > 0}">
+                                            <span th:if="${inv.completedStock > 0}" class="text-success fw-bold"
+                                                  th:text="'입고 ' + ${#numbers.formatInteger(inv.completedStock, 1)}"></span>
+                                            <span th:if="${inv.completedStock > 0 and inv.pendingStock > 0}" class="text-muted mx-1">/</span>
+                                            <span th:if="${inv.pendingStock > 0}" class="text-warning fw-bold"
+                                                  th:text="'대기 ' + ${#numbers.formatInteger(inv.pendingStock, 1)}"></span>
+                                        </div>
                                     </div>
-                                    <span th:if="${inv.pendingStock <= 0 and inv.completedStock <= 0}" class="text-muted">-</span>
+                                    <span th:if="${inv.totalOrderQty <= 0}" class="text-muted">-</span>
                                 </td>
                                 <td class="text-end">
                                     <span th:text="${#numbers.formatInteger(inv.currentMonthUsedQuantity, 1)}" class="fw-bold"></span>
-                                    <small class="text-muted ms-1" style="font-size: 0.75rem;"
-                                           th:text="'(전월: ' + ${#numbers.formatInteger(inv.usedQuantity != null ? inv.usedQuantity : 0, 1)} + ')'"></small>
                                     <button class="btn btn-sm btn-link p-0 ms-1 usage-log-btn"
                                             th:data-product-id="${inv.productId}"
                                             th:data-name="${inv.productName}"
@@ -282,11 +286,7 @@
                             </tr>
                             <tr th:if="${#lists.isEmpty(inventories)}">
                                 <td colspan="10" class="text-center py-4 text-muted">
-                                    해당 월에 등록된 재고 정보가 없습니다.
-                                    <br><br>
-                                    <button class="btn btn-primary btn-sm" onclick="initializeMonth()" sec:authorize="hasRole('ADMIN')">
-                                        <i class="bi bi-plus-circle me-1"></i>새 달 재고 생성
-                                    </button>
+                                    해당 기간에 등록된 재고 정보가 없습니다.
                                 </td>
                             </tr>
                         </tbody>
@@ -298,12 +298,12 @@
                 <nav aria-label="Page navigation">
                     <ul class="pagination justify-content-center mb-0">
                         <li class="page-item" th:classappend="${!hasPrevious} ? 'disabled'">
-                            <a class="page-link" th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, page=0, size=${size}, stockFilter=${stockFilter})}">
+                            <a class="page-link" th:href="@{/inventory/stocks(periodId=${selectedPeriodId}, category=${selectedCategory}, keyword=${keyword}, page=0, size=${size}, stockFilter=${stockFilter})}">
                                 <i class="bi bi-chevron-double-left"></i>
                             </a>
                         </li>
                         <li class="page-item" th:classappend="${!hasPrevious} ? 'disabled'">
-                            <a class="page-link" th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, page=${currentPage - 1}, size=${size}, stockFilter=${stockFilter})}">
+                            <a class="page-link" th:href="@{/inventory/stocks(periodId=${selectedPeriodId}, category=${selectedCategory}, keyword=${keyword}, page=${currentPage - 1}, size=${size}, stockFilter=${stockFilter})}">
                                 <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
@@ -311,15 +311,15 @@
                             class="page-item"
                             th:classappend="${i == currentPage} ? 'active'"
                             th:if="${i >= currentPage - 2 and i <= currentPage + 2}">
-                            <a class="page-link" th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, page=${i}, size=${size}, stockFilter=${stockFilter})}" th:text="${i + 1}"></a>
+                            <a class="page-link" th:href="@{/inventory/stocks(periodId=${selectedPeriodId}, category=${selectedCategory}, keyword=${keyword}, page=${i}, size=${size}, stockFilter=${stockFilter})}" th:text="${i + 1}"></a>
                         </li>
                         <li class="page-item" th:classappend="${!hasNext} ? 'disabled'">
-                            <a class="page-link" th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, page=${currentPage + 1}, size=${size}, stockFilter=${stockFilter})}">
+                            <a class="page-link" th:href="@{/inventory/stocks(periodId=${selectedPeriodId}, category=${selectedCategory}, keyword=${keyword}, page=${currentPage + 1}, size=${size}, stockFilter=${stockFilter})}">
                                 <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
                         <li class="page-item" th:classappend="${!hasNext} ? 'disabled'">
-                            <a class="page-link" th:href="@{/inventory/stocks(yearMonth=${selectedYearMonth}, category=${selectedCategory}, keyword=${keyword}, page=${totalPages - 1}, size=${size}, stockFilter=${stockFilter})}">
+                            <a class="page-link" th:href="@{/inventory/stocks(periodId=${selectedPeriodId}, category=${selectedCategory}, keyword=${keyword}, page=${totalPages - 1}, size=${size}, stockFilter=${stockFilter})}">
                                 <i class="bi bi-chevron-double-right"></i>
                             </a>
                         </li>
@@ -415,7 +415,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script th:inline="javascript">
-        const selectedYearMonth = /*[[${selectedYearMonth}]]*/ '';
+        const selectedPeriodId = /*[[${selectedPeriodId}]]*/ null;
 
         // Reset page and submit form
         function resetPageAndSubmit() {
@@ -454,16 +454,13 @@
                 const row = document.querySelector(`input[data-id="${id}"]`).closest('tr');
                 const remainingCell = document.getElementById('remaining-' + id).closest('td');
 
-                // 행 색상 초기화
                 row.classList.remove('table-danger', 'table-warning');
                 remainingCell.classList.remove('text-danger', 'text-warning');
 
                 if (remainingStock <= 0) {
-                    // 재고 없음 - 빨간색
                     row.classList.add('table-danger');
                     remainingCell.classList.add('text-danger');
                 } else if (inventory.lowStock) {
-                    // 재고 부족 - 노란색
                     row.classList.add('table-warning');
                     remainingCell.classList.add('text-warning');
                 }
@@ -518,17 +515,22 @@
                 const productId = this.dataset.productId;
                 const name = this.dataset.name;
 
-                document.getElementById('usageLogProductName').textContent = name + ' (' + selectedYearMonth + ')';
-                loadUsageLogData(productId, selectedYearMonth);
+                document.getElementById('usageLogProductName').textContent = name;
+                loadUsageLogData(productId, selectedPeriodId);
                 usageLogModal.show();
             });
         });
 
         // 사용량 이력 데이터 로드
-        function loadUsageLogData(productId, yearMonth) {
+        function loadUsageLogData(productId, periodId) {
             document.getElementById('usageLogList').innerHTML = '<p class="text-muted text-center">로딩 중...</p>';
 
-            fetch('/api/inventory/stocks/product/' + productId + '/usage-logs?yearMonth=' + yearMonth)
+            let url = '/api/inventory/stocks/product/' + productId + '/usage-logs';
+            if (periodId) {
+                url += '?periodId=' + periodId;
+            }
+
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (data.length === 0) {
@@ -586,7 +588,6 @@
                         const hasQuantity = order.remainingQuantity !== null;
                         const remainingQty = hasQuantity ? Math.floor(order.remainingQuantity) : '-';
 
-                        // 상태 배지
                         let statusBadge = '';
                         if (isConsumed) {
                             statusBadge = '<span class="badge bg-secondary">소진완료</span>';
@@ -598,7 +599,6 @@
                             statusBadge = '<span class="badge bg-success">사용중</span>';
                         }
 
-                        // 행 스타일
                         const rowClass = isConsumed ? 'text-muted text-decoration-line-through' : '';
 
                         html += '<tr class="' + rowClass + '">' +
@@ -612,7 +612,6 @@
                             html += '<button class="btn btn-sm btn-outline-secondary" onclick="toggleConsume(' + order.id + ', false)">' +
                                 '<i class="bi bi-arrow-counterclockwise me-1"></i>복원</button>';
                         } else {
-                            // 수량 수정 버튼 (항상 표시)
                             html += '<button class="btn btn-sm btn-outline-primary me-1" onclick="setOrderQuantity(' + order.id + ', \'' + (order.expiryDateStr || '') + '\', ' + (order.remainingQuantity || 'null') + ')" title="수량 수정">' +
                                 '<i class="bi bi-pencil"></i></button>';
                             html += '<button class="btn btn-sm btn-outline-danger" onclick="toggleConsume(' + order.id + ', true)" title="소진완료">' +
@@ -623,7 +622,6 @@
                     });
                     html += '</tbody></table>';
 
-                    // 수량미상 안내
                     const unknownCount = data.content.filter(o => o.remainingQuantity === null && !o.consumed).length;
                     if (unknownCount > 0) {
                         html += '<div class="alert alert-warning py-2 mt-2 small mb-0">' +
@@ -634,7 +632,6 @@
 
                     document.getElementById('expiryList').innerHTML = html;
 
-                    // Update pagination
                     if (totalExpiryPages > 1) {
                         document.getElementById('expiryPagination').style.display = 'flex';
                         document.getElementById('expiryPageInfo').textContent = (currentExpiryPage + 1) + ' / ' + totalExpiryPages;
@@ -661,7 +658,7 @@
                     return response.json();
                 })
                 .then(() => {
-                    loadExpiryData(); // 목록 새로고침
+                    loadExpiryData();
                 })
                 .catch(error => {
                     alert('처리에 실패했습니다.');
@@ -689,7 +686,7 @@
                 return response.json();
             })
             .then(() => {
-                loadExpiryData(); // 목록 새로고침
+                loadExpiryData();
             })
             .catch(error => {
                 alert('수량 설정에 실패했습니다.');
@@ -742,35 +739,58 @@
             });
         }
 
-        // Initialize month (현재 월 기준으로 해당 월 재고 생성)
-        function initializeMonth() {
-            const now = new Date();
-            // 현재 월의 재고를 생성
-            const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth() + 1; // 0-based이므로 +1
-            const yearMonth = currentYear + '-' + String(currentMonth).padStart(2, '0');
-
-            // 재고 현황에서 선택할 월 계산 (생성 월 + 1)
-            const nextDate = new Date(currentYear, currentMonth, 1); // 다음 달
-            const displayMonth = nextDate.getFullYear() + '-' + String(nextDate.getMonth() + 1).padStart(2, '0');
-
-            if (!confirm(yearMonth + ' 재고를 생성하시겠습니까?\n\n이전 달 남은재고가 월초재고로 자동 이월됩니다.\n(재고 현황에서 ' + displayMonth + ' 선택 시 표시됩니다)')) {
+        // 기간 확정 (최종보고일 입력 → CONFIRMED + 새 OPEN 기간 생성)
+        function confirmPeriod() {
+            if (!selectedPeriodId) {
+                alert('기간을 선택해주세요.');
                 return;
             }
 
-            fetch('/api/inventory/stocks/initialize?yearMonth=' + yearMonth, { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    // 생성된 재고를 볼 수 있는 월로 이동 (생성 월 + 1)
-                    location.href = '/inventory/stocks?yearMonth=' + displayMonth;
-                })
-                .catch(error => {
-                    alert('초기화에 실패했습니다.');
-                });
+            // 현재 선택된 기간이 OPEN인지 확인
+            const periodSelect = document.getElementById('periodSelect');
+            const selectedText = periodSelect.options[periodSelect.selectedIndex].text;
+
+            if (!selectedText.includes('진행중')) {
+                alert('OPEN 상태의 기간만 확정할 수 있습니다.');
+                return;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            const reportDate = prompt('최종보고일을 입력하세요 (YYYY-MM-DD):\n\n이 날짜가 다음 기간의 시작일이 됩니다.\n(보고일 당일은 다음 기간에 포함)', today);
+            if (!reportDate) return;
+
+            // 날짜 형식 검증
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
+                alert('올바른 날짜 형식을 입력해주세요. (예: 2026-02-20)');
+                return;
+            }
+
+            const nextPeriodName = prompt('새 기간의 이름을 입력하세요:', '');
+            if (nextPeriodName === null) return;
+            if (!nextPeriodName.trim()) {
+                alert('기간 이름을 입력해주세요.');
+                return;
+            }
+
+            if (!confirm('기간을 확정하시겠습니까?\n\n최종보고일: ' + reportDate + '\n새 기간: ' + nextPeriodName + '\n\n현재 기간의 남은재고가 새 기간의 월초재고로 이월됩니다.')) {
+                return;
+            }
+
+            fetch('/api/inventory/stocks/confirm-period?periodId=' + selectedPeriodId + '&reportDate=' + reportDate + '&nextPeriodName=' + encodeURIComponent(nextPeriodName), {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            })
+            .catch(error => {
+                alert('기간 확정에 실패했습니다.');
+                console.error(error);
+            });
         }
 
-        // Deduct stock (FIFO 차감) - data 속성 사용
+        // Deduct stock (FIFO 차감)
         document.querySelectorAll('.deduct-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = this.dataset.id;
@@ -786,7 +806,6 @@
                     return;
                 }
 
-                // FIFO 차감 API 호출
                 fetch('/api/inventory/stocks/' + id + '/deduct?quantity=' + deductAmount, {
                     method: 'POST'
                 })
@@ -832,7 +851,6 @@
                     return;
                 }
 
-                // 복구 API 호출
                 fetch('/api/inventory/stocks/' + id + '/restore?quantity=' + restoreAmount, {
                     method: 'POST'
                 })
@@ -852,27 +870,21 @@
             });
         });
 
-        // Export Excel (선택한 달)
-        function exportExcel() {
-            const yearMonth = document.getElementById('yearMonthSelect').value;
-            location.href = '/api/inventory/export/excel?yearMonth=' + yearMonth;
-        }
-
         // Export Excel (전체 - 시트별)
         function exportAllExcel() {
             location.href = '/api/inventory/export/excel?yearMonth=all';
         }
 
-        // Export Weekly Report (주간 보고용)
+        // Export Weekly Report (당일 보고용)
         function exportWeeklyReport() {
-            const yearMonth = document.getElementById('yearMonthSelect').value;
-            location.href = '/api/inventory/export/weekly-report?yearMonth=' + yearMonth;
+            const periodId = document.getElementById('periodSelect').value;
+            location.href = '/api/inventory/export/weekly-report?periodId=' + periodId;
         }
 
         // Export Weekly Breakdown (주별 분할)
         function exportWeeklyBreakdown() {
-            const yearMonth = document.getElementById('yearMonthSelect').value;
-            location.href = '/api/inventory/export/weekly-breakdown?yearMonth=' + yearMonth;
+            const periodId = document.getElementById('periodSelect').value;
+            location.href = '/api/inventory/export/weekly-breakdown?periodId=' + periodId;
         }
     </script>
 </body>

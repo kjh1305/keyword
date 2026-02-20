@@ -135,6 +135,16 @@ public interface StockOrderRepository extends JpaRepository<StockOrder, Long> {
                                                                 @Param("month") int month);
 
     /**
+     * 해당 월 주문수량 합계 (상태 무관, PENDING + COMPLETED)
+     */
+    @Query("SELECT COALESCE(SUM(o.quantity), 0) FROM StockOrder o " +
+           "WHERE o.product.id = :productId " +
+           "AND YEAR(o.orderDate) = :year AND MONTH(o.orderDate) = :month")
+    java.math.BigDecimal sumAllQuantityByProductIdAndMonth(@Param("productId") Long productId,
+                                                           @Param("year") int year,
+                                                           @Param("month") int month);
+
+    /**
      * 해당 월에 입고된 수량 합계
      */
     @Query("SELECT COALESCE(SUM(o.quantity), 0) FROM StockOrder o " +
@@ -153,6 +163,26 @@ public interface StockOrderRepository extends JpaRepository<StockOrder, Long> {
     java.math.BigDecimal sumCompletedQuantityByProductIdAndDateRange(@Param("productId") Long productId,
                                                                      @Param("startDate") LocalDate startDate,
                                                                      @Param("endDate") LocalDate endDate);
+
+    /**
+     * 해당 날짜 범위의 주문수량 합계 (상태 무관, PENDING + COMPLETED)
+     */
+    @Query("SELECT COALESCE(SUM(o.quantity), 0) FROM StockOrder o " +
+           "WHERE o.product.id = :productId " +
+           "AND o.orderDate >= :startDate AND o.orderDate <= :endDate")
+    java.math.BigDecimal sumAllQuantityByProductIdAndDateRange(@Param("productId") Long productId,
+                                                               @Param("startDate") LocalDate startDate,
+                                                               @Param("endDate") LocalDate endDate);
+
+    /**
+     * 해당 날짜 범위의 입고대기 수량 합계
+     */
+    @Query("SELECT COALESCE(SUM(o.quantity), 0) FROM StockOrder o " +
+           "WHERE o.product.id = :productId AND o.status = 'PENDING' " +
+           "AND o.orderDate >= :startDate AND o.orderDate <= :endDate")
+    java.math.BigDecimal sumPendingQuantityByProductIdAndDateRange(@Param("productId") Long productId,
+                                                                    @Param("startDate") LocalDate startDate,
+                                                                    @Param("endDate") LocalDate endDate);
 
     /**
      * 제품별 주문 삭제
