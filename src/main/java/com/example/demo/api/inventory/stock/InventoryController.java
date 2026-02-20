@@ -33,7 +33,7 @@ public class InventoryController {
                             @RequestParam(required = false) String keyword,
                             @RequestParam(required = false) String stockFilter,
                             @RequestParam(defaultValue = "0") int page,
-                            @RequestParam(defaultValue = "20") int size) {
+                            @RequestParam(defaultValue = "100") int size) {
         // periodId가 없으면 현재 OPEN 기간 사용
         if (periodId == null) {
             ReportPeriodDTO currentPeriod = inventoryService.getCurrentPeriod();
