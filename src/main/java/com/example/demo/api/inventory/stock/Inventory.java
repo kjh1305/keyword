@@ -28,6 +28,10 @@ public class Inventory {
     @Column(name = "ym", nullable = false, length = 7)
     private String yearMonth;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "report_period_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    private ReportPeriod reportPeriod;
+
     @Column(name = "initial_stock", precision = 10, scale = 1)
     @Builder.Default
     private BigDecimal initialStock = BigDecimal.ZERO;

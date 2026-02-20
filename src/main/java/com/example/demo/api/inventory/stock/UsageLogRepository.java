@@ -53,6 +53,14 @@ public interface UsageLogRepository extends JpaRepository<UsageLog, Long> {
     BigDecimal sumOperationalUsedByProductIdAndYearMonth(@Param("productId") Long productId, @Param("yearMonth") String yearMonth);
 
     /**
+     * 제품 + 날짜 범위별 사용량 이력 조회 (actionDate가 yyyy-MM-dd 문자열이므로 범위 비교)
+     */
+    @Query("SELECT u FROM UsageLog u WHERE u.product.id = :productId AND u.actionDate >= :startDate AND u.actionDate <= :endDate ORDER BY u.createdAt DESC")
+    List<UsageLog> findByProductIdAndDateRangeStr(@Param("productId") Long productId,
+                                                    @Param("startDate") String startDate,
+                                                    @Param("endDate") String endDate);
+
+    /**
      * 제품별 날짜 범위 운영용 사용량 합계 (DEDUCT - RESTORE)
      * actionDate가 yyyy-MM-dd 문자열이므로 문자열 비교
      */
