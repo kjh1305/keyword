@@ -689,28 +689,18 @@ public class ExcelService {
     }
 
     public byte[] exportAllToExcel() throws IOException {
-        // 시트로 표시할 데이터 월 목록 (DB 월 + 현재 월)
-        List<String> dbMonths = inventoryRepository.findAllYearMonths();
-        String currentMonth = java.time.YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
-
-        java.util.Set<String> dataMonths = new java.util.TreeSet<>(dbMonths);
-
-        // 현재 월 미만만 포함 (당월 제외, 오름차순 정렬)
-        List<String> sortedDataMonths = new ArrayList<>();
-        for (String month : dataMonths) {
-            if (month.compareTo(currentMonth) < 0) {
-                sortedDataMonths.add(month);
-            }
-        }
+        // 모든 기간을 시작일 오름차순으로 조회
+        List<ReportPeriod> periods = reportPeriodRepository.findAllByOrderByStartDateDesc();
+        // 오름차순으로 뒤집기 (오래된 기간부터 시트 생성)
+        Collections.reverse(periods);
 
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
             Map<String, CellStyle> styles = createStyles(workbook);
 
-            // 각 데이터 월에 대해 시트 생성 (해당 월 데이터 직접 조회)
-            for (String dataMonth : sortedDataMonths) {
-                createSheetForYearMonthDirect(workbook, dataMonth, styles);
+            for (ReportPeriod period : periods) {
+                createSheetForPeriod(workbook, period, styles);
             }
 
             workbook.write(out);
