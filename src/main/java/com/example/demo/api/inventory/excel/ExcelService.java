@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -695,12 +696,25 @@ public class ExcelService {
         // 오름차순으로 뒤집기 (오래된 기간부터 시트 생성)
         Collections.reverse(periods);
 
-        try (Workbook workbook = new XSSFWorkbook();
+        // 기존 템플릿 파일 로드
+        ClassPathResource resource = new ClassPathResource("static/피부_재고전체파일.xlsx");
+        try (InputStream templateIs = resource.getInputStream();
+             Workbook workbook = new XSSFWorkbook(templateIs);
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+
+            // 기존 시트명 목록 수집
+            Set<String> existingSheetNames = new HashSet<>();
+            for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+                existingSheetNames.add(workbook.getSheetAt(i).getSheetName());
+            }
 
             Map<String, CellStyle> styles = createStyles(workbook);
 
             for (ReportPeriod period : periods) {
+                // 이미 존재하는 시트명이면 건너뛰기
+                if (existingSheetNames.contains(period.getName())) {
+                    continue;
+                }
                 createSheetForPeriod(workbook, period, styles);
             }
 
@@ -1463,19 +1477,12 @@ public class ExcelService {
 
         List<Inventory> inventories = inventoryRepository.findByReportPeriodIdWithProduct(periodId);
 
-        // 사용량 기준 정렬을 위해 미리 계산
         String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String endDateStr = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        Map<Long, BigDecimal> usageMap = new HashMap<>();
-        for (Inventory inv : inventories) {
-            BigDecimal used = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(
-                    inv.getProduct().getId(), startDateStr, endDateStr);
-            usageMap.put(inv.getProduct().getId(), used != null ? used : BigDecimal.ZERO);
-        }
-        // 정렬: 사용량 많은순 → 제품명 가나다순
-        inventories.sort(Comparator
-                .<Inventory, BigDecimal>comparing(inv -> usageMap.getOrDefault(inv.getProduct().getId(), BigDecimal.ZERO), Comparator.reverseOrder())
-                .thenComparing(inv -> inv.getProduct().getName() != null ? inv.getProduct().getName() : ""));
+
+        // 정렬: 제품명 가나다순
+        inventories.sort(Comparator.comparing(
+                (Inventory inv) -> inv.getProduct().getName() != null ? inv.getProduct().getName() : ""));
 
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -1607,18 +1614,9 @@ public class ExcelService {
         List<LocalDate[]> weeks = calculateWeekBoundariesForRange(startDate, endDate);
         List<Inventory> inventories = inventoryRepository.findByReportPeriodIdWithProduct(periodId);
 
-        // 사용량 기준 정렬
-        String sortStartStr = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        String sortEndStr = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        Map<Long, BigDecimal> usageMap = new HashMap<>();
-        for (Inventory inv : inventories) {
-            BigDecimal used = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(
-                    inv.getProduct().getId(), sortStartStr, sortEndStr);
-            usageMap.put(inv.getProduct().getId(), used != null ? used : BigDecimal.ZERO);
-        }
-        inventories.sort(Comparator
-                .<Inventory, BigDecimal>comparing(inv -> usageMap.getOrDefault(inv.getProduct().getId(), BigDecimal.ZERO), Comparator.reverseOrder())
-                .thenComparing(inv -> inv.getProduct().getName() != null ? inv.getProduct().getName() : ""));
+        // 정렬: 제품명 가나다순
+        inventories.sort(Comparator.comparing(
+                (Inventory inv) -> inv.getProduct().getName() != null ? inv.getProduct().getName() : ""));
 
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -1783,16 +1781,9 @@ public class ExcelService {
         String startDateStr = startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String endDateStr = endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
-        // 사용량 기준 정렬
-        Map<Long, BigDecimal> usageSortMap = new HashMap<>();
-        for (Inventory inv : inventories) {
-            BigDecimal used = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(
-                    inv.getProduct().getId(), startDateStr, endDateStr);
-            usageSortMap.put(inv.getProduct().getId(), used != null ? used : BigDecimal.ZERO);
-        }
-        inventories.sort(Comparator
-                .<Inventory, BigDecimal>comparing(inv -> usageSortMap.getOrDefault(inv.getProduct().getId(), BigDecimal.ZERO), Comparator.reverseOrder())
-                .thenComparing(inv -> inv.getProduct().getName() != null ? inv.getProduct().getName() : ""));
+        // 정렬: 제품명 가나다순
+        inventories.sort(Comparator.comparing(
+                (Inventory inv) -> inv.getProduct().getName() != null ? inv.getProduct().getName() : ""));
 
         Map<Long, BigDecimal> productOrderQtyMap = new HashMap<>();
         Map<Long, List<String>> productReceivedDatesMap = new HashMap<>();
@@ -1873,13 +1864,11 @@ public class ExcelService {
             if (totalOrderQty == null) totalOrderQty = BigDecimal.ZERO;
             BigDecimal initialStock = rawInitialStock.add(totalOrderQty);
 
-            BigDecimal reportUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
-
             BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, startDateStr, endDateStr);
             if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
 
-            // 남은재고: 월초재고(주문포함) - 보고용사용량 - 운영사용량
-            BigDecimal remainingStock = initialStock.subtract(reportUsed).subtract(operationalUsed);
+            // 남은재고: 월초재고(주문포함) - 운영사용량
+            BigDecimal remainingStock = initialStock.subtract(operationalUsed);
 
             Cell cell0 = row.createCell(0);
             cell0.setCellValue(seq);
@@ -1894,7 +1883,7 @@ public class ExcelService {
             cell2.setCellStyle(styles.get("number"));
 
             Cell cell3 = row.createCell(3);
-            cell3.setCellValue(reportUsed.intValue());
+            cell3.setCellValue(operationalUsed.intValue());
             cell3.setCellStyle(styles.get("number"));
 
             Cell cell4 = row.createCell(4);
