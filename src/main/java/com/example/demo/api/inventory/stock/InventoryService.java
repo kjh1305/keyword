@@ -451,6 +451,17 @@ public class InventoryService {
         String prevStartDateStr = prevStartDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String prevEndDateStr = prevEndDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
+        // yearMonth 결정 (같은 월에 이미 인벤토리가 존재하면 suffix 추가하여 unique constraint 충돌 방지)
+        String baseYearMonth = YearMonth.from(reportDate).format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        String newYearMonth = baseYearMonth;
+        if (!inventoryRepository.findByYearMonth(baseYearMonth).isEmpty()) {
+            int suffix = 2;
+            while (!inventoryRepository.findByYearMonth(baseYearMonth + "_" + suffix).isEmpty()) {
+                suffix++;
+            }
+            newYearMonth = baseYearMonth + "_" + suffix;
+        }
+
         List<Inventory> prevInventories = inventoryRepository.findByReportPeriodIdWithProduct(periodId);
         for (Inventory prevInv : prevInventories) {
             Long productId = prevInv.getProduct().getId();
@@ -466,9 +477,6 @@ public class InventoryService {
             if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
 
             BigDecimal newInitialStock = prevInitialStock.add(completedOrders).subtract(reportUsed).subtract(operationalUsed);
-
-            // yearMonth는 새 기간의 시작 월로 설정 (호환성)
-            String newYearMonth = YearMonth.from(reportDate).format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
             Inventory newInventory = Inventory.builder()
                     .product(prevInv.getProduct())
