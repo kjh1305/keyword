@@ -387,13 +387,10 @@ public class InventoryService {
                     .collect(Collectors.toList());
         }
 
-        // 정렬: 사용량 많은순 → 제품명 가나다순
+        // 정렬: 제품명 가나다순
         filteredDtos = filteredDtos.stream()
-                .sorted(java.util.Comparator
-                        .<InventoryDTO, BigDecimal>comparing(
-                                dto -> dto.getCurrentMonthUsedQuantity() != null ? dto.getCurrentMonthUsedQuantity() : BigDecimal.ZERO,
-                                java.util.Comparator.reverseOrder())
-                        .thenComparing(dto -> dto.getProductName() != null ? dto.getProductName() : ""))
+                .sorted(java.util.Comparator.comparing(
+                        (InventoryDTO dto) -> dto.getProductName() != null ? dto.getProductName() : ""))
                 .collect(Collectors.toList());
 
         // 페이지네이션
