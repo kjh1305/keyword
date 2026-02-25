@@ -25,7 +25,7 @@ public class Inventory {
     @JoinColumn(name = "product_id", nullable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Product product;
 
-    @Column(name = "ym", nullable = false, length = 7)
+    @Column(name = "ym", nullable = false, length = 20)
     private String yearMonth;
 
     @ManyToOne(fetch = FetchType.LAZY)
