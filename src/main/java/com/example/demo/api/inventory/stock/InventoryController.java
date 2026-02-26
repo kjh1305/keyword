@@ -119,7 +119,6 @@ public class InventoryController {
 
     @PostMapping("/api/inventory/stocks/confirm-period")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> confirmPeriod(@RequestParam Long periodId,
                                                                @RequestParam String reportDate,
                                                                @RequestParam String nextPeriodName) {
