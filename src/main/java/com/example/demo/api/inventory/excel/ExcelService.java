@@ -783,10 +783,10 @@ public class ExcelService {
                 BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(productId, targetYear, targetMonth);
                 if (completedStock == null) completedStock = BigDecimal.ZERO;
 
-                // 월초재고: 전월초재고 - 전월사용량 + 주문수량
+                // 월초재고: 전월초재고 - 전월사용량 + 입고완료수량 (입고대기 제외)
                 BigDecimal prevInitial = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
                 BigDecimal prevUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
-                BigDecimal initialStock = prevInitial.subtract(prevUsed).add(totalOrderQty);
+                BigDecimal initialStock = prevInitial.subtract(prevUsed).add(completedStock);
 
                 // 사용량: 당월 운영용(UsageLog 합계)만
                 BigDecimal totalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(productId, yearMonth);
@@ -976,10 +976,14 @@ public class ExcelService {
                 BigDecimal totalOrderQty = stockOrderRepository.sumAllQuantityByProductIdAndMonth(productId, currentYM.getYear(), currentYM.getMonthValue());
                 if (totalOrderQty == null) totalOrderQty = BigDecimal.ZERO;
 
-                // 월초재고: 전월초재고 - 전월사용량 + 주문수량
+                // 입고완료: 해당 월 COMPLETED 주문 수량 합계
+                BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(productId, currentYM.getYear(), currentYM.getMonthValue());
+                if (completedStock == null) completedStock = BigDecimal.ZERO;
+
+                // 월초재고: 전월초재고 - 전월사용량 + 입고완료수량 (입고대기 제외)
                 BigDecimal prevInitial = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
                 BigDecimal prevUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
-                BigDecimal initialStock = prevInitial.subtract(prevUsed).add(totalOrderQty);
+                BigDecimal initialStock = prevInitial.subtract(prevUsed).add(completedStock);
 
                 Cell cell0 = row.createCell(0);
                 cell0.setCellValue(seq);
@@ -993,24 +997,25 @@ public class ExcelService {
                 cell2.setCellValue(initialStock.intValue());
                 cell2.setCellStyle(styles.get("number"));
 
-                // 주별 데이터
-                BigDecimal weekStartStock = initialStock;
+                // 주별 데이터 계산을 위한 시작 재고 (DB이월값 기준)
+                BigDecimal weekRunningStock = prevInitial.subtract(prevUsed);
+                
                 for (int w = 0; w < weeks.size(); w++) {
                     LocalDate[] range = weeks.get(w);
-                    String startDateStr = range[0].format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                    String endDateStr = range[1].format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
                     int startCol = 3 + (w * 3);
 
-                    // 해당 주 사용량
-                    BigDecimal weekUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, startDateStr, endDateStr);
+                    // 해당 주 사용량 (운영용)
+                    BigDecimal weekUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, 
+                            range[0].format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                            range[1].format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
                     if (weekUsed == null) weekUsed = BigDecimal.ZERO;
 
                     // 해당 주 입고완료
                     BigDecimal weekCompleted = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, range[0], range[1]);
                     if (weekCompleted == null) weekCompleted = BigDecimal.ZERO;
 
-                    // 남은재고
-                    BigDecimal weekRemaining = weekStartStock.add(weekCompleted).subtract(weekUsed);
+                    // 해당 주 남은재고 = 전주재고 + 이번주입고 - 이번주사용
+                    BigDecimal weekRemaining = weekRunningStock.add(weekCompleted).subtract(weekUsed);
 
                     Cell usedCell = row.createCell(startCol);
                     usedCell.setCellValue(weekUsed.intValue());
@@ -1024,8 +1029,8 @@ public class ExcelService {
                     remainingCell.setCellValue(weekRemaining.intValue());
                     remainingCell.setCellStyle(styles.get("highlight"));
 
-                    // 다음 주 시작재고 = 이번 주 남은재고
-                    weekStartStock = weekRemaining;
+                    // 다음 주 시작재고 업데이트
+                    weekRunningStock = weekRemaining;
                 }
 
                 rowNum++;
@@ -1178,17 +1183,18 @@ public class ExcelService {
                 row.setHeightInPoints(dateCount * 15);
             }
 
-            // 남은재고 동적 계산 (웹 UI와 동일한 로직)
-            BigDecimal initialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
-            BigDecimal reportUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
-
+            // 월초재고: DB이월값 + 입고완료수량 (입고대기 제외)
+            BigDecimal rawInitialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
             BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndMonth(productId, targetYear, targetMonth);
             if (completedStock == null) completedStock = BigDecimal.ZERO;
+            BigDecimal initialStockWithOrders = rawInitialStock.add(completedStock);
 
+            // 남은재고 동적 계산 (웹 UI와 동일한 로직)
+            BigDecimal reportUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
             BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndYearMonth(productId, reportYearMonth);
             if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
 
-            BigDecimal remainingStock = initialStock.add(completedStock).subtract(reportUsed).subtract(operationalUsed);
+            BigDecimal remainingStock = initialStockWithOrders.subtract(reportUsed).subtract(operationalUsed);
 
             Cell cell0 = row.createCell(0);
             cell0.setCellValue(seq);
@@ -1198,8 +1204,9 @@ public class ExcelService {
             cell1.setCellValue(inv.getProduct().getName());
             cell1.setCellStyle(styles.get("text"));
 
+            // 월초재고 (이월 + 입고완료)
             Cell cell2 = row.createCell(2);
-            cell2.setCellValue(initialStock.intValue());
+            cell2.setCellValue(initialStockWithOrders.intValue());
             cell2.setCellStyle(styles.get("number"));
 
             Cell cell3 = row.createCell(3);
@@ -1520,14 +1527,14 @@ public class ExcelService {
                 BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, startDate, endDate);
                 if (completedStock == null) completedStock = BigDecimal.ZERO;
 
-                // 월초재고: DB이월값 + 주문수량
+                // 월초재고: DB이월값 + 입고완료수량 (입고대기 제외)
                 BigDecimal rawInitialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
-                BigDecimal initialStock = rawInitialStock.add(totalOrderQty);
+                BigDecimal initialStock = rawInitialStock.add(completedStock);
 
                 BigDecimal totalUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, startDateStr, endDateStr);
                 if (totalUsed == null) totalUsed = BigDecimal.ZERO;
 
-                // 남은재고: 월초재고(주문포함) - 운영사용량
+                // 남은재고: 월초재고(입고완료포함) - 운영사용량
                 BigDecimal remainingStock = initialStock.subtract(totalUsed);
 
                 // 입고일자 조회
@@ -1680,11 +1687,11 @@ public class ExcelService {
                 Row row = sheet.createRow(rowNum);
                 Long productId = inv.getProduct().getId();
 
-                // 월초재고: DB이월값 + 주문수량
+                // 월초재고: DB이월값 + 입고완료수량 (입고대기 제외)
                 BigDecimal rawInitialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
-                BigDecimal totalOrderQty = stockOrderRepository.sumAllQuantityByProductIdAndDateRange(productId, startDate, endDate);
-                if (totalOrderQty == null) totalOrderQty = BigDecimal.ZERO;
-                BigDecimal initialStock = rawInitialStock.add(totalOrderQty);
+                BigDecimal completedStock = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, startDate, endDate);
+                if (completedStock == null) completedStock = BigDecimal.ZERO;
+                BigDecimal initialStock = rawInitialStock.add(completedStock);
 
                 Cell cell0 = row.createCell(0);
                 cell0.setCellValue(seq);
@@ -1698,20 +1705,25 @@ public class ExcelService {
                 cell2.setCellValue(initialStock.intValue());
                 cell2.setCellStyle(styles.get("number"));
 
-                BigDecimal weekStartStock = initialStock;
+                // 주별 데이터 계산을 위한 시작 재고 (DB이월값 기준)
+                BigDecimal weekRunningStock = rawInitialStock;
+
                 for (int w = 0; w < weeks.size(); w++) {
                     LocalDate[] range = weeks.get(w);
                     String wStartDateStr = range[0].format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
                     String wEndDateStr = range[1].format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
                     int startCol = 3 + (w * 3);
 
+                    // 해당 주 사용량
                     BigDecimal weekUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, wStartDateStr, wEndDateStr);
                     if (weekUsed == null) weekUsed = BigDecimal.ZERO;
 
+                    // 해당 주 입고완료
                     BigDecimal weekCompleted = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, range[0], range[1]);
                     if (weekCompleted == null) weekCompleted = BigDecimal.ZERO;
 
-                    BigDecimal weekRemaining = weekStartStock.subtract(weekUsed);
+                    // 해당 주 남은재고 = 전주재고 + 이번주입고 - 이번주사용
+                    BigDecimal weekRemaining = weekRunningStock.add(weekCompleted).subtract(weekUsed);
 
                     Cell usedCell = row.createCell(startCol);
                     usedCell.setCellValue(weekUsed.intValue());
@@ -1725,7 +1737,8 @@ public class ExcelService {
                     remainingCell.setCellValue(weekRemaining.intValue());
                     remainingCell.setCellStyle(styles.get("highlight"));
 
-                    weekStartStock = weekRemaining;
+                    // 다음 주 시작재고 업데이트
+                    weekRunningStock = weekRemaining;
                 }
 
                 rowNum++;
@@ -1858,16 +1871,16 @@ public class ExcelService {
             int dateCount = (dates != null) ? dates.size() : 0;
             if (dateCount > 1) row.setHeightInPoints(dateCount * 15);
 
-            // 월초재고: DB이월값 + 주문수량
+            // 월초재고: DB이월값 + 입고완료수량 (입고대기 제외)
             BigDecimal rawInitialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
-            BigDecimal totalOrderQty = productOrderQtyMap.get(productId);
-            if (totalOrderQty == null) totalOrderQty = BigDecimal.ZERO;
-            BigDecimal initialStock = rawInitialStock.add(totalOrderQty);
+            BigDecimal completedStockForInitial = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, startDate, endDate);
+            if (completedStockForInitial == null) completedStockForInitial = BigDecimal.ZERO;
+            BigDecimal initialStock = rawInitialStock.add(completedStockForInitial);
 
             BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, startDateStr, endDateStr);
             if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
 
-            // 남은재고: 월초재고(주문포함) - 운영사용량
+            // 남은재고: 월초재고(입고완료포함) - 운영사용량
             BigDecimal remainingStock = initialStock.subtract(operationalUsed);
 
             Cell cell0 = row.createCell(0);

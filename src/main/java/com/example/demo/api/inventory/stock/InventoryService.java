@@ -95,11 +95,15 @@ public class InventoryService {
                     }
                     dto.setCurrentMonthUsedQuantity(operationalUsed);
 
-                    // 남은재고 재계산: 월초재고 + 입고완료 - 전월사용량(보고용) - 당월사용량(운영용)
-                    BigDecimal initialStock = dto.getInitialStock() != null ? dto.getInitialStock() : BigDecimal.ZERO;
+                    // 월초재고 재계산: DB이월값 + 입고완료수량 (입고대기 제외)
+                    BigDecimal rawInitialStock = dto.getInitialStock() != null ? dto.getInitialStock() : BigDecimal.ZERO;
                     BigDecimal completed = dto.getCompletedStock() != null ? dto.getCompletedStock() : BigDecimal.ZERO;
+                    BigDecimal initialStockWithOrders = rawInitialStock.add(completed);
+                    dto.setInitialStock(initialStockWithOrders); // 화면의 '월초재고' 필드 업데이트
+
+                    // 남은재고 재계산: 월초재고(입고포함) - 전월사용량(보고용) - 당월사용량(운영용)
                     BigDecimal reportUsed = dto.getUsedQuantity() != null ? dto.getUsedQuantity() : BigDecimal.ZERO;
-                    BigDecimal newRemainingStock = initialStock.add(completed).subtract(reportUsed).subtract(operationalUsed);
+                    BigDecimal newRemainingStock = initialStockWithOrders.subtract(reportUsed).subtract(operationalUsed);
                     dto.setRemainingStock(newRemainingStock);
 
                     // lowStock 재계산: 재계산된 remainingStock 기준으로 (0 < 남은재고 <= 최소수량)
@@ -299,12 +303,13 @@ public class InventoryService {
                     if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
                     dto.setCurrentMonthUsedQuantity(operationalUsed);
 
-                    // 월초재고: DB이월값 + 주문수량
+                    // 월초재고: DB이월값 + 입고완료수량 (입고대기 제외)
                     BigDecimal rawInitialStock = dto.getInitialStock() != null ? dto.getInitialStock() : BigDecimal.ZERO;
-                    BigDecimal initialStockWithOrders = rawInitialStock.add(totalOrderQty);
+                    BigDecimal completedStockValue = dto.getCompletedStock() != null ? dto.getCompletedStock() : BigDecimal.ZERO;
+                    BigDecimal initialStockWithOrders = rawInitialStock.add(completedStockValue);
                     dto.setInitialStock(initialStockWithOrders);
 
-                    // 남은재고: 월초재고(주문포함) - 운영사용량
+                    // 남은재고: 월초재고(입고완료포함) - 운영사용량
                     BigDecimal newRemainingStock = initialStockWithOrders.subtract(operationalUsed);
                     dto.setRemainingStock(newRemainingStock);
 
