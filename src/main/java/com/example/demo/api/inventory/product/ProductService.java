@@ -4,6 +4,8 @@ import com.example.demo.api.inventory.log.ActivityLogService;
 import com.example.demo.api.inventory.order.StockOrderRepository;
 import com.example.demo.api.inventory.stock.Inventory;
 import com.example.demo.api.inventory.stock.InventoryRepository;
+import com.example.demo.api.inventory.stock.ReportPeriod;
+import com.example.demo.api.inventory.stock.ReportPeriodRepository;
 import com.example.demo.api.inventory.stock.UsageLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +26,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
+    private final ReportPeriodRepository reportPeriodRepository;
     private final StockOrderRepository stockOrderRepository;
     private final UsageLogRepository usageLogRepository;
     private final ActivityLogService activityLogService;
@@ -67,38 +70,49 @@ public class ProductService {
         Product saved = productRepository.save(product);
         activityLogService.logCreate("PRODUCT", saved.getId(), saved.getName());
 
-        // 최신월 재고에 자동 추가
-        createInventoryForLatestMonth(saved);
+        // OPEN 기간 재고에 자동 추가
+        createInventoryForOpenPeriod(saved);
 
         return ProductDTO.fromEntity(saved);
     }
 
     /**
-     * 제품을 최신월 재고에 자동 추가
+     * 제품을 OPEN 기간 재고에 자동 추가
      */
-    private void createInventoryForLatestMonth(Product product) {
-        List<String> yearMonths = inventoryRepository.findAllYearMonths();
-        String latestMonth;
+    private void createInventoryForOpenPeriod(Product product) {
+        ReportPeriod openPeriod = reportPeriodRepository.findOpenPeriod().orElse(null);
+        if (openPeriod == null) return;
 
-        if (yearMonths.isEmpty()) {
-            // DB에 재고가 없으면 현재 월 사용
-            latestMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
-        } else {
-            // 가장 최신 월 사용
-            latestMonth = yearMonths.get(0);
+        // 이미 OPEN 기간에 재고가 있으면 스킵
+        if (inventoryRepository.existsByProductIdAndReportPeriodId(product.getId(), openPeriod.getId())) {
+            return;
         }
 
-        // 해당 월의 재고가 없으면 생성
-        if (!inventoryRepository.existsByProductIdAndYearMonth(product.getId(), latestMonth)) {
-            Inventory inventory = Inventory.builder()
-                    .product(product)
-                    .yearMonth(latestMonth)
-                    .initialStock(BigDecimal.ZERO)
-                    .usedQuantity(BigDecimal.ZERO)
-                    .remainingStock(BigDecimal.ZERO)
-                    .build();
-            inventoryRepository.save(inventory);
+        // OPEN 기간의 기존 인벤토리에서 yearMonth 확인
+        String yearMonth = inventoryRepository.findByReportPeriodIdWithProduct(openPeriod.getId())
+                .stream().findFirst().map(Inventory::getYearMonth).orElse(null);
+
+        if (yearMonth == null) {
+            String baseYearMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            yearMonth = baseYearMonth;
+            if (!inventoryRepository.findByYearMonth(baseYearMonth).isEmpty()) {
+                int suffix = 2;
+                while (!inventoryRepository.findByYearMonth(baseYearMonth + "_" + suffix).isEmpty()) {
+                    suffix++;
+                }
+                yearMonth = baseYearMonth + "_" + suffix;
+            }
         }
+
+        Inventory inventory = Inventory.builder()
+                .product(product)
+                .yearMonth(yearMonth)
+                .reportPeriod(openPeriod)
+                .initialStock(BigDecimal.ZERO)
+                .usedQuantity(BigDecimal.ZERO)
+                .remainingStock(BigDecimal.ZERO)
+                .build();
+        inventoryRepository.save(inventory);
     }
 
     @Transactional
@@ -149,7 +163,7 @@ public class ProductService {
     }
 
     /**
-     * 제품을 현재 월 재고에 추가 (재고 현황에서 현재 월 선택 시 보이도록)
+     * 제품을 현재 OPEN 기간 재고에 추가
      * @return 추가 결과 메시지
      */
     @Transactional
@@ -157,28 +171,42 @@ public class ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("제품을 찾을 수 없습니다: " + productId));
 
-        // 재고 현황에서 "현재 월" 선택 시 보이려면 "이전 달" Inventory 필요
-        // 예: 2월에 추가 → 1월 Inventory 생성 → 재고 현황에서 2월 선택 시 표시
-        YearMonth now = YearMonth.now();
-        YearMonth prevMonth = now.minusMonths(1);
-        String targetMonth = prevMonth.format(DateTimeFormatter.ofPattern("yyyy-MM"));
-        String displayMonth = now.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        ReportPeriod openPeriod = reportPeriodRepository.findOpenPeriod()
+                .orElseThrow(() -> new IllegalStateException("진행중인 기간이 없습니다."));
 
-        // 이미 해당 월에 재고가 있는지 확인
-        if (inventoryRepository.existsByProductIdAndYearMonth(productId, targetMonth)) {
-            throw new IllegalStateException("이미 " + displayMonth + " 재고에 존재합니다.");
+        // 이미 OPEN 기간에 재고가 있는지 확인
+        if (inventoryRepository.existsByProductIdAndReportPeriodId(productId, openPeriod.getId())) {
+            String periodLabel = openPeriod.getName() != null ? openPeriod.getName() : "현재 기간";
+            throw new IllegalStateException("이미 " + periodLabel + " 재고에 존재합니다.");
         }
 
-        // 재고 생성
+        // OPEN 기간의 기존 인벤토리에서 yearMonth 확인
+        String yearMonth = inventoryRepository.findByReportPeriodIdWithProduct(openPeriod.getId())
+                .stream().findFirst().map(Inventory::getYearMonth).orElse(null);
+
+        if (yearMonth == null) {
+            String baseYearMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            yearMonth = baseYearMonth;
+            if (!inventoryRepository.findByYearMonth(baseYearMonth).isEmpty()) {
+                int suffix = 2;
+                while (!inventoryRepository.findByYearMonth(baseYearMonth + "_" + suffix).isEmpty()) {
+                    suffix++;
+                }
+                yearMonth = baseYearMonth + "_" + suffix;
+            }
+        }
+
         Inventory inventory = Inventory.builder()
                 .product(product)
-                .yearMonth(targetMonth)
+                .yearMonth(yearMonth)
+                .reportPeriod(openPeriod)
                 .initialStock(BigDecimal.ZERO)
                 .usedQuantity(BigDecimal.ZERO)
                 .remainingStock(BigDecimal.ZERO)
                 .build();
         inventoryRepository.save(inventory);
 
-        return displayMonth + " 재고에 추가되었습니다.";
+        String periodLabel = openPeriod.getName() != null ? openPeriod.getName() : "현재 기간";
+        return periodLabel + " 재고에 추가되었습니다.";
     }
 }

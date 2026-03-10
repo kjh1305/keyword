@@ -134,10 +134,26 @@ public class StockOrderService {
             if (openPeriod != null) {
                 Inventory inventory = inventoryRepository.findByProductIdAndReportPeriodId(productId, openPeriod.getId())
                         .orElseGet(() -> {
-                            String currentYearMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                            // OPEN 기간의 기존 인벤토리에서 yearMonth 확인 (suffix 포함된 값 재사용)
+                            String yearMonthForPeriod = inventoryRepository.findByReportPeriodIdWithProduct(openPeriod.getId())
+                                    .stream().findFirst().map(Inventory::getYearMonth).orElse(null);
+
+                            if (yearMonthForPeriod == null) {
+                                // OPEN 기간에 인벤토리가 없으면 suffix 로직 적용
+                                String baseYearMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                                yearMonthForPeriod = baseYearMonth;
+                                if (!inventoryRepository.findByYearMonth(baseYearMonth).isEmpty()) {
+                                    int suffix = 2;
+                                    while (!inventoryRepository.findByYearMonth(baseYearMonth + "_" + suffix).isEmpty()) {
+                                        suffix++;
+                                    }
+                                    yearMonthForPeriod = baseYearMonth + "_" + suffix;
+                                }
+                            }
+
                             Inventory newInv = Inventory.builder()
                                     .product(order.getProduct())
-                                    .yearMonth(currentYearMonth)
+                                    .yearMonth(yearMonthForPeriod)
                                     .reportPeriod(openPeriod)
                                     .initialStock(BigDecimal.ZERO)
                                     .addedStock(BigDecimal.ZERO)
