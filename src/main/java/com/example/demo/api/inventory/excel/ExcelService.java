@@ -14,6 +14,7 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -795,88 +796,87 @@ public class ExcelService {
                 // 남은재고: 월초재고 - 사용량 (주문수량은 이미 월초재고에 포함)
                 BigDecimal remainingStock = initialStock.subtract(totalUsed);
 
-                // 입고일자 조회
+                // 입고일자 조회 (같은 날짜는 수량 합산)
                 List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
-                List<String> receivedDates = new ArrayList<>();
+                Map<LocalDate, BigDecimal> receivedDateQtyMap = new LinkedHashMap<>();
                 for (StockOrder order : orders) {
                     if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
                         if (order.getReceivedDate().getYear() == targetYear &&
                             order.getReceivedDate().getMonthValue() == targetMonth) {
-                            receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                            BigDecimal qty = order.getQuantity() != null ? order.getQuantity() : BigDecimal.ZERO;
+                            receivedDateQtyMap.merge(order.getReceivedDate(), qty, BigDecimal::add);
                         }
+                    }
+                }
+                List<String> receivedDates = new ArrayList<>();
+                for (Map.Entry<LocalDate, BigDecimal> entry : receivedDateQtyMap.entrySet()) {
+                    String dateStr = entry.getKey().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                    BigDecimal qty = entry.getValue();
+                    if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                        receivedDates.add(dateStr + " (" + qty.stripTrailingZeros().toPlainString() + ")");
+                    } else {
+                        receivedDates.add(dateStr);
                     }
                 }
 
                 int dateCount = receivedDates.size();
-                if (dateCount > 1) {
-                    row.setHeightInPoints(dateCount * 15);
-                }
+                boolean isEven = (seq % 2 == 0);
+                row.setHeightInPoints(Math.max(dateCount > 1 ? dateCount * 15 : 22, 22));
 
-                // 번호
                 Cell cell0 = row.createCell(0);
                 cell0.setCellValue(seq);
-                cell0.setCellStyle(styles.get("center"));
+                cell0.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
-                // 제품명
                 Cell cell1 = row.createCell(1);
                 cell1.setCellValue(inv.getProduct().getName());
-                cell1.setCellStyle(styles.get("text"));
+                cell1.setCellStyle(styles.get(isEven ? "evenText" : "text"));
 
-                // 월초재고
                 Cell cell2 = row.createCell(2);
                 cell2.setCellValue(initialStock.intValue());
-                cell2.setCellStyle(styles.get("number"));
+                cell2.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
-                // 사용량
                 Cell cell3 = row.createCell(3);
                 cell3.setCellValue(totalUsed.intValue());
-                cell3.setCellStyle(styles.get("number"));
+                cell3.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
-                // 남은재고
                 Cell cell4 = row.createCell(4);
                 cell4.setCellValue(remainingStock.intValue());
-                cell4.setCellStyle(styles.get("highlight"));
+                cell4.setCellStyle(styles.get(isEven ? "evenHighlight" : "highlight"));
 
-                // 주문수량
                 Cell cell5 = row.createCell(5);
                 cell5.setCellValue(totalOrderQty.intValue());
-                cell5.setCellStyle(styles.get("number"));
+                cell5.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
-                // 입고완료
                 Cell cell6 = row.createCell(6);
                 cell6.setCellValue(completedStock.intValue());
-                cell6.setCellStyle(styles.get("number"));
+                cell6.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
-                // 입고일자
                 Cell cell7 = row.createCell(7);
                 cell7.setCellValue(!receivedDates.isEmpty() ? String.join("\n", receivedDates) : "");
-                cell7.setCellStyle(styles.get("wrap"));
+                cell7.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
 
-                // 유효기간
                 Cell cell8 = row.createCell(8);
                 cell8.setCellValue(inv.getExpiryDate() != null ? inv.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "");
-                cell8.setCellStyle(styles.get("center"));
+                cell8.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
-                // 비고 (상품의 비고)
                 Cell cell9 = row.createCell(9);
                 cell9.setCellValue(inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "");
-                cell9.setCellStyle(styles.get("text"));
+                cell9.setCellStyle(styles.get(isEven ? "evenText" : "text"));
 
                 rowNum++;
                 seq++;
             }
 
-            // 컬럼 너비
-            sheet.setColumnWidth(0, 2000);   // 번호
-            sheet.setColumnWidth(1, 7000);   // 제품명
-            sheet.setColumnWidth(2, 3000);   // 월초재고
-            sheet.setColumnWidth(3, 3000);   // 사용량
-            sheet.setColumnWidth(4, 3000);   // 남은재고
-            sheet.setColumnWidth(5, 3000);   // 주문재고
-            sheet.setColumnWidth(6, 3000);   // 입고완료
-            sheet.setColumnWidth(7, 4000);   // 입고일자
-            sheet.setColumnWidth(8, 4000);   // 유효기간
-            sheet.setColumnWidth(9, 5000);   // 비고
+            sheet.setColumnWidth(0, 1800);
+            sheet.setColumnWidth(1, 8000);
+            sheet.setColumnWidth(2, 3200);
+            sheet.setColumnWidth(3, 3200);
+            sheet.setColumnWidth(4, 3200);
+            sheet.setColumnWidth(5, 3200);
+            sheet.setColumnWidth(6, 3200);
+            sheet.setColumnWidth(7, 5000);
+            sheet.setColumnWidth(8, 4000);
+            sheet.setColumnWidth(9, 5500);
 
             workbook.write(out);
             return out.toByteArray();
@@ -985,51 +985,95 @@ public class ExcelService {
                 BigDecimal prevUsed = inv.getUsedQuantity() != null ? inv.getUsedQuantity() : BigDecimal.ZERO;
                 BigDecimal initialStock = prevInitial.subtract(prevUsed).add(completedStock);
 
+                boolean isEven = (seq % 2 == 0);
+
+                // 제품의 입고 주문 목록 조회 (주별 입고일자+수량 표시용)
+                List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
+
+                // 주별 최대 입고 건수로 행 높이 결정
+                int maxDateCount = 1;
+                for (int w = 0; w < weeks.size(); w++) {
+                    LocalDate[] range = weeks.get(w);
+                    int count = 0;
+                    Map<LocalDate, BigDecimal> tmpMap = new LinkedHashMap<>();
+                    for (StockOrder order : orders) {
+                        if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
+                            if (!order.getReceivedDate().isBefore(range[0]) && !order.getReceivedDate().isAfter(range[1])) {
+                                BigDecimal qty = order.getQuantity() != null ? order.getQuantity() : BigDecimal.ZERO;
+                                tmpMap.merge(order.getReceivedDate(), qty, BigDecimal::add);
+                            }
+                        }
+                    }
+                    if (tmpMap.size() > maxDateCount) maxDateCount = tmpMap.size();
+                }
+                row.setHeightInPoints(Math.max(maxDateCount > 1 ? maxDateCount * 15 : 22, 22));
+
                 Cell cell0 = row.createCell(0);
                 cell0.setCellValue(seq);
-                cell0.setCellStyle(styles.get("center"));
+                cell0.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
                 Cell cell1 = row.createCell(1);
                 cell1.setCellValue(inv.getProduct().getName());
-                cell1.setCellStyle(styles.get("text"));
+                cell1.setCellStyle(styles.get(isEven ? "evenText" : "text"));
 
                 Cell cell2 = row.createCell(2);
                 cell2.setCellValue(initialStock.intValue());
-                cell2.setCellStyle(styles.get("number"));
+                cell2.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
                 // 주별 데이터 계산을 위한 시작 재고 (DB이월값 기준)
                 BigDecimal weekRunningStock = prevInitial.subtract(prevUsed);
-                
+
                 for (int w = 0; w < weeks.size(); w++) {
                     LocalDate[] range = weeks.get(w);
                     int startCol = 3 + (w * 3);
 
-                    // 해당 주 사용량 (운영용)
-                    BigDecimal weekUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, 
-                            range[0].format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 
+                    BigDecimal weekUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId,
+                            range[0].format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
                             range[1].format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
                     if (weekUsed == null) weekUsed = BigDecimal.ZERO;
 
-                    // 해당 주 입고완료
                     BigDecimal weekCompleted = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, range[0], range[1]);
                     if (weekCompleted == null) weekCompleted = BigDecimal.ZERO;
 
-                    // 해당 주 남은재고 = 전주재고 + 이번주입고 - 이번주사용
                     BigDecimal weekRemaining = weekRunningStock.add(weekCompleted).subtract(weekUsed);
 
                     Cell usedCell = row.createCell(startCol);
                     usedCell.setCellValue(weekUsed.intValue());
-                    usedCell.setCellStyle(styles.get("number"));
+                    usedCell.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
+                    // 입고 셀: 날짜별 수량 합산 표시
                     Cell completedCell = row.createCell(startCol + 1);
-                    completedCell.setCellValue(weekCompleted.intValue());
-                    completedCell.setCellStyle(styles.get("number"));
+                    Map<LocalDate, BigDecimal> weekReceivedMap = new LinkedHashMap<>();
+                    for (StockOrder order : orders) {
+                        if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
+                            if (!order.getReceivedDate().isBefore(range[0]) && !order.getReceivedDate().isAfter(range[1])) {
+                                BigDecimal qty = order.getQuantity() != null ? order.getQuantity() : BigDecimal.ZERO;
+                                weekReceivedMap.merge(order.getReceivedDate(), qty, BigDecimal::add);
+                            }
+                        }
+                    }
+                    if (weekReceivedMap.isEmpty()) {
+                        completedCell.setCellValue(weekCompleted.intValue());
+                        completedCell.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
+                    } else {
+                        List<String> dateEntries = new ArrayList<>();
+                        for (Map.Entry<LocalDate, BigDecimal> entry : weekReceivedMap.entrySet()) {
+                            String dateStr = entry.getKey().format(DateTimeFormatter.ofPattern("M/d"));
+                            BigDecimal qty = entry.getValue();
+                            if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                                dateEntries.add(dateStr + " (" + qty.stripTrailingZeros().toPlainString() + ")");
+                            } else {
+                                dateEntries.add(dateStr);
+                            }
+                        }
+                        completedCell.setCellValue(String.join("\n", dateEntries));
+                        completedCell.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
+                    }
 
                     Cell remainingCell = row.createCell(startCol + 2);
                     remainingCell.setCellValue(weekRemaining.intValue());
-                    remainingCell.setCellStyle(styles.get("highlight"));
+                    remainingCell.setCellStyle(styles.get(isEven ? "evenHighlight" : "highlight"));
 
-                    // 다음 주 시작재고 업데이트
                     weekRunningStock = weekRemaining;
                 }
 
@@ -1037,15 +1081,14 @@ public class ExcelService {
                 seq++;
             }
 
-            // 컬럼 너비
-            sheet.setColumnWidth(0, 2000);
-            sheet.setColumnWidth(1, 7000);
-            sheet.setColumnWidth(2, 3000);
+            sheet.setColumnWidth(0, 1800);
+            sheet.setColumnWidth(1, 8000);
+            sheet.setColumnWidth(2, 3200);
             for (int w = 0; w < weeks.size(); w++) {
                 int startCol = 3 + (w * 3);
-                sheet.setColumnWidth(startCol, 2500);
-                sheet.setColumnWidth(startCol + 1, 2500);
-                sheet.setColumnWidth(startCol + 2, 2500);
+                sheet.setColumnWidth(startCol, 2800);
+                sheet.setColumnWidth(startCol + 1, 4000);
+                sheet.setColumnWidth(startCol + 2, 2800);
             }
 
             workbook.write(out);
@@ -1106,7 +1149,7 @@ public class ExcelService {
             List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
 
             BigDecimal totalQty = BigDecimal.ZERO;
-            List<String> receivedDates = new ArrayList<>();
+            Map<LocalDate, BigDecimal> receivedDateQtyMap = new LinkedHashMap<>();
             List<String> expiryDates = new ArrayList<>();
 
             for (StockOrder order : orders) {
@@ -1121,7 +1164,8 @@ public class ExcelService {
                 if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
                     if (order.getReceivedDate().getYear() == targetYear &&
                         order.getReceivedDate().getMonthValue() == targetMonth) {
-                        receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                        BigDecimal qty = order.getQuantity() != null ? order.getQuantity() : BigDecimal.ZERO;
+                        receivedDateQtyMap.merge(order.getReceivedDate(), qty, BigDecimal::add);
                     }
                 }
 
@@ -1129,6 +1173,17 @@ public class ExcelService {
                     order.getExpiryDate() != null &&
                     (order.getConsumed() == null || !order.getConsumed())) {
                     expiryDates.add(order.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
+                }
+            }
+
+            List<String> receivedDates = new ArrayList<>();
+            for (Map.Entry<LocalDate, BigDecimal> entry : receivedDateQtyMap.entrySet()) {
+                String dateStr = entry.getKey().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                BigDecimal qty = entry.getValue();
+                if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                    receivedDates.add(dateStr + " (" + qty.stripTrailingZeros().toPlainString() + ")");
+                } else {
+                    receivedDates.add(dateStr);
                 }
             }
 
@@ -1179,9 +1234,8 @@ public class ExcelService {
 
             List<String> dates = productReceivedDatesMap.get(productId);
             int dateCount = (dates != null) ? dates.size() : 0;
-            if (dateCount > 1) {
-                row.setHeightInPoints(dateCount * 15);
-            }
+            boolean isEven = (seq % 2 == 0);
+            row.setHeightInPoints(Math.max(dateCount > 1 ? dateCount * 15 : 22, 22));
 
             // 월초재고: DB이월값 + 입고완료수량 (입고대기 제외)
             BigDecimal rawInitialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
@@ -1198,39 +1252,39 @@ public class ExcelService {
 
             Cell cell0 = row.createCell(0);
             cell0.setCellValue(seq);
-            cell0.setCellStyle(styles.get("center"));
+            cell0.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
             Cell cell1 = row.createCell(1);
             cell1.setCellValue(inv.getProduct().getName());
-            cell1.setCellStyle(styles.get("text"));
+            cell1.setCellStyle(styles.get(isEven ? "evenText" : "text"));
 
             // 월초재고 (이월 + 입고완료)
             Cell cell2 = row.createCell(2);
             cell2.setCellValue(initialStockWithOrders.intValue());
-            cell2.setCellStyle(styles.get("number"));
+            cell2.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
             Cell cell3 = row.createCell(3);
             cell3.setCellValue(reportUsed.intValue());
-            cell3.setCellStyle(styles.get("number"));
+            cell3.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
             // 남은재고 (강조) - 동적 계산값 사용
             Cell cell4 = row.createCell(4);
             cell4.setCellValue(remainingStock.intValue());
-            cell4.setCellStyle(styles.get("highlight"));
+            cell4.setCellStyle(styles.get(isEven ? "evenHighlight" : "highlight"));
 
             Cell cell5 = row.createCell(5);
             BigDecimal orderStock = productOrderQtyMap.get(productId);
             cell5.setCellValue(orderStock != null && orderStock.compareTo(BigDecimal.ZERO) > 0 ? orderStock.intValue() : 0);
-            cell5.setCellStyle(styles.get("number"));
+            cell5.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
             Cell cell6 = row.createCell(6);
             cell6.setCellValue(dates != null && !dates.isEmpty() ? String.join("\n", dates) : "");
-            cell6.setCellStyle(styles.get("wrap"));
+            cell6.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
 
             Cell cell7 = row.createCell(7);
             String expiry = productExpiryMap.get(productId);
             cell7.setCellValue(expiry != null ? expiry : "");
-            cell7.setCellStyle(styles.get("center"));
+            cell7.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
             // 비고 (제품 비고 + 재고 비고)
             Cell cell8 = row.createCell(8);
@@ -1245,39 +1299,49 @@ public class ExcelService {
                 combinedNote = inventoryNote;
             }
             cell8.setCellValue(combinedNote);
-            cell8.setCellStyle(styles.get("wrap"));
+            cell8.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
 
             rowNum++;
             seq++;
         }
 
-        sheet.setColumnWidth(0, 2000);
-        sheet.setColumnWidth(1, 7000);
-        sheet.setColumnWidth(2, 3000);
-        sheet.setColumnWidth(3, 3000);
-        sheet.setColumnWidth(4, 3000);
-        sheet.setColumnWidth(5, 3000);
-        sheet.setColumnWidth(6, 4000);
-        sheet.setColumnWidth(7, 3500);
-        sheet.setColumnWidth(8, 5000);
+        sheet.setColumnWidth(0, 1800);
+        sheet.setColumnWidth(1, 8000);
+        sheet.setColumnWidth(2, 3200);
+        sheet.setColumnWidth(3, 3200);
+        sheet.setColumnWidth(4, 3200);
+        sheet.setColumnWidth(5, 3200);
+        sheet.setColumnWidth(6, 5000);
+        sheet.setColumnWidth(7, 5000);
+        sheet.setColumnWidth(8, 5500);
     }
 
     private Map<String, CellStyle> createStyles(Workbook workbook) {
         Map<String, CellStyle> styles = new HashMap<>();
+
+        // 공통 폰트 (맑은 고딕)
+        String fontName = "맑은 고딕";
+        short fontSize = 10;
+
+        // 공통 테두리 색상 (연한 회색)
+        short borderColor = IndexedColors.GREY_25_PERCENT.getIndex();
 
         // 타이틀 스타일
         CellStyle titleStyle = workbook.createCellStyle();
         titleStyle.setAlignment(HorizontalAlignment.CENTER);
         titleStyle.setVerticalAlignment(VerticalAlignment.CENTER);
         Font titleFont = workbook.createFont();
+        titleFont.setFontName(fontName);
         titleFont.setBold(true);
-        titleFont.setFontHeightInPoints((short) 16);
+        titleFont.setFontHeightInPoints((short) 14);
+        titleFont.setColor(IndexedColors.GREY_80_PERCENT.getIndex());
         titleStyle.setFont(titleFont);
         styles.put("title", titleStyle);
 
-        // 헤더 스타일
+        // 헤더 스타일 (세련된 진한 슬레이트)
         CellStyle headerStyle = workbook.createCellStyle();
-        headerStyle.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+        byte[] headerRgb = {(byte)51, (byte)65, (byte)85};
+        ((XSSFCellStyle) headerStyle).setFillForegroundColor(new org.apache.poi.xssf.usermodel.XSSFColor(headerRgb, null));
         headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         headerStyle.setAlignment(HorizontalAlignment.CENTER);
         headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
@@ -1285,11 +1349,22 @@ public class ExcelService {
         headerStyle.setBorderTop(BorderStyle.THIN);
         headerStyle.setBorderLeft(BorderStyle.THIN);
         headerStyle.setBorderRight(BorderStyle.THIN);
+        headerStyle.setBottomBorderColor(borderColor);
+        headerStyle.setTopBorderColor(borderColor);
+        headerStyle.setLeftBorderColor(borderColor);
+        headerStyle.setRightBorderColor(borderColor);
         Font headerFont = workbook.createFont();
+        headerFont.setFontName(fontName);
         headerFont.setBold(true);
+        headerFont.setFontHeightInPoints(fontSize);
         headerFont.setColor(IndexedColors.WHITE.getIndex());
         headerStyle.setFont(headerFont);
         styles.put("header", headerStyle);
+
+        // 기본 데이터 폰트
+        Font dataFont = workbook.createFont();
+        dataFont.setFontName(fontName);
+        dataFont.setFontHeightInPoints(fontSize);
 
         // 데이터 스타일 - 기본 (가운데 정렬)
         CellStyle centerStyle = workbook.createCellStyle();
@@ -1299,9 +1374,14 @@ public class ExcelService {
         centerStyle.setBorderTop(BorderStyle.THIN);
         centerStyle.setBorderLeft(BorderStyle.THIN);
         centerStyle.setBorderRight(BorderStyle.THIN);
+        centerStyle.setBottomBorderColor(borderColor);
+        centerStyle.setTopBorderColor(borderColor);
+        centerStyle.setLeftBorderColor(borderColor);
+        centerStyle.setRightBorderColor(borderColor);
+        centerStyle.setFont(dataFont);
         styles.put("center", centerStyle);
 
-        // 데이터 스타일 - 숫자 (오른쪽 정렬)
+        // 데이터 스타일 - 숫자 (오른쪽 정렬, 천 단위 콤마)
         CellStyle numberStyle = workbook.createCellStyle();
         numberStyle.setAlignment(HorizontalAlignment.RIGHT);
         numberStyle.setVerticalAlignment(VerticalAlignment.CENTER);
@@ -1309,6 +1389,12 @@ public class ExcelService {
         numberStyle.setBorderTop(BorderStyle.THIN);
         numberStyle.setBorderLeft(BorderStyle.THIN);
         numberStyle.setBorderRight(BorderStyle.THIN);
+        numberStyle.setBottomBorderColor(borderColor);
+        numberStyle.setTopBorderColor(borderColor);
+        numberStyle.setLeftBorderColor(borderColor);
+        numberStyle.setRightBorderColor(borderColor);
+        numberStyle.setDataFormat(workbook.createDataFormat().getFormat("#,##0"));
+        numberStyle.setFont(dataFont);
         styles.put("number", numberStyle);
 
         // 데이터 스타일 - 텍스트 (왼쪽 정렬)
@@ -1319,6 +1405,11 @@ public class ExcelService {
         textStyle.setBorderTop(BorderStyle.THIN);
         textStyle.setBorderLeft(BorderStyle.THIN);
         textStyle.setBorderRight(BorderStyle.THIN);
+        textStyle.setBottomBorderColor(borderColor);
+        textStyle.setTopBorderColor(borderColor);
+        textStyle.setLeftBorderColor(borderColor);
+        textStyle.setRightBorderColor(borderColor);
+        textStyle.setFont(dataFont);
         styles.put("text", textStyle);
 
         // 데이터 스타일 - 줄바꿈
@@ -1330,9 +1421,14 @@ public class ExcelService {
         wrapStyle.setBorderTop(BorderStyle.THIN);
         wrapStyle.setBorderLeft(BorderStyle.THIN);
         wrapStyle.setBorderRight(BorderStyle.THIN);
+        wrapStyle.setBottomBorderColor(borderColor);
+        wrapStyle.setTopBorderColor(borderColor);
+        wrapStyle.setLeftBorderColor(borderColor);
+        wrapStyle.setRightBorderColor(borderColor);
+        wrapStyle.setFont(dataFont);
         styles.put("wrap", wrapStyle);
 
-        // 남은재고 강조 스타일
+        // 남은재고 강조 스타일 (연한 파란 배경)
         CellStyle highlightStyle = workbook.createCellStyle();
         highlightStyle.setAlignment(HorizontalAlignment.RIGHT);
         highlightStyle.setVerticalAlignment(VerticalAlignment.CENTER);
@@ -1340,12 +1436,51 @@ public class ExcelService {
         highlightStyle.setBorderTop(BorderStyle.THIN);
         highlightStyle.setBorderLeft(BorderStyle.THIN);
         highlightStyle.setBorderRight(BorderStyle.THIN);
-        highlightStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        highlightStyle.setBottomBorderColor(borderColor);
+        highlightStyle.setTopBorderColor(borderColor);
+        highlightStyle.setLeftBorderColor(borderColor);
+        highlightStyle.setRightBorderColor(borderColor);
+        byte[] highlightRgb = {(byte)219, (byte)234, (byte)254};
+        ((XSSFCellStyle) highlightStyle).setFillForegroundColor(new org.apache.poi.xssf.usermodel.XSSFColor(highlightRgb, null));
         highlightStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        highlightStyle.setDataFormat(workbook.createDataFormat().getFormat("#,##0"));
         Font boldFont = workbook.createFont();
+        boldFont.setFontName(fontName);
+        boldFont.setFontHeightInPoints(fontSize);
         boldFont.setBold(true);
+        boldFont.setColor(IndexedColors.DARK_BLUE.getIndex());
         highlightStyle.setFont(boldFont);
         styles.put("highlight", highlightStyle);
+
+        // 교대 행 스타일 (짝수 행 연한 배경)
+        CellStyle evenRowCenter = workbook.createCellStyle();
+        evenRowCenter.cloneStyleFrom(centerStyle);
+        byte[] evenRowRgb = {(byte)248, (byte)250, (byte)252};
+        ((XSSFCellStyle) evenRowCenter).setFillForegroundColor(new org.apache.poi.xssf.usermodel.XSSFColor(evenRowRgb, null));
+        evenRowCenter.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        styles.put("evenCenter", evenRowCenter);
+
+        CellStyle evenRowNumber = workbook.createCellStyle();
+        evenRowNumber.cloneStyleFrom(numberStyle);
+        ((XSSFCellStyle) evenRowNumber).setFillForegroundColor(new org.apache.poi.xssf.usermodel.XSSFColor(evenRowRgb, null));
+        evenRowNumber.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        styles.put("evenNumber", evenRowNumber);
+
+        CellStyle evenRowText = workbook.createCellStyle();
+        evenRowText.cloneStyleFrom(textStyle);
+        ((XSSFCellStyle) evenRowText).setFillForegroundColor(new org.apache.poi.xssf.usermodel.XSSFColor(evenRowRgb, null));
+        evenRowText.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        styles.put("evenText", evenRowText);
+
+        CellStyle evenRowWrap = workbook.createCellStyle();
+        evenRowWrap.cloneStyleFrom(wrapStyle);
+        ((XSSFCellStyle) evenRowWrap).setFillForegroundColor(new org.apache.poi.xssf.usermodel.XSSFColor(evenRowRgb, null));
+        evenRowWrap.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        styles.put("evenWrap", evenRowWrap);
+
+        CellStyle evenRowHighlight = workbook.createCellStyle();
+        evenRowHighlight.cloneStyleFrom(highlightStyle);
+        styles.put("evenHighlight", evenRowHighlight);
 
         return styles;
     }
@@ -1537,74 +1672,86 @@ public class ExcelService {
                 // 남은재고: 월초재고(입고완료포함) - 운영사용량
                 BigDecimal remainingStock = initialStock.subtract(totalUsed);
 
-                // 입고일자 조회
+                // 입고일자 조회 (같은 날짜는 수량 합산)
                 List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
-                List<String> receivedDates = new ArrayList<>();
+                Map<LocalDate, BigDecimal> receivedDateQtyMap = new LinkedHashMap<>();
                 for (StockOrder order : orders) {
                     if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
                         if (!order.getReceivedDate().isBefore(startDate) && !order.getReceivedDate().isAfter(endDate)) {
-                            receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                            BigDecimal qty = order.getQuantity() != null ? order.getQuantity() : BigDecimal.ZERO;
+                            receivedDateQtyMap.merge(order.getReceivedDate(), qty, BigDecimal::add);
                         }
+                    }
+                }
+                List<String> receivedDates = new ArrayList<>();
+                for (Map.Entry<LocalDate, BigDecimal> entry : receivedDateQtyMap.entrySet()) {
+                    String dateStr = entry.getKey().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                    BigDecimal qty = entry.getValue();
+                    if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                        receivedDates.add(dateStr + " (" + qty.stripTrailingZeros().toPlainString() + ")");
+                    } else {
+                        receivedDates.add(dateStr);
                     }
                 }
 
                 int dateCount = receivedDates.size();
-                if (dateCount > 1) row.setHeightInPoints(dateCount * 15);
+                boolean isEven = (seq % 2 == 0);
+                row.setHeightInPoints(Math.max(dateCount > 1 ? dateCount * 15 : 22, 22));
 
                 Cell cell0 = row.createCell(0);
                 cell0.setCellValue(seq);
-                cell0.setCellStyle(styles.get("center"));
+                cell0.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
                 Cell cell1 = row.createCell(1);
                 cell1.setCellValue(inv.getProduct().getName());
-                cell1.setCellStyle(styles.get("text"));
+                cell1.setCellStyle(styles.get(isEven ? "evenText" : "text"));
 
                 Cell cell2 = row.createCell(2);
                 cell2.setCellValue(initialStock.intValue());
-                cell2.setCellStyle(styles.get("number"));
+                cell2.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
                 Cell cell3 = row.createCell(3);
                 cell3.setCellValue(totalUsed.intValue());
-                cell3.setCellStyle(styles.get("number"));
+                cell3.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
                 Cell cell4 = row.createCell(4);
                 cell4.setCellValue(remainingStock.intValue());
-                cell4.setCellStyle(styles.get("highlight"));
+                cell4.setCellStyle(styles.get(isEven ? "evenHighlight" : "highlight"));
 
                 Cell cell5 = row.createCell(5);
                 cell5.setCellValue(totalOrderQty.intValue());
-                cell5.setCellStyle(styles.get("number"));
+                cell5.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
                 Cell cell6 = row.createCell(6);
                 cell6.setCellValue(completedStock.intValue());
-                cell6.setCellStyle(styles.get("number"));
+                cell6.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
                 Cell cell7 = row.createCell(7);
                 cell7.setCellValue(!receivedDates.isEmpty() ? String.join("\n", receivedDates) : "");
-                cell7.setCellStyle(styles.get("wrap"));
+                cell7.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
 
                 Cell cell8 = row.createCell(8);
                 cell8.setCellValue(inv.getExpiryDate() != null ? inv.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "");
-                cell8.setCellStyle(styles.get("center"));
+                cell8.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
                 Cell cell9 = row.createCell(9);
                 cell9.setCellValue(inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "");
-                cell9.setCellStyle(styles.get("text"));
+                cell9.setCellStyle(styles.get(isEven ? "evenText" : "text"));
 
                 rowNum++;
                 seq++;
             }
 
-            sheet.setColumnWidth(0, 2000);
-            sheet.setColumnWidth(1, 7000);
-            sheet.setColumnWidth(2, 3000);
-            sheet.setColumnWidth(3, 3000);
-            sheet.setColumnWidth(4, 3000);
-            sheet.setColumnWidth(5, 3000);
-            sheet.setColumnWidth(6, 3000);
-            sheet.setColumnWidth(7, 4000);
+            sheet.setColumnWidth(0, 1800);
+            sheet.setColumnWidth(1, 8000);
+            sheet.setColumnWidth(2, 3200);
+            sheet.setColumnWidth(3, 3200);
+            sheet.setColumnWidth(4, 3200);
+            sheet.setColumnWidth(5, 3200);
+            sheet.setColumnWidth(6, 3200);
+            sheet.setColumnWidth(7, 5000);
             sheet.setColumnWidth(8, 4000);
-            sheet.setColumnWidth(9, 5000);
+            sheet.setColumnWidth(9, 5500);
 
             workbook.write(out);
             return out.toByteArray();
@@ -1693,17 +1840,39 @@ public class ExcelService {
                 if (completedStock == null) completedStock = BigDecimal.ZERO;
                 BigDecimal initialStock = rawInitialStock.add(completedStock);
 
+                boolean isEven = (seq % 2 == 0);
+
+                // 제품의 입고 주문 목록 조회 (주별 입고일자+수량 표시용)
+                List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
+
+                // 주별 최대 입고 건수로 행 높이 결정
+                int maxDateCount = 1;
+                for (int w = 0; w < weeks.size(); w++) {
+                    LocalDate[] range = weeks.get(w);
+                    Map<LocalDate, BigDecimal> tmpMap = new LinkedHashMap<>();
+                    for (StockOrder order : orders) {
+                        if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
+                            if (!order.getReceivedDate().isBefore(range[0]) && !order.getReceivedDate().isAfter(range[1])) {
+                                BigDecimal qty = order.getQuantity() != null ? order.getQuantity() : BigDecimal.ZERO;
+                                tmpMap.merge(order.getReceivedDate(), qty, BigDecimal::add);
+                            }
+                        }
+                    }
+                    if (tmpMap.size() > maxDateCount) maxDateCount = tmpMap.size();
+                }
+                row.setHeightInPoints(Math.max(maxDateCount > 1 ? maxDateCount * 15 : 22, 22));
+
                 Cell cell0 = row.createCell(0);
                 cell0.setCellValue(seq);
-                cell0.setCellStyle(styles.get("center"));
+                cell0.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
                 Cell cell1 = row.createCell(1);
                 cell1.setCellValue(inv.getProduct().getName());
-                cell1.setCellStyle(styles.get("text"));
+                cell1.setCellStyle(styles.get(isEven ? "evenText" : "text"));
 
                 Cell cell2 = row.createCell(2);
                 cell2.setCellValue(initialStock.intValue());
-                cell2.setCellStyle(styles.get("number"));
+                cell2.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
                 // 주별 데이터 계산을 위한 시작 재고 (DB이월값 기준)
                 BigDecimal weekRunningStock = rawInitialStock;
@@ -1714,30 +1883,51 @@ public class ExcelService {
                     String wEndDateStr = range[1].format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
                     int startCol = 3 + (w * 3);
 
-                    // 해당 주 사용량
                     BigDecimal weekUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(productId, wStartDateStr, wEndDateStr);
                     if (weekUsed == null) weekUsed = BigDecimal.ZERO;
 
-                    // 해당 주 입고완료
                     BigDecimal weekCompleted = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(productId, range[0], range[1]);
                     if (weekCompleted == null) weekCompleted = BigDecimal.ZERO;
 
-                    // 해당 주 남은재고 = 전주재고 + 이번주입고 - 이번주사용
                     BigDecimal weekRemaining = weekRunningStock.add(weekCompleted).subtract(weekUsed);
 
                     Cell usedCell = row.createCell(startCol);
                     usedCell.setCellValue(weekUsed.intValue());
-                    usedCell.setCellStyle(styles.get("number"));
+                    usedCell.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
+                    // 입고 셀: 날짜별 수량 합산 표시
                     Cell completedCell = row.createCell(startCol + 1);
-                    completedCell.setCellValue(weekCompleted.intValue());
-                    completedCell.setCellStyle(styles.get("number"));
+                    Map<LocalDate, BigDecimal> weekReceivedMap = new LinkedHashMap<>();
+                    for (StockOrder order : orders) {
+                        if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
+                            if (!order.getReceivedDate().isBefore(range[0]) && !order.getReceivedDate().isAfter(range[1])) {
+                                BigDecimal qty = order.getQuantity() != null ? order.getQuantity() : BigDecimal.ZERO;
+                                weekReceivedMap.merge(order.getReceivedDate(), qty, BigDecimal::add);
+                            }
+                        }
+                    }
+                    if (weekReceivedMap.isEmpty()) {
+                        completedCell.setCellValue(weekCompleted.intValue());
+                        completedCell.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
+                    } else {
+                        List<String> dateEntries = new ArrayList<>();
+                        for (Map.Entry<LocalDate, BigDecimal> entry : weekReceivedMap.entrySet()) {
+                            String dateStr = entry.getKey().format(DateTimeFormatter.ofPattern("M/d"));
+                            BigDecimal qty = entry.getValue();
+                            if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                                dateEntries.add(dateStr + " (" + qty.stripTrailingZeros().toPlainString() + ")");
+                            } else {
+                                dateEntries.add(dateStr);
+                            }
+                        }
+                        completedCell.setCellValue(String.join("\n", dateEntries));
+                        completedCell.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
+                    }
 
                     Cell remainingCell = row.createCell(startCol + 2);
                     remainingCell.setCellValue(weekRemaining.intValue());
-                    remainingCell.setCellStyle(styles.get("highlight"));
+                    remainingCell.setCellStyle(styles.get(isEven ? "evenHighlight" : "highlight"));
 
-                    // 다음 주 시작재고 업데이트
                     weekRunningStock = weekRemaining;
                 }
 
@@ -1745,14 +1935,14 @@ public class ExcelService {
                 seq++;
             }
 
-            sheet.setColumnWidth(0, 2000);
-            sheet.setColumnWidth(1, 7000);
-            sheet.setColumnWidth(2, 3000);
+            sheet.setColumnWidth(0, 1800);
+            sheet.setColumnWidth(1, 8000);
+            sheet.setColumnWidth(2, 3200);
             for (int w = 0; w < weeks.size(); w++) {
                 int startCol = 3 + (w * 3);
-                sheet.setColumnWidth(startCol, 2500);
-                sheet.setColumnWidth(startCol + 1, 2500);
-                sheet.setColumnWidth(startCol + 2, 2500);
+                sheet.setColumnWidth(startCol, 2800);
+                sheet.setColumnWidth(startCol + 1, 4000);
+                sheet.setColumnWidth(startCol + 2, 2800);
             }
 
             workbook.write(out);
@@ -1807,7 +1997,7 @@ public class ExcelService {
             List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
 
             BigDecimal totalQty = BigDecimal.ZERO;
-            List<String> receivedDates = new ArrayList<>();
+            Map<LocalDate, BigDecimal> receivedDateQtyMap = new LinkedHashMap<>();
             List<String> expiryDates = new ArrayList<>();
 
             for (StockOrder order : orders) {
@@ -1820,7 +2010,8 @@ public class ExcelService {
 
                 if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
                     if (!order.getReceivedDate().isBefore(startDate) && !order.getReceivedDate().isAfter(endDate)) {
-                        receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                        BigDecimal qty = order.getQuantity() != null ? order.getQuantity() : BigDecimal.ZERO;
+                        receivedDateQtyMap.merge(order.getReceivedDate(), qty, BigDecimal::add);
                     }
                 }
 
@@ -1828,6 +2019,17 @@ public class ExcelService {
                     order.getExpiryDate() != null &&
                     (order.getConsumed() == null || !order.getConsumed())) {
                     expiryDates.add(order.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
+                }
+            }
+
+            List<String> receivedDates = new ArrayList<>();
+            for (Map.Entry<LocalDate, BigDecimal> entry : receivedDateQtyMap.entrySet()) {
+                String dateStr = entry.getKey().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                BigDecimal qty = entry.getValue();
+                if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                    receivedDates.add(dateStr + " (" + qty.stripTrailingZeros().toPlainString() + ")");
+                } else {
+                    receivedDates.add(dateStr);
                 }
             }
 
@@ -1869,7 +2071,8 @@ public class ExcelService {
 
             List<String> dates = productReceivedDatesMap.get(productId);
             int dateCount = (dates != null) ? dates.size() : 0;
-            if (dateCount > 1) row.setHeightInPoints(dateCount * 15);
+            boolean isEven = (seq % 2 == 0);
+            row.setHeightInPoints(Math.max(dateCount > 1 ? dateCount * 15 : 22, 22));
 
             // 월초재고: DB이월값 + 입고완료수량 (입고대기 제외)
             BigDecimal rawInitialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
@@ -1885,37 +2088,37 @@ public class ExcelService {
 
             Cell cell0 = row.createCell(0);
             cell0.setCellValue(seq);
-            cell0.setCellStyle(styles.get("center"));
+            cell0.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
             Cell cell1 = row.createCell(1);
             cell1.setCellValue(inv.getProduct().getName());
-            cell1.setCellStyle(styles.get("text"));
+            cell1.setCellStyle(styles.get(isEven ? "evenText" : "text"));
 
             Cell cell2 = row.createCell(2);
             cell2.setCellValue(initialStock.intValue());
-            cell2.setCellStyle(styles.get("number"));
+            cell2.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
             Cell cell3 = row.createCell(3);
             cell3.setCellValue(operationalUsed.intValue());
-            cell3.setCellStyle(styles.get("number"));
+            cell3.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
             Cell cell4 = row.createCell(4);
             cell4.setCellValue(remainingStock.intValue());
-            cell4.setCellStyle(styles.get("highlight"));
+            cell4.setCellStyle(styles.get(isEven ? "evenHighlight" : "highlight"));
 
             Cell cell5 = row.createCell(5);
             BigDecimal orderStock = productOrderQtyMap.get(productId);
             cell5.setCellValue(orderStock != null && orderStock.compareTo(BigDecimal.ZERO) > 0 ? orderStock.intValue() : 0);
-            cell5.setCellStyle(styles.get("number"));
+            cell5.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
             Cell cell6 = row.createCell(6);
             cell6.setCellValue(dates != null && !dates.isEmpty() ? String.join("\n", dates) : "");
-            cell6.setCellStyle(styles.get("wrap"));
+            cell6.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
 
             Cell cell7 = row.createCell(7);
             String expiry = productExpiryMap.get(productId);
             cell7.setCellValue(expiry != null ? expiry : "");
-            cell7.setCellStyle(styles.get("center"));
+            cell7.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
             Cell cell8 = row.createCell(8);
             String productNote = inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "";
@@ -1929,21 +2132,21 @@ public class ExcelService {
                 combinedNote = inventoryNote;
             }
             cell8.setCellValue(combinedNote);
-            cell8.setCellStyle(styles.get("wrap"));
+            cell8.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
 
             rowNum++;
             seq++;
         }
 
-        sheet.setColumnWidth(0, 2000);
-        sheet.setColumnWidth(1, 7000);
-        sheet.setColumnWidth(2, 3000);
-        sheet.setColumnWidth(3, 3000);
-        sheet.setColumnWidth(4, 3000);
-        sheet.setColumnWidth(5, 3000);
-        sheet.setColumnWidth(6, 4000);
-        sheet.setColumnWidth(7, 3500);
-        sheet.setColumnWidth(8, 5000);
+        sheet.setColumnWidth(0, 1800);
+        sheet.setColumnWidth(1, 8000);
+        sheet.setColumnWidth(2, 3200);
+        sheet.setColumnWidth(3, 3200);
+        sheet.setColumnWidth(4, 3200);
+        sheet.setColumnWidth(5, 3200);
+        sheet.setColumnWidth(6, 5000);
+        sheet.setColumnWidth(7, 5000);
+        sheet.setColumnWidth(8, 5500);
     }
 
     private void createSheetForYearMonth(Workbook workbook, String yearMonth, Map<String, CellStyle> styles) {
@@ -1969,7 +2172,7 @@ public class ExcelService {
             List<StockOrder> orders = stockOrderRepository.findByProductId(productId);
 
             BigDecimal totalQty = BigDecimal.ZERO;
-            List<String> receivedDates = new ArrayList<>();
+            Map<LocalDate, BigDecimal> receivedDateQtyMap = new LinkedHashMap<>();
             List<String> expiryDates = new ArrayList<>();
 
             for (StockOrder order : orders) {
@@ -1987,7 +2190,8 @@ public class ExcelService {
                 if ("COMPLETED".equals(order.getStatus()) && order.getReceivedDate() != null) {
                     if (order.getReceivedDate().getYear() == targetYear &&
                         order.getReceivedDate().getMonthValue() == targetMonth) {
-                        receivedDates.add(order.getReceivedDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                        BigDecimal qty = order.getQuantity() != null ? order.getQuantity() : BigDecimal.ZERO;
+                        receivedDateQtyMap.merge(order.getReceivedDate(), qty, BigDecimal::add);
                     }
                 }
 
@@ -1996,6 +2200,17 @@ public class ExcelService {
                     order.getExpiryDate() != null &&
                     (order.getConsumed() == null || !order.getConsumed())) {
                     expiryDates.add(order.getExpiryDate().format(DateTimeFormatter.ofPattern("yy.MM.dd")));
+                }
+            }
+
+            List<String> receivedDates = new ArrayList<>();
+            for (Map.Entry<LocalDate, BigDecimal> entry : receivedDateQtyMap.entrySet()) {
+                String dateStr = entry.getKey().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                BigDecimal qty = entry.getValue();
+                if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                    receivedDates.add(dateStr + " (" + qty.stripTrailingZeros().toPlainString() + ")");
+                } else {
+                    receivedDates.add(dateStr);
                 }
             }
 
@@ -2051,9 +2266,8 @@ public class ExcelService {
 
             List<String> dates = productReceivedDatesMap.get(productId);
             int dateCount = (dates != null) ? dates.size() : 0;
-            if (dateCount > 1) {
-                row.setHeightInPoints(dateCount * 15);
-            }
+            boolean isEven = (seq % 2 == 0);
+            row.setHeightInPoints(Math.max(dateCount > 1 ? dateCount * 15 : 22, 22));
 
             // 남은재고 동적 계산 (웹 UI와 동일한 로직)
             BigDecimal initialStock = inv.getInitialStock() != null ? inv.getInitialStock() : BigDecimal.ZERO;
@@ -2070,44 +2284,44 @@ public class ExcelService {
             // 번호
             Cell cell0 = row.createCell(0);
             cell0.setCellValue(seq);
-            cell0.setCellStyle(styles.get("center"));
+            cell0.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
             // 제품명
             Cell cell1 = row.createCell(1);
             cell1.setCellValue(inv.getProduct().getName());
-            cell1.setCellStyle(styles.get("text"));
+            cell1.setCellStyle(styles.get(isEven ? "evenText" : "text"));
 
             // 월초재고
             Cell cell2 = row.createCell(2);
             cell2.setCellValue(initialStock.intValue());
-            cell2.setCellStyle(styles.get("number"));
+            cell2.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
             // 사용량
             Cell cell3 = row.createCell(3);
             cell3.setCellValue(reportUsed.intValue());
-            cell3.setCellStyle(styles.get("number"));
+            cell3.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
             // 남은재고 (강조) - 동적 계산값 사용
             Cell cell4 = row.createCell(4);
             cell4.setCellValue(remainingStock.intValue());
-            cell4.setCellStyle(styles.get("highlight"));
+            cell4.setCellStyle(styles.get(isEven ? "evenHighlight" : "highlight"));
 
             // 주문재고 (해당 월 주문수량 합산 - PENDING + COMPLETED)
             Cell cell5 = row.createCell(5);
             BigDecimal orderStock = productOrderQtyMap.get(productId);
             cell5.setCellValue(orderStock != null && orderStock.compareTo(BigDecimal.ZERO) > 0 ? orderStock.intValue() : 0);
-            cell5.setCellStyle(styles.get("number"));
+            cell5.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
             // 입고일자 (줄바꿈으로 구분)
             Cell cell6 = row.createCell(6);
             cell6.setCellValue(dates != null && !dates.isEmpty() ? String.join("\n", dates) : "");
-            cell6.setCellStyle(styles.get("wrap"));
+            cell6.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
 
             // 유효기간
             Cell cell7 = row.createCell(7);
             String expiry = productExpiryMap.get(productId);
             cell7.setCellValue(expiry != null ? expiry : "");
-            cell7.setCellStyle(styles.get("center"));
+            cell7.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
             // 비고 (제품 비고 + 재고 비고)
             Cell cell8 = row.createCell(8);
@@ -2122,21 +2336,21 @@ public class ExcelService {
                 combinedNote = inventoryNote;
             }
             cell8.setCellValue(combinedNote);
-            cell8.setCellStyle(styles.get("wrap"));
+            cell8.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
 
             rowNum++;
             seq++;
         }
 
         // 컬럼 너비 설정
-        sheet.setColumnWidth(0, 2000);   // 번호
-        sheet.setColumnWidth(1, 7000);   // 제품명
-        sheet.setColumnWidth(2, 3000);   // 월초재고
-        sheet.setColumnWidth(3, 3000);   // 사용량
-        sheet.setColumnWidth(4, 3000);   // 남은재고
-        sheet.setColumnWidth(5, 3000);   // 주문재고
-        sheet.setColumnWidth(6, 4000);   // 입고일자
-        sheet.setColumnWidth(7, 3500);   // 유효기간
-        sheet.setColumnWidth(8, 5000);   // 비고
+        sheet.setColumnWidth(0, 1800);   // 번호
+        sheet.setColumnWidth(1, 8000);   // 제품명
+        sheet.setColumnWidth(2, 3200);   // 월초재고
+        sheet.setColumnWidth(3, 3200);   // 사용량
+        sheet.setColumnWidth(4, 3200);   // 남은재고
+        sheet.setColumnWidth(5, 3200);   // 주문재고
+        sheet.setColumnWidth(6, 5000);   // 입고일자
+        sheet.setColumnWidth(7, 5000);   // 유효기간
+        sheet.setColumnWidth(8, 5500);   // 비고
     }
 }
