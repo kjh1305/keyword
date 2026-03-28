@@ -1639,7 +1639,7 @@ public class ExcelService {
             titleCell.setCellValue(period.getName() + " 피부 재고현황(당일보고)");
             titleCell.setCellStyle(styles.get("title"));
 
-            String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문수량", "입고완료", "입고일자", "유효기간", "비고"};
+            String[] headers = {"번호", "제품명", "월초재고", "사용량", "남은재고", "주문수량", "입고일자", "유효기간", "비고"};
             sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, headers.length - 1));
 
             Row headerRow = sheet.createRow(1);
@@ -1723,20 +1723,16 @@ public class ExcelService {
                 cell5.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
 
                 Cell cell6 = row.createCell(6);
-                cell6.setCellValue(completedStock.intValue());
-                cell6.setCellStyle(styles.get(isEven ? "evenNumber" : "number"));
+                cell6.setCellValue(!receivedDates.isEmpty() ? String.join("\n", receivedDates) : "");
+                cell6.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
 
                 Cell cell7 = row.createCell(7);
-                cell7.setCellValue(!receivedDates.isEmpty() ? String.join("\n", receivedDates) : "");
-                cell7.setCellStyle(styles.get(isEven ? "evenWrap" : "wrap"));
+                cell7.setCellValue(inv.getExpiryDate() != null ? inv.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "");
+                cell7.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
 
                 Cell cell8 = row.createCell(8);
-                cell8.setCellValue(inv.getExpiryDate() != null ? inv.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "");
-                cell8.setCellStyle(styles.get(isEven ? "evenCenter" : "center"));
-
-                Cell cell9 = row.createCell(9);
-                cell9.setCellValue(inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "");
-                cell9.setCellStyle(styles.get(isEven ? "evenText" : "text"));
+                cell8.setCellValue(inv.getProduct().getNote() != null ? inv.getProduct().getNote() : "");
+                cell8.setCellStyle(styles.get(isEven ? "evenText" : "text"));
 
                 rowNum++;
                 seq++;
@@ -1748,10 +1744,9 @@ public class ExcelService {
             sheet.setColumnWidth(3, 3200);
             sheet.setColumnWidth(4, 3200);
             sheet.setColumnWidth(5, 3200);
-            sheet.setColumnWidth(6, 3200);
-            sheet.setColumnWidth(7, 5000);
-            sheet.setColumnWidth(8, 4000);
-            sheet.setColumnWidth(9, 5500);
+            sheet.setColumnWidth(6, 5000);
+            sheet.setColumnWidth(7, 4000);
+            sheet.setColumnWidth(8, 5500);
 
             workbook.write(out);
             return out.toByteArray();
