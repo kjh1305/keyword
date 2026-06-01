@@ -106,6 +106,9 @@
                 <button class="btn btn-outline-secondary" onclick="confirmPeriod()">
                     <i class="bi bi-check-circle me-1"></i>최종보고완료
                 </button>
+                <button class="btn btn-outline-warning" onclick="openMergePeriodModal()" sec:authorize="hasRole('ADMIN')">
+                    <i class="bi bi-calendar-range me-1"></i>기간 조정
+                </button>
                 <div class="btn-group">
                     <button class="btn btn-success" onclick="exportAllExcel()">
                         <i class="bi bi-file-earmark-excel me-1"></i>엑셀 다운로드
@@ -135,12 +138,18 @@
                 <form class="row g-3" method="get" th:action="@{/inventory/stocks}" id="filterForm">
                     <div class="col-md-3">
                         <label class="form-label">기간</label>
-                        <select name="periodId" class="form-select" id="periodSelect" onchange="resetPageAndSubmit()">
-                            <option th:each="p : ${periods}"
-                                    th:value="${p.id}"
-                                    th:text="${p.displayLabel}"
-                                    th:selected="${p.id == selectedPeriodId}"></option>
-                        </select>
+                        <div class="d-flex gap-1">
+                            <select name="periodId" class="form-select" id="periodSelect" onchange="resetPageAndSubmit()">
+                                <option th:each="p : ${periods}"
+                                        th:value="${p.id}"
+                                        th:text="${p.displayLabel}"
+                                        th:selected="${p.id == selectedPeriodId}"
+                                        th:data-name="${p.name}"></option>
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openRenamePeriodModal()" title="기간 이름 변경" sec:authorize="hasRole('ADMIN')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">카테고리</label>
@@ -406,6 +415,74 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Rename Period Modal -->
+    <div class="modal fade" id="renamePeriodModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">기간 이름 변경</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">새 이름</label>
+                    <input type="text" class="form-control" id="renamePeriodInput" placeholder="기간 이름을 입력하세요">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary" onclick="renamePeriod()">저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Merge Period Modal -->
+    <div class="modal fade" id="mergePeriodModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">기간 날짜 조정 (병합)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">기준 기간 (endDate를 변경할 기간)</label>
+                        <select class="form-select" id="mergeKeepPeriod">
+                            <option th:each="p : ${periods}" th:value="${p.id}"
+                                    th:text="${p.name + ' (' + p.startDateStr + ' ~ ' + (p.endDateStr ?: '진행중') + ')'}"></option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">새 종료일</label>
+                        <input type="date" class="form-control" id="mergeNewEndDate">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">삭제할 기간 (불필요한 중간 기간)</label>
+                        <select class="form-select" id="mergeDeletePeriod">
+                            <option value="">(삭제할 기간 없음)</option>
+                            <option th:each="p : ${periods}" th:value="${p.id}"
+                                    th:text="${p.name + ' (' + p.startDateStr + ' ~ ' + (p.endDateStr ?: '진행중') + ')'}"></option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">다음 기간 (startDate 자동 조정 + 이월값 재계산)</label>
+                        <select class="form-select" id="mergeNextPeriod">
+                            <option th:each="p : ${periods}" th:value="${p.id}"
+                                    th:text="${p.name + ' (' + p.startDateStr + ' ~ ' + (p.endDateStr ?: '진행중') + ')'}"></option>
+                        </select>
+                    </div>
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        삭제할 기간의 재고 데이터가 삭제되고, 다음 기간의 이월값이 재계산됩니다.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-danger" onclick="mergePeriods()">실행</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Note Edit Modal -->
@@ -810,6 +887,78 @@
                 console.error('Update failed:', error);
                 alert('저장에 실패했습니다.');
             });
+        }
+
+        // 기간 이름 변경
+        function openRenamePeriodModal() {
+            const select = document.getElementById('periodSelect');
+            const selectedOption = select.options[select.selectedIndex];
+            const currentName = selectedOption.getAttribute('data-name');
+            document.getElementById('renamePeriodInput').value = currentName || '';
+            new bootstrap.Modal(document.getElementById('renamePeriodModal')).show();
+        }
+
+        function renamePeriod() {
+            const newName = document.getElementById('renamePeriodInput').value.trim();
+            if (!newName) {
+                alert('기간 이름을 입력하세요.');
+                return;
+            }
+            const periodId = document.getElementById('periodSelect').value;
+            fetch(`/api/inventory/stocks/periods/${periodId}/rename?newName=${encodeURIComponent(newName)}`, {
+                method: 'POST'
+            })
+            .then(res => {
+                if (!res.ok) return res.json().then(err => { throw new Error(err.message || '변경 실패'); });
+                return res.json();
+            })
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            })
+            .catch(err => alert('오류: ' + err.message));
+        }
+
+        // 기간 날짜 조정 (병합)
+        function openMergePeriodModal() {
+            new bootstrap.Modal(document.getElementById('mergePeriodModal')).show();
+        }
+
+        function mergePeriods() {
+            const keepId = document.getElementById('mergeKeepPeriod').value;
+            const deleteId = document.getElementById('mergeDeletePeriod').value;
+            const nextId = document.getElementById('mergeNextPeriod').value;
+            const newEndDate = document.getElementById('mergeNewEndDate').value;
+
+            if (!keepId || !nextId || !newEndDate) {
+                alert('기준 기간, 다음 기간, 새 종료일을 모두 입력하세요.');
+                return;
+            }
+            if (keepId === nextId || keepId === deleteId || (deleteId && deleteId === nextId)) {
+                alert('각 기간은 서로 다른 기간이어야 합니다.');
+                return;
+            }
+            if (!confirm('기간을 조정하고 이월값을 재계산합니다. 계속하시겠습니까?')) return;
+
+            const params = new URLSearchParams({
+                periodToKeepId: keepId,
+                periodToDeleteId: deleteId || '0',
+                nextPeriodId: nextId,
+                newEndDate: newEndDate
+            });
+
+            fetch('/api/inventory/stocks/periods/merge?' + params, {
+                method: 'POST'
+            })
+            .then(res => {
+                if (!res.ok) return res.json().then(err => { throw new Error(err.message || '실패'); });
+                return res.json();
+            })
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            })
+            .catch(err => alert('오류: ' + err.message));
         }
 
         // 기간 확정 (최종보고일 입력 → CONFIRMED + 새 OPEN 기간 생성)

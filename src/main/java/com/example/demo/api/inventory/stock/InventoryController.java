@@ -127,6 +127,28 @@ public class InventoryController {
         return ResponseEntity.ok(Map.of("message", "기간이 확정되었습니다. 새 기간 '" + nextPeriodName + "'이 생성되었습니다."));
     }
 
+    @PostMapping("/api/inventory/stocks/periods/{periodId}/rename")
+    @ResponseBody
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, String>> renamePeriod(@PathVariable Long periodId,
+                                                             @RequestParam String newName) {
+        inventoryService.renamePeriod(periodId, newName);
+        return ResponseEntity.ok(Map.of("message", "기간 이름이 변경되었습니다."));
+    }
+
+    @PostMapping("/api/inventory/stocks/periods/merge")
+    @ResponseBody
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, String>> mergePeriods(@RequestParam Long periodToKeepId,
+                                                             @RequestParam(required = false, defaultValue = "0") Long periodToDeleteId,
+                                                             @RequestParam Long nextPeriodId,
+                                                             @RequestParam String newEndDate) {
+        LocalDate endDate = LocalDate.parse(newEndDate);
+        Long deleteId = (periodToDeleteId != null && periodToDeleteId > 0) ? periodToDeleteId : null;
+        inventoryService.mergePeriodAndRecalculate(periodToKeepId, deleteId, nextPeriodId, endDate);
+        return ResponseEntity.ok(Map.of("message", "기간이 조정되고 이월값이 재계산되었습니다."));
+    }
+
     @GetMapping("/api/inventory/stocks/periods")
     @ResponseBody
     public ResponseEntity<List<ReportPeriodDTO>> getPeriods() {
