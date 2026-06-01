@@ -42,6 +42,16 @@ public class ExcelService {
     private final UsageLogRepository usageLogRepository;
     private final ReportPeriodRepository reportPeriodRepository;
 
+    private String getUniqueSheetName(Workbook workbook, String baseName) {
+        String name = baseName;
+        int suffix = 2;
+        while (workbook.getSheet(name) != null) {
+            name = baseName + " (" + suffix + ")";
+            suffix++;
+        }
+        return name;
+    }
+
     /**
      * 엑셀 파일의 시트 목록 조회
      */
@@ -1630,7 +1640,7 @@ public class ExcelService {
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
             Map<String, CellStyle> styles = createStyles(workbook);
-            Sheet sheet = workbook.createSheet(period.getName());
+            Sheet sheet = workbook.createSheet(getUniqueSheetName(workbook, period.getName()));
 
             // 타이틀
             Row titleRow = sheet.createRow(0);
@@ -1771,7 +1781,7 @@ public class ExcelService {
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
             Map<String, CellStyle> styles = createStyles(workbook);
-            Sheet sheet = workbook.createSheet(period.getName());
+            Sheet sheet = workbook.createSheet(getUniqueSheetName(workbook, period.getName()));
 
             int totalCols = 3 + (weeks.size() * 3);
             Row titleRow = sheet.createRow(0);
@@ -2039,7 +2049,7 @@ public class ExcelService {
             }
         }
 
-        Sheet sheet = workbook.createSheet(period.getName());
+        Sheet sheet = workbook.createSheet(getUniqueSheetName(workbook, period.getName()));
 
         Row titleRow = sheet.createRow(0);
         titleRow.setHeightInPoints(30);
