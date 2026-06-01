@@ -253,6 +253,77 @@ public class InventoryService {
                 .orElse(null);
     }
 
+    @Transactional
+    public ReportPeriodDTO renamePeriod(Long periodId, String newName) {
+        ReportPeriod period = reportPeriodRepository.findById(periodId)
+                .orElseThrow(() -> new IllegalArgumentException("기간을 찾을 수 없습니다: " + periodId));
+        period.setName(newName.trim());
+        reportPeriodRepository.save(period);
+        return ReportPeriodDTO.fromEntity(period);
+    }
+
+    @Transactional
+    public void mergePeriodAndRecalculate(Long periodToKeepId, Long periodToDeleteId, Long nextPeriodId,
+                                           LocalDate newEndDate) {
+        ReportPeriod periodToKeep = reportPeriodRepository.findById(periodToKeepId)
+                .orElseThrow(() -> new IllegalArgumentException("기간을 찾을 수 없습니다: " + periodToKeepId));
+        ReportPeriod nextPeriod = reportPeriodRepository.findById(nextPeriodId)
+                .orElseThrow(() -> new IllegalArgumentException("다음 기간을 찾을 수 없습니다: " + nextPeriodId));
+
+        // 1. 기준 기간의 endDate 변경
+        periodToKeep.setEndDate(newEndDate);
+        reportPeriodRepository.save(periodToKeep);
+
+        // 2. 다음 기간의 startDate 변경 (endDate 다음날)
+        LocalDate newStartDate = newEndDate.plusDays(1);
+        nextPeriod.setStartDate(newStartDate);
+        reportPeriodRepository.save(nextPeriod);
+
+        // 3. 삭제할 기간이 있으면 인벤토리 + 기간 삭제
+        if (periodToDeleteId != null) {
+            inventoryRepository.deleteByReportPeriodId(periodToDeleteId);
+            reportPeriodRepository.deleteById(periodToDeleteId);
+        }
+
+        // 4. 다음 기간의 initialStock 재계산
+        LocalDate prevStartDate = periodToKeep.getStartDate();
+        LocalDate prevEndDate = newEndDate;
+        String prevStartDateStr = prevStartDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String prevEndDateStr = prevEndDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+
+        List<Inventory> nextInventories = inventoryRepository.findByReportPeriodIdWithProduct(nextPeriodId);
+        List<Inventory> prevInventories = inventoryRepository.findByReportPeriodIdWithProduct(periodToKeepId);
+
+        // 이전 기간 제품별 데이터 맵 생성
+        Map<Long, Inventory> prevInvMap = new HashMap<>();
+        for (Inventory inv : prevInventories) {
+            prevInvMap.put(inv.getProduct().getId(), inv);
+        }
+
+        for (Inventory nextInv : nextInventories) {
+            Long productId = nextInv.getProduct().getId();
+            Inventory prevInv = prevInvMap.get(productId);
+            if (prevInv == null) continue;
+
+            BigDecimal prevInitialStock = prevInv.getInitialStock() != null ? prevInv.getInitialStock() : BigDecimal.ZERO;
+
+            BigDecimal completedOrders = stockOrderRepository.sumCompletedQuantityByProductIdAndDateRange(
+                    productId, prevStartDate, prevEndDate);
+            if (completedOrders == null) completedOrders = BigDecimal.ZERO;
+
+            BigDecimal reportUsed = prevInv.getUsedQuantity() != null ? prevInv.getUsedQuantity() : BigDecimal.ZERO;
+
+            BigDecimal operationalUsed = usageLogRepository.sumOperationalUsedByProductIdAndDateRange(
+                    productId, prevStartDateStr, prevEndDateStr);
+            if (operationalUsed == null) operationalUsed = BigDecimal.ZERO;
+
+            BigDecimal newInitialStock = prevInitialStock.add(completedOrders).subtract(reportUsed).subtract(operationalUsed);
+
+            nextInv.setInitialStock(newInitialStock);
+            inventoryRepository.save(nextInv);
+        }
+    }
+
     public Map<String, Object> getInventoryByPeriodPaged(Long periodId, String category, String keyword, String stockFilter, int page, int size) {
         String cat = (category == null || category.isEmpty()) ? null : category;
         String kw = (keyword == null || keyword.isEmpty()) ? null : keyword;

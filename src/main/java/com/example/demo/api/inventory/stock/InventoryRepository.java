@@ -69,4 +69,6 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
      * 제품별 재고 삭제
      */
     void deleteByProductId(@Param("productId") Long productId);
+
+    void deleteByReportPeriodId(Long reportPeriodId);
 }
