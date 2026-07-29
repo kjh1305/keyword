@@ -11,7 +11,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.annotation.PostConstruct;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,20 +33,6 @@ public class UserService implements UserDetailsService {
                 user.getPassword(),
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole()))
         );
-    }
-
-    @PostConstruct
-    @Transactional
-    public void initDefaultUser() {
-        if (!userRepository.existsByUsername("admin")) {
-            User admin = User.builder()
-                    .username("admin")
-                    .password(passwordEncoder.encode("***REMOVED***"))
-                    .name("관리자")
-                    .role("ADMIN")
-                    .build();
-            userRepository.save(admin);
-        }
     }
 
     @Transactional
