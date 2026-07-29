@@ -38,3 +38,8 @@ out/
 .vscode/
 
 src/main/resources/*.properties
+# 민감 파일 (실데이터/비밀번호)
+*.xlsx
+docker-compose.yml
+새 텍스트 문서.txt
+!src/main/resources/static/피부_재고전체파일.xlsx
