@@ -11,480 +11,441 @@
     <!-- Google Fonts (Optional: for better typography) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bs-primary-rgb: 13, 110, 253; /* Default Bootstrap Primary */
-            --primary-light: #e7f0ff; /* Lighter primary for backgrounds */
-            --primary-darker: #0a58ca; /* Darker primary for hover */
-            --text-main: #212529; /* Main text */
-            --text-muted: #6c757d; /* Muted text */
-            --border-color: #dee2e6; /* Default border color */
-            --card-bg: #ffffff; /* Card background */
-            --body-bg: #f8f9fa; /* Body background */
-            /* Sidebar Width */
-            --sidebar-width: 260px; /* Adjusted sidebar width */
+            --paper: #F5F7F9;          /* page background — cool gray paper */
+            --surface: #FFFFFF;        /* document surface */
+            --ink: #1B2430;            /* primary text */
+            --ink-soft: #5C6675;       /* secondary text */
+            --ink-faint: #8B94A3;      /* captions, notes */
+            --ledger: #0E7A58;         /* accent — ledger green (verified) */
+            --ledger-tint: #EAF4F0;
+            --line: #DFE4EA;           /* hairline borders */
+            --line-strong: #C6CDD6;
+            --sidebar-w: 248px;
+            --sans: 'IBM Plex Sans KR', -apple-system, 'Segoe UI', 'Malgun Gothic', sans-serif;
+            --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
         }
 
-        html {
-            /* Default scroll padding for fixed/sticky elements */
-            scroll-padding-top: 70px; /* Default for mobile navbar height */
-            scroll-behavior: smooth;
+        html { scroll-padding-top: 84px; }
+        @media (prefers-reduced-motion: no-preference) {
+            html { scroll-behavior: smooth; }
         }
 
         body {
-            background-color: var(--body-bg);
-            font-family: 'Noto Sans KR', sans-serif; /* Apply Noto Sans KR */
-            font-size: 0.95rem; /* Slightly smaller base size */
-            line-height: 1.75; /* Increase line height for readability */
-            color: var(--text-main);
-            -webkit-font-smoothing: antialiased; /* Smoother fonts on WebKit */
-            -moz-osx-font-smoothing: grayscale; /* Smoother fonts on Firefox */
-            padding-top: 70px; /* Add padding for the fixed top navbar on small screens */
+            background: var(--paper);
+            font-family: var(--sans);
+            font-size: 15px;
+            line-height: 1.8;
+            color: var(--ink);
+            word-break: keep-all;          /* 한국어 단어 단위 줄바꿈 */
+            overflow-wrap: break-word;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .nw { white-space: nowrap; }
+
+        a { color: var(--ledger); text-decoration: none; }
+        a:hover { text-decoration: underline; text-underline-offset: 3px; }
+        a:focus-visible, button:focus-visible {
+            outline: 2px solid var(--ledger);
+            outline-offset: 2px;
+            border-radius: 2px;
         }
 
-        /* --- Sidebar Navigation (lg and up) --- */
+        /* ---------- Sidebar (lg and up) ---------- */
         .sidebar {
-            position: fixed; /* Changed to fixed */
-            top: 0;
-            left: 0;
-            width: var(--sidebar-width);
+            position: fixed;
+            top: 0; left: 0;
+            width: var(--sidebar-w);
             height: 100vh;
-            background-color: var(--card-bg);
-            border-right: 1px solid var(--border-color);
-            padding: 1.5rem 0 1rem 0; /* Adjust padding */
-            overflow-y: auto; /* Allow scrolling within sidebar */
-            z-index: 1030; /* Ensure it's above content but below modals etc. */
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05); /* Optional subtle shadow */
-            transition: transform 0.3s ease; /* Optional: For potential future hide/show */
+            background: var(--surface);
+            border-right: 1px solid var(--line);
+            padding: 30px 0 24px;
+            overflow-y: auto;
+            z-index: 1030;
         }
         .sidebar .sidebar-title {
-            padding: 0 1.5rem 1rem 1.5rem; /* Padding around the title */
-            font-weight: 700;
-            color: rgb(var(--bs-primary-rgb));
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1rem;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--ink);
+            padding: 0 24px 16px;
+            border-bottom: 1px solid var(--line);
+            margin-bottom: 14px;
         }
-
         .sidebar .nav-link {
-            color: var(--text-muted);
-            padding: 0.6rem 1.5rem; /* Adjust padding */
+            font-size: 13.5px;
             font-weight: 500;
-            transition: all 0.2s ease-in-out;
-            font-size: 0.9rem;
-            border-left: 4px solid transparent; /* Active indicator */
+            color: var(--ink-soft);
+            padding: 7px 24px;
+            border-left: 2px solid transparent;
+            transition: color 0.15s ease;
         }
-        .sidebar .nav-link:hover {
-            color: var(--primary-darker);
-            background-color: var(--primary-light);
-            border-left-color: var(--primary-darker);
-        }
+        .sidebar .nav-link i,
+        .mobile-navbar .nav-link i { display: none; }
+        .sidebar .nav-link:hover { color: var(--ink); }
         .sidebar .nav-link.active {
-            color: rgb(var(--bs-primary-rgb));
-            background-color: var(--primary-light);
-            font-weight: 700;
-            border-left-color: rgb(var(--bs-primary-rgb));
+            color: var(--ledger);
+            font-weight: 600;
+            border-left-color: var(--ledger);
+            background: transparent;
         }
-        .sidebar .nav-link i {
-            margin-right: 0.8rem;
-            width: 1.1em;
-            text-align: center;
-            color: #adb5bd;
-            transition: color 0.2s ease-in-out;
-        }
-        .sidebar .nav-link:hover i,
-        .sidebar .nav-link.active i {
-            color: rgb(var(--bs-primary-rgb));
-        }
-
-        /* Sub-navigation links in Sidebar */
         .sidebar .sub-nav-link {
-            font-size: 0.85em !important;
-            padding-left: 3.5rem !important; /* Increased indent */
+            font-size: 12.5px !important;
             font-weight: 400 !important;
-            color: var(--text-muted) !important;
-            border-left-color: transparent !important; /* No border for sublinks */
-            background-color: transparent !important; /* Clearer default */
+            padding: 5px 24px 5px 40px !important;
+            color: var(--ink-faint) !important;
+            border-left-color: transparent !important;
+            background: transparent !important;
         }
-        .sidebar .sub-nav-link:hover {
-            color: var(--primary-darker) !important;
-            background-color: #f8f9fa !important; /* Subtle hover */
-        }
+        .sidebar .sub-nav-link:hover { color: var(--ink) !important; }
         .sidebar .sub-nav-link.active {
-            color: rgb(var(--bs-primary-rgb)) !important;
-            background-color: #f0f3f5 !important; /* Slightly different active */
+            color: var(--ledger) !important;
             font-weight: 500 !important;
         }
 
-        /* --- Top Navbar (Mobile / < lg) --- */
+        /* ---------- Mobile top navbar (< lg) ---------- */
         .mobile-navbar {
-            background-color: var(--card-bg);
-            border-bottom: 1px solid var(--border-color);
-            min-height: 70px; /* Consistent height */
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
+            min-height: 60px;
         }
         .mobile-navbar .navbar-brand {
-            font-weight: bold;
-            color: rgb(var(--bs-primary-rgb)) !important;
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--ink) !important;
         }
-        .mobile-navbar .navbar-toggler {
-            border: none;
-        }
-        .mobile-navbar .navbar-toggler:focus {
-            box-shadow: none;
-        }
-        /* Styling for links inside mobile dropdown */
+        .mobile-navbar .navbar-toggler { border: none; }
+        .mobile-navbar .navbar-toggler:focus { box-shadow: none; }
         .mobile-navbar .navbar-nav .nav-link {
-            color: var(--text-muted);
-            padding: 0.8rem 1rem; /* Slightly more vertical padding */
+            font-size: 14px;
             font-weight: 500;
-            transition: background-color 0.2s ease, color 0.2s ease;
+            color: var(--ink-soft);
+            padding: 10px 12px;
         }
-        .mobile-navbar .navbar-nav .nav-link:hover {
-            color: var(--primary-darker);
-            background-color: var(--primary-light);
-        }
-        .mobile-navbar .navbar-nav .nav-link.active {
-            color: rgb(var(--bs-primary-rgb));
-            background-color: var(--primary-light);
-            font-weight: 700;
-        }
-        .mobile-navbar .navbar-nav .nav-link i {
-            margin-right: 0.8rem;
-            width: 1.1em;
-            text-align: center;
-        }
-        /* Mobile Sub-links */
+        .mobile-navbar .navbar-nav .nav-link:hover,
+        .mobile-navbar .navbar-nav .nav-link.active { color: var(--ledger); background: transparent; }
         .mobile-navbar .sub-nav-link {
-            font-size: 0.9em !important; /* Keep reasonable size */
-            padding-left: 2rem !important; /* Indentation */
+            font-size: 13px !important;
             font-weight: 400 !important;
+            padding-left: 28px !important;
+            color: var(--ink-faint) !important;
         }
+        .mobile-navbar .navbar-collapse { padding-bottom: 12px; }
 
-
-        /* --- Main Content Area --- */
+        /* ---------- Main document ---------- */
         main {
-            background-color: var(--card-bg);
-            margin: 1.5rem; /* Add some margin around the main content */
-            margin-left: calc(var(--sidebar-width) + 1.5rem); /* Make space for fixed sidebar */
-            padding: 1.5rem; /* Inner padding */
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            transition: margin-left 0.3s ease; /* Sync with sidebar animation if used */
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            max-width: 880px;
+            margin: 40px auto;
+            margin-left: calc(var(--sidebar-w) + 56px);
+            padding: 56px 52px 40px;
         }
 
-        /* --- Header inside Main --- */
-        header {
-            border-bottom-color: var(--border-color) !important;
-            padding-bottom: 1.5rem; /* Adjust padding */
+        /* ---------- Document header (signature ledger) ---------- */
+        .doc-header { margin-bottom: 56px; }
+        .doc-eyebrow {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            color: var(--ledger);
+            margin-bottom: 14px;
         }
-        header h1 {
+        .doc-title {
+            font-size: clamp(27px, 4vw, 36px);
             font-weight: 700;
-            color: var(--text-main);
-            font-size: 2rem; /* Slightly adjust size */
+            letter-spacing: -0.02em;
+            line-height: 1.25;
+            margin-bottom: 6px;
         }
-        header .lead {
-            font-weight: 400;
-            color: var(--text-muted);
-            font-size: 1.1rem;
+        .doc-sub {
+            font-size: 14.5px;
+            color: var(--ink-soft);
+            margin-bottom: 30px;
         }
-        .profile-pic-wrapper img {
-            border-color: var(--border-color) !important;
+        .ledger {
+            width: 100%;
+            border-collapse: collapse;
+            border-top: 2px solid var(--ink);
+            border-bottom: 1px solid var(--line-strong);
+            margin-bottom: 10px;
         }
-        .contact-info { /* Applies to ul */
-            list-style: none;
-            padding-left: 0;
-            margin-bottom: 0; /* Redundant due to mb-0 class, but safe */
-            /* Default (mobile) - center alignment for block items */
-            text-align: center;
+        .ledger tr + tr td { border-top: 1px solid var(--line); }
+        .ledger td { padding: 10px 2px; vertical-align: baseline; }
+        .ledger .k {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            color: var(--ink-faint);
+            width: 36%;
+            white-space: nowrap;
         }
-
-        .contact-info li {
-            /* Default (mobile) - vertical stacking */
-            display: block;
-            margin-bottom: 0.8rem; /* Vertical spacing for mobile */
+        .ledger .v {
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+            font-variant-numeric: tabular-nums;
         }
-        .contact-info li:last-child {
-            margin-bottom: 0; /* Remove bottom margin from the last item */
+        .ledger .v em { font-style: normal; color: var(--ledger); }
+        .ledger-note {
+            font-family: var(--mono);
+            font-size: 10.5px;
+            color: var(--ink-faint);
+            margin-bottom: 26px;
         }
-
-        .contact-info i {
-            color: rgb(var(--bs-primary-rgb));
-            margin-right: 0.5rem; /* Spacing between icon and text */
-            vertical-align: middle;
-            width: 1.2em; /* Ensure consistent icon alignment space */
-            display: inline-block; /* Needed for width/text-align */
-            text-align: center;
-        }
-        .contact-info a {
-            color: var(--text-main);
-            text-decoration: none;
-            transition: color 0.2s ease;
-        }
-        .contact-info a:hover {
-            color: rgb(var(--bs-primary-rgb));
-            text-decoration: underline;
-        }
-
-        /* Section title */
-        .section-title {
-            font-weight: 700;
-            color: rgb(var(--bs-primary-rgb));
-            border-bottom: 2px solid rgb(var(--bs-primary-rgb));
-            padding-bottom: 0.6rem;
-            margin-bottom: 2.5rem;
+        .doc-links a {
             display: inline-block;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--ink);
+            border: 1px solid var(--line-strong);
+            border-radius: 999px;
+            padding: 6px 16px;
+            margin: 0 8px 8px 0;
+        }
+        .doc-links a:hover {
+            color: var(--ledger);
+            border-color: var(--ledger);
+            text-decoration: none;
         }
 
-        /* Experience & Project Items */
-        .experience-item, #portfolio .card {
-            margin-bottom: 2.5rem !important;
+        /* ---------- Sections ---------- */
+        .section { margin-bottom: 72px; }
+        .section-eyebrow {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.16em;
+            color: var(--ink-faint);
+            margin-bottom: 4px;
         }
-        .experience-item:last-child, #portfolio .card:last-child {
-            margin-bottom: 0 !important;
-        }
-        .experience-item .fs-5 { /* Company/School Name */
-            color: #343a40;
-        }
-        .experience-item .small { /* Date/Note */
-            color: var(--text-muted);
-        }
-        .experience-item > .border-bottom { /* Separator line */
-            border-bottom-color: #e9ecef !important;
-            padding-bottom: 2.5rem !important;
-        }
-        .experience-item.border-0 {
-            padding-bottom: 0 !important;
-        }
-
-        /* Project/Experience Card */
-        .project.card {
-            border: 1px solid var(--border-color);
-            border-left: 4px solid rgb(var(--bs-primary-rgb));
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
-            transition: box-shadow 0.3s ease;
-        }
-        .project.card:hover {
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-        }
-        .project .card-title {
-            font-size: 1.1rem;
+        .section-title {
+            font-size: 21px;
             font-weight: 700;
-            color: #343a40;
-            margin-bottom: 1rem !important;
+            letter-spacing: -0.01em;
+            color: var(--ink);
+            border: 0;
+            padding: 0;
+            display: block;
+            margin-bottom: 30px;
         }
-        .project .card-body {
-            padding: 1.5rem;
+
+        /* ---------- Experience timeline ---------- */
+        .experience-item {
+            position: relative;
+            border-left: 2px solid var(--line) !important;
+            border-bottom: 0 !important;
+            padding-left: 28px;
+            padding-bottom: 10px !important;
+            margin-bottom: 44px !important;
+        }
+        .experience-item:last-child { margin-bottom: 0 !important; }
+        .experience-item::before {
+            content: "";
+            position: absolute;
+            left: -6px; top: 7px;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 2px solid var(--ledger);
+        }
+        .experience-item h3 {
+            font-size: 16.5px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .experience-item > div > .small,
+        .experience-item .text-muted.small {
+            font-family: var(--mono);
+            font-size: 12px !important;
+            color: var(--ink-soft) !important;
+            font-variant-numeric: tabular-nums;
+        }
+        .experience-item > .small { font-size: 13.5px; }
+        .experience-item p.fst-italic { color: var(--ink-faint) !important; font-size: 13.5px; }
+
+        /* ---------- Cards (entries) ---------- */
+        .project.card {
+            border: 1px solid var(--line);
+            border-left: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: none;
+            transition: border-color 0.15s ease;
+        }
+        .project.card:hover { border-color: var(--line-strong); box-shadow: none; }
+        .project .card-body { padding: 24px 26px; font-size: 14px; }
+        .project .card-title {
+            font-size: 15.5px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--ink);
+            margin-bottom: 14px !important;
         }
         .project hr {
-            border-top-color: #e9ecef;
-            margin-top: 1.5rem;
-            margin-bottom: 1.5rem;
+            border: 0;
+            border-top: 1px solid var(--line);
+            opacity: 1;
+            margin: 16px 0;
         }
         .project h6.fw-semibold {
-            color: #495057;
-            font-size: 0.95rem;
-            margin-top: 1.5rem !important;
-        }
-        .project ul {
-            padding-left: 1.2rem;
-        }
-        .project ul ul {
-            padding-left: 1rem;
-            margin-top: 0.3rem;
-        }
-        .project li {
-            margin-bottom: 0.4rem;
-        }
-        .project strong {
+            font-size: 12px;
             font-weight: 600;
-            color: #000;
+            color: var(--ink-soft);
+            letter-spacing: 0.02em;
+            margin: 14px 0 10px !important;
         }
+        .project ul { padding-left: 18px; margin-bottom: 10px; }
+        .project ul ul { padding-left: 14px; margin-top: 4px; }
+        .project li { margin-bottom: 6px; }
+        .project li::marker { color: var(--ledger); }
+        .project strong { font-weight: 600; color: var(--ink); }
+        .project p { margin-bottom: 10px; }
+        .project .fst-italic { color: var(--ink-soft) !important; }
+        .experience-item .card,
+        #portfolio .card { margin-bottom: 28px !important; }
+        .experience-item .card:last-child,
+        #portfolio .card:last-child { margin-bottom: 0 !important; }
 
-        /* Tech stack badge */
+        /* tech badges — quiet mono chips */
         .tech-stack {
-            font-size: 0.8em !important;
-            padding: 0.35em 0.65em !important;
-            border-radius: 4px !important;
+            font-family: var(--mono);
+            font-size: 10.5px !important;
             font-weight: 500 !important;
-            background-color: #e9ecef !important;
-            color: #495057 !important;
-            border: 1px solid #dee2e6;
-            margin-bottom: 0.4rem !important;
+            color: var(--ink-soft) !important;
+            background: transparent !important;
+            border: 1px solid var(--line);
+            border-radius: 4px !important;
+            padding: 3px 8px !important;
+            margin: 0 2px 6px 0 !important;
+            letter-spacing: 0.02em;
         }
 
-        /* Images in Projects */
-        figure {
-            margin-bottom: 1rem;
-        }
+        /* screenshots */
+        figure { margin-bottom: 10px; }
         figure img {
-            border-radius: 4px !important;
-            border: 1px solid var(--border-color) !important;
-            background-color: #fff;
+            border: 1px solid var(--line) !important;
+            border-radius: 6px !important;
+            background: #fff;
         }
         figure figcaption {
-            color: var(--text-muted);
-            margin-top: 0.5rem;
+            font-size: 11.5px;
+            color: var(--ink-faint);
+            margin-top: 6px;
         }
 
-        /* Footer */
+        /* ---------- Footer ---------- */
         footer {
-            border-top-color: var(--border-color) !important;
-            color: var(--text-muted) !important;
+            border-top: 1px solid var(--line) !important;
+            color: var(--ink-faint) !important;
+            font-family: var(--mono);
+            font-size: 11.5px;
+            padding-top: 22px !important;
+            margin-top: 56px !important;
         }
 
-        /* Scroll-to-top button */
+        /* ---------- Scroll-to-top ---------- */
         #scrollTopBtn {
-            position: fixed; /* Keep fixed */
-            bottom: 20px;
-            right: 20px;
-            display: none; /* Initially hidden */
-            z-index: 1030; /* Above most content */
-            background-color: rgb(var(--bs-primary-rgb));
-            border: none;
-            opacity: 0.6;
-            transition: opacity 0.3s ease, transform 0.3s ease;
-            width: 45px; /* Explicit size */
-            height: 45px;
-            padding: 0; /* Reset padding */
+            position: fixed;
+            bottom: 22px; right: 22px;
+            display: none;
+            z-index: 1030;
+            width: 42px; height: 42px;
+            padding: 0;
+            line-height: 40px;
             text-align: center;
-            line-height: 45px; /* Center icon vertically */
+            background: var(--surface);
+            color: var(--ink);
+            border: 1px solid var(--line-strong);
+            border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(27, 36, 48, 0.08);
+            transition: border-color 0.15s ease, color 0.15s ease;
         }
         #scrollTopBtn:hover {
-            opacity: 1;
-            transform: translateY(-3px);
+            background: var(--surface);
+            color: var(--ledger);
+            border-color: var(--ledger);
         }
-        #scrollTopBtn i {
-            font-size: 1.3rem; /* Adjusted icon size */
-            vertical-align: middle; /* Better alignment */
-        }
+        #scrollTopBtn i { font-size: 1.1rem; vertical-align: middle; }
 
-        /* --- Responsive Adjustments --- */
-
-        /* Styles for Medium screens and down (< 992px) */
+        /* ---------- Responsive ---------- */
         @media (max-width: 991.98px) {
-            html {
-                scroll-padding-top: 70px; /* Match mobile navbar height */
-            }
-            body {
-                padding-left: 0; /* No sidebar padding */
-                padding-top: 70px; /* Padding for fixed top navbar */
-            }
-            /* Hide sidebar */
-            .sidebar {
-                transform: translateX(-100%); /* Hide sidebar off-screen */
-                display: none; /* Also hide from layout flow */
-            }
-            /* Adjust main content */
+            html { scroll-padding-top: 74px; }
+            body { padding-top: 60px; }
+            .sidebar { display: none; }
             main {
-                margin-left: 1.5rem; /* Reset margin for mobile */
-                margin-right: 1.5rem; /* Add right margin */
-                margin-top: 1.5rem; /* Consistent top margin */
-                box-shadow: none; /* Optional: remove shadow on mobile */
-                padding: 1rem; /* Adjust padding */
+                margin: 18px 14px;
+                padding: 30px 22px 24px;
             }
-            /* Header content centering */
-            /* Header content centering */
-            .profile-pic-wrapper {
-                text-align: center;
-                margin-bottom: 1.5rem;
-            }
-            .header-content-wrapper {
-                text-align: center; /* Keep text center alignment for the wrapper */
-            }
-            /* No need for specific .contact-info li styles here anymore,
-               as the default styles handle the vertical layout */
-
-            /* Ensure list itself stays centered */
-            .contact-info {
-                text-align: center;
-            }
-
-            /* Make list items behave as block level inside centered text */
-            .contact-info li {
-                /* display: block; is already the default, ensuring vertical stacking */
-                /* text-align: left; if needed inside the block for icon/text alignment */
-                /* (Current setup seems fine) */
-            }
-            /* Mobile Nav Specific */
-            .mobile-navbar .navbar-collapse { /* Add padding when menu is open */
-                padding-bottom: 1rem;
-            }
-            .mobile-navbar .navbar-nav .nav-link i {
-                color: #adb5bd; /* Explicit color */
-            }
-            .mobile-navbar .navbar-nav .nav-link.active i,
-            .mobile-navbar .navbar-nav .nav-link:hover i {
-                color: rgb(var(--bs-primary-rgb)); /* Highlight icon on active/hover */
-            }
+            .doc-header { margin-bottom: 44px; }
+            .ledger .k { width: 40%; white-space: normal; }
+            .section { margin-bottom: 56px; }
+            .experience-item { padding-left: 20px; }
         }
-
-        @media (min-width: 992px) {
-            .header-content-wrapper {
-                text-align: left; /* Align header text left on desktop */
-            }
-            .contact-info {
-                text-align: left; /* Align the list items container left */
-            }
-            .contact-info li {
-                display: inline-block; /* Horizontal layout */
-                margin-right: 1.5rem;  /* Horizontal spacing between items */
-                margin-bottom: 0;     /* Remove vertical spacing */
-            }
-            .contact-info li:last-child {
-                margin-right: 0; /* No right margin for the last item */
-            }
-        }
-
-        /* Styles for Small screens and down (< 576px) */
         @media (max-width: 575.98px) {
-            body {
-                font-size: 0.9rem;
-                padding-top: 60px; /* Slightly smaller navbar potentially */
-            }
-            html {
-                scroll-padding-top: 60px;
-            }
-            .mobile-navbar {
-                min-height: 60px;
-            }
+            body { font-size: 14.5px; }
+            main { margin: 12px 10px; padding: 24px 16px 20px; }
+            .project .card-body { padding: 18px 16px; }
+            .ledger .v { font-size: 12px; }
+            .ledger .k { font-size: 10px; }
+        }
+        @media (min-width: 992px) {
+            body { padding-top: 0; }
+        }
 
-            main {
-                margin-left: 1rem;
-                margin-right: 1rem;
-                margin-top: 1rem;
-                padding: 1rem;
-            }
+        /* ---------- Archive divider (student/intern era) ---------- */
+        .archive-divider {
+            margin: 44px 0 26px;
+            padding-top: 30px;
+            border-top: 1px dashed var(--line-strong);
+        }
+        .archive-note {
+            font-size: 13px;
+            color: var(--ink-faint);
+            margin-bottom: 0;
+        }
+        .archive-divider ~ .project.card { background: #FBFCFD; }
 
-            .section-title {
-                font-size: 1.5rem;
-                margin-bottom: 2rem;
+        /* ---------- Reading progress ---------- */
+        #readProgress {
+            position: fixed;
+            top: 0; left: 0;
+            height: 2px;
+            width: 0;
+            background: var(--ledger);
+            z-index: 2000;
+        }
+
+        /* ---------- Scroll reveal (JS adds .reveal, .in) ---------- */
+        @media (prefers-reduced-motion: no-preference) {
+            .reveal {
+                opacity: 0;
+                transform: translateY(10px);
+                transition: opacity 0.45s ease, transform 0.45s ease;
             }
-            h1 { /* Header H1 */
-                font-size: 1.8rem;
-            }
-            header .lead {
-                font-size: 1rem;
-            }
-            .project .card-title {
-                font-size: 1rem;
-            }
-            .project .card-body {
-                padding: 1rem;
-            }
-            figure img {
-                max-width: 100%;
-            }
-            .mobile-navbar .navbar-brand {
-                font-size: 1rem; /* Slightly smaller brand on very small screens */
-            }
-            .contact-info i {
-                margin-right: 0.4rem; /* Slightly less space on very small screens */
+            .reveal.in {
+                opacity: 1;
+                transform: none;
             }
         }
     </style>
 </head>
 <body>
+
+<div id="readProgress" aria-hidden="true"></div>
 
 <!-- Sidebar Navigation (visible on lg and up) -->
 <div class="sidebar d-none d-lg-block"> <!-- Use Bootstrap classes for visibility -->
@@ -608,25 +569,40 @@
 <!-- Main Content Area -->
 <!-- Removed container-fluid and row structure around main -->
 <main> <!-- Apply padding and margin directly to main -->
-    <header class="mb-5 pb-4 border-bottom">
-        <div class="row align-items-center">
-            <div class="col-12 header-content-wrapper">
-                <h1 class="display-5 fw-bold mb-1">Backend Developer</h1>
-                <p class="lead text-secondary mb-3">경력기술서 &amp; 포트폴리오</p>
-                <ul class="list-unstyled contact-info mb-0"> <!-- Changed to list-unstyled for flexibility -->
-                    <li class="mb-2">
-                        <i class="bi bi-link-45deg"></i> <a href="https://cokes.tistory.com" target="_blank">Blog (cokes.tistory.com)</a>
-                    </li>
-                    <li class="mb-2">
-                        <i class="bi bi-github"></i> <a href="https://github.com/kjh1305" target="_blank">GitHub (kjh1305)</a>
-                    </li>
-                </ul>
-            </div>
+    <header class="doc-header">
+        <p class="doc-eyebrow">CAREER PORTFOLIO · BACKEND ENGINEER</p>
+        <h1 class="doc-title">Backend Developer</h1>
+        <p class="doc-sub">이커머스 멀티채널 플랫폼 · 정산/과금 머니패스 · 레거시 → V2 마이그레이션 — 5년의 실측 기록</p>
+        <table class="ledger" aria-label="핵심 지표 요약">
+            <tbody>
+            <tr>
+                <td class="k">CAREER</td>
+                <td class="v"><span class="num" data-n="5">5</span>년+ · 백엔드 / 풀스택</td>
+            </tr>
+            <tr>
+                <td class="k">LAST 13.5 MONTHS</td>
+                <td class="v"><span class="num" data-n="1305">1,305</span> commits · <span class="num" data-n="464">464</span> PRs <em>merge 94%</em></td>
+            </tr>
+            <tr>
+                <td class="k">SETTLEMENT AUDIT</td>
+                <td class="v"><span class="num" data-n="458">458</span>만 건 대조 · <em>불일치 <span class="num" data-n="0">0</span>건</em></td>
+            </tr>
+            <tr>
+                <td class="k">MARKETPLACES</td>
+                <td class="v"><span class="nw"><span class="num" data-n="20">20</span>+ 채널 연동</span> · <span class="nw">신규 온보딩 <span class="num" data-n="2">2</span>건</span></td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="ledger-note">* GitHub 전수 조사 · 운영 DB 실측 기준</p>
+        <div class="doc-links">
+            <a href="https://github.com/kjh1305" target="_blank">GitHub — kjh1305</a>
+            <a href="https://cokes.tistory.com" target="_blank">Blog — cokes.tistory.com</a>
         </div>
     </header>
 
     <!-- Experience Section -->
     <section id="experience" class="section mb-5">
+        <p class="section-eyebrow">EXPERIENCE · 4 COMPANIES · 2021 —</p>
         <h2 class="section-title h3">경력 사항</h2>
 
         <!-- Brich -->
@@ -646,7 +622,7 @@
             <!-- Brich Project 1 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">📌 관리형 프로모션(Managed Promotion) 신규 도메인 설계·구현 — 대표 프로젝트</h4>
+                    <h4 class="card-title">관리형 프로모션(Managed Promotion) 신규 도메인 설계·구현 — 대표 프로젝트</h4>
                     <p><strong>개요:</strong> 본사가 브랜드/상품 단위로 할인 프로모션을 등록하면 20여 개 마켓에 가격을 자동 송출하고 주문 정산까지 일관 처리하는 신규 도메인을 백엔드 전 영역에서 설계·구현 (2025.11 ~ 운영·고도화 중, V2 백엔드 단독 설계 + 레거시 + React FE)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -679,7 +655,7 @@
             <!-- Brich Project 2 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">📌 프로모션 2.0 (PLD) — 기간형 가격 프로모션 시스템 신규 구축</h4>
+                    <h4 class="card-title">프로모션 2.0 (PLD) — 기간형 가격 프로모션 시스템 신규 구축</h4>
                     <p><strong>개요:</strong> 엑셀로 대량 등록한 상품에 기간형 할인을 적용해 10여 개 마켓에 동시 송출하는 가격 프로모션 시스템 신규 구축 (2025.11 ~ 2026.04, 레거시 단일 최대 기능 클러스터)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP (Laravel)</span>
@@ -702,7 +678,7 @@
             <!-- Brich Project 3 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">📌 멀티마켓 연동 — 20개+ 마켓 상품/주문/클레임/CS</h4>
+                    <h4 class="card-title">멀티마켓 연동 — 20개+ 마켓 상품/주문/클레임/CS</h4>
                     <p><strong>개요:</strong> 20여 개 국내외 오픈마켓을 상품연동·주문수집·클레임·CS까지 통합 연동. 단일 마켓 담당이 아닌 <strong>마켓 횡단 도메인 엔지니어링</strong> (2025.06 ~ 상시)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP</span>
@@ -730,7 +706,7 @@
             <!-- Brich Project 4 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">📌 반품/교환 클레임 시스템 V2 전면 재구축</h4>
+                    <h4 class="card-title">반품/교환 클레임 시스템 V2 전면 재구축</h4>
                     <p><strong>개요:</strong> 마켓마다 다른 클레임 상태머신을 통합한 반품/교환/취소 라이프사이클을 V2로 전면 재구축, 글로벌 포함 (2025.08 ~ 2026.07, 클레임 도메인 커밋·PR 373건)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP (Laravel)</span>
@@ -753,7 +729,7 @@
             <!-- Brich Project 5 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">📌 정산 엔진 &amp; 상품 2.0 가격 구조 리팩토링 (머니패스)</h4>
+                    <h4 class="card-title">정산 엔진 &amp; 상품 2.0 가격 구조 리팩토링 (머니패스)</h4>
                     <p><strong>개요:</strong> 주문 정산 계산 엔진과 상품 가격 2계층(마스터/마켓) 구조 재설계 (2025.10 ~ 2026.07)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -777,7 +753,7 @@
             <!-- Brich Project 6 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">📌 레거시(PHP) → V2(Kotlin) 마이그레이션</h4>
+                    <h4 class="card-title">레거시(PHP) → V2(Kotlin) 마이그레이션</h4>
                     <p><strong>개요:</strong> 마켓 연동·주문·정산 로직을 레거시 Laravel에서 V2 Kotlin 멀티모듈로 <strong>운영 무중단 점진 이전</strong> (2026.01 ~ 2026.07)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -799,7 +775,7 @@
             <!-- Brich Project 7 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">📌 판매관리 2.0 &amp; 프론트엔드(React) — 풀스택 확장</h4>
+                    <h4 class="card-title">판매관리 2.0 &amp; 프론트엔드(React) — 풀스택 확장</h4>
                     <p><strong>개요:</strong> 주문·배송·출고 통합 관리 메뉴(판매관리 2.0)와 React Admin Console 개발 (2025.12 ~ 2026.07)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -823,7 +799,7 @@
             <!-- Brich Project 8 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">📌 멀티마켓 운영 안정성 · 장애 대응 (상시)</h4>
+                    <h4 class="card-title">멀티마켓 운영 안정성 · 장애 대응 (상시)</h4>
                     <p><strong>개요:</strong> 20개+ 마켓은 API 규격·판매정책·클레임 체계가 수시로 변경 — 전체 커밋의 <strong>28%(365건)가 운영·버그 대응</strong>일 만큼 신규 개발만큼 상시 운영이 중요한 환경</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -850,7 +826,7 @@
             <!-- Brich Project 9: AI -->
             <div class="card project mb-0">
                 <div class="card-body">
-                    <h4 class="card-title">📌 AI 활용 개발 환경 구축 (2026.01 ~)</h4>
+                    <h4 class="card-title">AI 활용 개발 환경 구축 (2026.01 ~)</h4>
                     <p><strong>개요:</strong> AI(Claude Code)를 개발에 적극 도입 — 단순 코드 자동완성을 넘어 <strong>멀티 저장소 개발을 위한 AI 활용 환경(에이전트·스킬·메모리·훅)을 직접 구축·운영</strong></p>
                     <p class="mb-2"><strong>직접 구축한 AI 개발 인프라 (실측):</strong></p>
                     <ul class="small">
@@ -878,7 +854,7 @@
 
             <div class="card project mb-0">
                 <div class="card-body">
-                    <h4 class="card-title">📌 이커머스 셀러용 판매 자동화 SaaS</h4>
+                    <h4 class="card-title">이커머스 셀러용 판매 자동화 SaaS</h4>
                     <p><strong>개요:</strong> 30개+ 마켓·쇼핑몰을 API/크롤링으로 연동하고 구독 유료화·판매 전 과정(상품 수집·등록~주문·배송·CS)을 자동화하는 SaaS 및 자사 판매 운영 시스템 개발</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Java</span>
@@ -926,7 +902,7 @@
             </div>
             <div class="card project mb-0">
                 <div class="card-body">
-                    <h4 class="card-title">📌 높은 트래픽 콘텐츠 서비스 '방구석 연구소' 기능 개발·개선</h4>
+                    <h4 class="card-title">높은 트래픽 콘텐츠 서비스 '방구석 연구소' 기능 개발·개선</h4>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP</span>
                         <span class="badge tech-stack">CodeIgniter</span>
@@ -948,12 +924,13 @@
 
     <!-- Portfolio Section -->
     <section id="portfolio" class="section mb-5">
+        <p class="section-eyebrow">SIDE PROJECTS · 10 BUILDS</p>
         <h2 class="section-title h3">개인 프로젝트</h2>
 
         <!-- Project 0: Inventory -->
         <div id="proj-inventory" class="card project mb-4">
             <div class="card-body">
-                <h4 class="card-title">📌 재고 관리 시스템 (실사용 중)</h4>
+                <h4 class="card-title">재고 관리 시스템 (실사용 중)</h4>
                 <p class="github-link small mb-3">
                     <strong><i class="bi bi-github"></i> Source:</strong>
                     <a href="https://github.com/kjh1305/keyword" target="_blank">kjh1305/keyword</a>
@@ -1009,10 +986,16 @@
             </div>
         </div>
 
+        <!-- Archive divider: 대학생/인턴 시절 프로젝트 -->
+        <div class="archive-divider">
+            <p class="section-eyebrow">ARCHIVE · 대학생 / 인턴 시절 (~ 2021)</p>
+            <p class="archive-note">아래는 학부·인턴 시기의 학습 기록입니다. 현재 실력의 기준이 아니라, 기초를 다져온 성장 과정으로 남겨둡니다.</p>
+        </div>
+
         <!-- Project 1 -->
         <div id="proj-user-mgmt" class="card project mb-4">
             <div class="card-body">
-                <h4 class="card-title">📌 사용자 관리 토이 프로젝트</h4>
+                <h4 class="card-title">사용자 관리 토이 프로젝트</h4>
                 <p class="github-link small mb-3">
                     <strong><i class="bi bi-github"></i> Source:</strong>
                     <a href="https://github.com/kjh1305/SpringAPI" target="_blank" class="ms-1">Backend (SpringAPI)</a> |
@@ -1055,11 +1038,11 @@
                 </div>
                 <p class="fst-italic text-muted small mb-3">📔 Vue.js(Vuetify) SPA, Spring Boot API, Spring Security, Jenkins/Docker CI/CD, AWS EC2/RDS 배포. (S3/JPA 추가 예정)</p>
                 <hr>
-                <h6 class="fw-semibold small">구현된 기능 및 화면 (진행중)</h6>
+                <h6 class="fw-semibold small">구현된 기능 및 화면</h6>
                 <ul class="small">
-                    <li><strong>서버/배포:</strong> Nginx(Vue 빌드) + Spring Boot API Docker 이미지 자동 배포 (Jenkins), Git Webhook (현재 중단)</li>
-                    <li><strong>Frontend:</strong> Vuetify 기반 UI (Header, Footer, Login, UserList) 개발 중</li>
-                    <li><strong>Backend:</strong> 회원가입, 로그인, User CRUD, JWT (Access/Refresh 토큰 분리) 개발 중</li>
+                    <li><strong>서버/배포:</strong> Nginx(Vue 빌드) + Spring Boot API Docker 이미지 자동 배포 (Jenkins), Git Webhook</li>
+                    <li><strong>Frontend:</strong> Vuetify 기반 UI (Header, Footer, Login, UserList) 개발</li>
+                    <li><strong>Backend:</strong> 회원가입, 로그인, User CRUD, JWT (Access/Refresh 토큰 분리) 개발</li>
                 </ul>
             </div>
         </div>
@@ -1067,7 +1050,7 @@
         <!-- Project 2 -->
         <div id="proj-spring-blog" class="card project mb-4">
             <div class="card-body">
-                <h4 class="card-title">📌 Spring boot Bolg 프로젝트</h4>
+                <h4 class="card-title">Spring boot Bolg 프로젝트</h4>
                 <p class="github-link small mb-3">
                     <strong><i class="bi bi-github"></i> Source:</strong>
                     <a href="https://github.com/kjh1305/SpringBlog" target="_blank">kjh1305/SpringBlog</a>
@@ -1107,7 +1090,7 @@
         <!-- Project 3 -->
         <div id="proj-bab" class="card project mb-4">
             <div class="card-body">
-                <h4 class="card-title">📌 BAB - 창업대전 프로젝트</h4>
+                <h4 class="card-title">BAB - 창업대전 프로젝트</h4>
                 <p class="github-link small mb-3">
                     <strong><i class="bi bi-github"></i> Source:</strong>
                     <a href="https://github.com/kjh1305/BAB-project" target="_blank">kjh1305/BAB-project</a>
@@ -1141,7 +1124,7 @@
         <!-- Project 4 -->
         <div id="proj-jsp-blog" class="card project mb-4">
             <div class="card-body">
-                <h4 class="card-title">📌 Jsp/Servlet Blog</h4>
+                <h4 class="card-title">Jsp/Servlet Blog</h4>
                 <p class="github-link small mb-3">
                     <strong><i class="bi bi-github"></i> Source:</strong>
                     <a href="https://github.com/kjh1305/JSP-blog" target="_blank">kjh1305/JSP-blog</a>
@@ -1174,7 +1157,7 @@
         <!-- Project 5 -->
         <div id="proj-mrmt" class="card project mb-4">
             <div class="card-body">
-                <h4 class="card-title">📌 방구석 연구소 mrmt 구독 페이지</h4>
+                <h4 class="card-title">방구석 연구소 mrmt 구독 페이지</h4>
                 <p class="small mb-3">
                     <strong><i class="bi bi-link-45deg"></i> URL:</strong>
                     <a href="http://mrmt.kr/" target="_blank">미리밋터 mirimeeter</a>
@@ -1207,7 +1190,7 @@
         <!-- Project 6 -->
         <div id="proj-newyear" class="card project mb-4">
             <div class="card-body">
-                <h4 class="card-title">📌 방구석 연구소 새해 인사 짤뽑기</h4>
+                <h4 class="card-title">방구석 연구소 새해 인사 짤뽑기</h4>
                 <p class="small mb-3">
                     <strong><i class="bi bi-link-45deg"></i> URL:</strong>
                     <a href="https://www.banggooso.com/intro.html?idx=27" target="_blank">새해 인사 짤뽑기</a>
@@ -1241,7 +1224,7 @@
         <!-- Project 7 -->
         <div id="proj-php-gallery" class="card project mb-4">
             <div class="card-body">
-                <h4 class="card-title">📌 나만의 작품 갤러리</h4>
+                <h4 class="card-title">나만의 작품 갤러리</h4>
                 <p class="github-link small mb-3">
                     <strong><i class="bi bi-github"></i> Source:</strong>
                     <a href="https://github.com/kjh1305/PHP-gallery" target="_blank">kjh1305/PHP-gallery</a>
@@ -1274,7 +1257,7 @@
         <!-- Project 8 -->
         <div id="proj-php-aji" class="card project mb-4">
             <div class="card-body">
-                <h4 class="card-title">📌 Aji 강아지 투표 사이트</h4>
+                <h4 class="card-title">Aji 강아지 투표 사이트</h4>
                 <p class="github-link small mb-3">
                     <strong><i class="bi bi-github"></i> Source:</strong>
                     <a href="https://github.com/kjh1305/PHP-aji" target="_blank">kjh1305/PHP-aji</a>
@@ -1307,7 +1290,7 @@
         <!-- Project 9 -->
         <div id="proj-php-shop" class="card project mb-0"> <!-- Last project -->
             <div class="card-body">
-                <h4 class="card-title">📌 PHP 쇼핑몰</h4>
+                <h4 class="card-title">PHP 쇼핑몰</h4>
                 <p class="github-link small mb-3">
                     <strong><i class="bi bi-github"></i> Source:</strong>
                     <a href="https://github.com/kjh1305/PHP-shop" target="_blank">kjh1305/PHP-shop</a>
@@ -1353,6 +1336,57 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
 <script>
+    // --- Motion: ledger count-up, reading progress, scroll reveal ---
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Reading progress bar
+    const progressBar = document.getElementById('readProgress');
+    function updateProgress() {
+        const total = document.documentElement.scrollHeight - window.innerHeight;
+        const ratio = total > 0 ? Math.min(window.scrollY / total, 1) : 0;
+        progressBar.style.width = (ratio * 100) + '%';
+    }
+
+    // Ledger count-up (runs once on load)
+    function animateLedger() {
+        if (prefersReducedMotion) return;
+        const easeOut = t => 1 - Math.pow(1 - t, 3);
+        document.querySelectorAll('.ledger .num').forEach(el => {
+            const target = parseInt(el.dataset.n, 10);
+            if (isNaN(target)) return;
+            const useComma = target >= 1000;
+            const start = performance.now();
+            const duration = 700;
+            function tick(now) {
+                const t = Math.min((now - start) / duration, 1);
+                const val = Math.round(easeOut(t) * target);
+                el.textContent = useComma ? val.toLocaleString('en-US') : String(val);
+                if (t < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        });
+    }
+
+    // Scroll reveal
+    function setupReveal() {
+        if (prefersReducedMotion || !('IntersectionObserver' in window)) return;
+        const targets = document.querySelectorAll('.project.card, .experience-item');
+        const io = new IntersectionObserver(entries => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    e.target.classList.add('in');
+                    io.unobserve(e.target);
+                }
+            });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+        targets.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            if (rect.top < window.innerHeight) return; // already visible — don't hide
+            el.classList.add('reveal');
+            io.observe(el);
+        });
+    }
+
     // Scroll to Top Button Script
     const scrollTopBtn = document.getElementById("scrollTopBtn");
     const scrollThreshold = 300; // Show button after scrolling 300px
@@ -1477,12 +1511,16 @@
     window.addEventListener('scroll', () => {
         toggleScrollTopButton();
         highlightNavLink();
+        updateProgress();
     });
 
     // Initial setup on DOMContentLoaded
     document.addEventListener('DOMContentLoaded', () => {
         toggleScrollTopButton(); // Check button visibility on load
         highlightNavLink(); // Initial highlight
+        updateProgress();
+        animateLedger();
+        setupReveal();
 
         // Add event listener to close mobile navbar when a link is clicked
         const mobileNavbarNav = document.getElementById('mobileNavbarNav');
