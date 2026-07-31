@@ -185,6 +185,18 @@ jobs:
               exit 1
             fi
 
+            # reload 후 이전 세대 워커가 keepalive 연결을 붙들고 무한 생존하지 않도록 상한 설정 (1회성)
+            NGINX_MAIN=/home/dev/nginx/nginx.conf
+            if [ -f "$NGINX_MAIN" ] && ! grep -q worker_shutdown_timeout "$NGINX_MAIN"; then
+              sed -i '0,/http {/s//http {\n    worker_shutdown_timeout 15s;/' "$NGINX_MAIN"
+              if docker exec nginx-server nginx -t; then
+                echo "worker_shutdown_timeout 15s added to nginx.conf"
+              else
+                sed -i '/worker_shutdown_timeout 15s;/d' "$NGINX_MAIN"
+                echo "worker_shutdown_timeout insert failed nginx -t, reverted"
+              fi
+            fi
+
             # Nginx 설정 변경 — proxy_pass가 있는 모든 conf 파일에 적용 (외부 vhost 포함)
             CONF_FILES=$(grep -rlP 'proxy_pass http://[a-zA-Z0-9\-]+:8888;' /home/dev/nginx/)
             echo "conf files: $CONF_FILES"
@@ -231,10 +243,10 @@ jobs:
               exit 1
             fi
 
-            echo "Waiting for existing connections to drain..."
-            sleep 10
-            docker rm -f $OLD_CONTAINER 2>/dev/null || echo "Container $OLD_CONTAINER not found or already removed"
-            echo "Old container cleanup completed"
+            # 구 컨테이너는 여기서 지우지 않는다 — reload 후에도 keepalive에 묶인
+            # 이전 세대 nginx 워커가 구 컨테이너로 라우팅하므로, 지우면 그 연결들이 502가 된다.
+            # 다음 배포 시작 단계의 docker rm -f 로 자연 교체된다.
+            echo "Old container $OLD_CONTAINER kept running as standby until next deploy"
 
             # 부팅용으로 낮췄던 CPU 가중치·코어 고정을 원상 복구
             docker update --cpu-shares=1024 --cpuset-cpus=0-7 $NEW_CONTAINER || true
