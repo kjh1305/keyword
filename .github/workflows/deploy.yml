@@ -65,7 +65,7 @@ jobs:
           timeout: 60s
           envs: GHCR_TOKEN,GITHUB_ACTOR,GITHUB_REPOSITORY,GITHUB_SHA
           script: |
-            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf | head -n1 | tr -d '')
+            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf | head -n1 | tr -d '\r')
             if [ "$CURRENT" = "demo-app" ]; then
               NEW_CONTAINER=demo-app-green; NEW_PORT=8889
             else
@@ -103,7 +103,7 @@ jobs:
           port: ${{ secrets.REMOTE_SSH_PORT }}
           timeout: 60s
           script: |
-            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf | head -n1 | tr -d '')
+            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf | head -n1 | tr -d '\r')
             if [ "$CURRENT" = "demo-app" ]; then
               NEW_CONTAINER=demo-app-green; NEW_PORT=8889
             else
@@ -153,7 +153,7 @@ jobs:
           port: ${{ secrets.REMOTE_SSH_PORT }}
           timeout: 60s
           script: |
-            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf | head -n1 | tr -d '')
+            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf | head -n1 | tr -d '\r')
             if [ "$CURRENT" = "demo-app" ]; then
               NEW_CONTAINER=demo-app-green; NEW_PORT=8889; OLD_CONTAINER=demo-app
             else
