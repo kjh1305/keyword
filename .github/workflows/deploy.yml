@@ -171,8 +171,18 @@ jobs:
             # Nginx 설정 변경
             sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$NEW_CONTAINER:8888;|" /home/dev/nginx/conf.d/default.conf
 
-            # Nginx 설정 검증 후 reload
-            docker exec nginx-server nginx -t && docker exec nginx-server nginx -s reload
+            # Nginx 설정 검증 후 reload — 실패 시 conf 원복하고 중단 (구 컨테이너 유지)
+            if ! docker exec nginx-server nginx -t; then
+              echo "nginx -t FAILED — reverting conf to $OLD_CONTAINER"
+              sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$OLD_CONTAINER:8888;|" /home/dev/nginx/conf.d/default.conf
+              exit 1
+            fi
+            if ! docker exec nginx-server nginx -s reload; then
+              echo "nginx reload FAILED — reverting conf to $OLD_CONTAINER"
+              sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$OLD_CONTAINER:8888;|" /home/dev/nginx/conf.d/default.conf
+              docker exec nginx-server nginx -s reload || true
+              exit 1
+            fi
 
             echo "Nginx switched to $NEW_CONTAINER"
             sleep 5
@@ -191,7 +201,11 @@ jobs:
             if [ "$SWITCH_OK" = "1" ]; then
               echo "Traffic switch successful"
             else
-              echo "Warning: Live check failed but continuing..."
+              # 전환 후 라이브가 죽었으면 구 컨테이너를 지우면 안 된다 — conf 원복 후 중단
+              echo "Live check FAILED — rolling back conf to $OLD_CONTAINER and aborting"
+              sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$OLD_CONTAINER:8888;|" /home/dev/nginx/conf.d/default.conf
+              docker exec nginx-server nginx -s reload || true
+              exit 1
             fi
 
             echo "Waiting for existing connections to drain..."
