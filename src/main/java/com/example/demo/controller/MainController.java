@@ -16,9 +16,16 @@ public class MainController {
         return "Hello, World!";
     }
 
-    @GetMapping("/portfolio")
+    @GetMapping({"/portfolio", "/portfolio/"})
     public String portfolio() {
-        return "redirect:/portfolio/portfolio.html";
+        // forward라 브라우저 주소는 /portfolio로 유지된다 (redirect 시 프록시 뒤에서 http Location이 노출됐던 문제도 회피)
+        return "forward:/portfolio/index.html";
+    }
+
+    @GetMapping("/portfolio/portfolio.html")
+    public String portfolioLegacy() {
+        // 구 URL로 들어온 링크 호환용
+        return "redirect:/portfolio";
     }
 
     @GetMapping("/health")
