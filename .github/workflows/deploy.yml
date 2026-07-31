@@ -65,7 +65,12 @@ jobs:
           timeout: 60s
           envs: GHCR_TOKEN,GITHUB_ACTOR,GITHUB_REPOSITORY,GITHUB_SHA
           script: |
-            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf | head -n1 | tr -d '\r')
+            REFS=$(grep -rhPo 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/ | tr -d '\r' | sort -u)
+            if echo "$REFS" | grep -qx "demo-app" && echo "$REFS" | grep -qx "demo-app-green"; then
+              CURRENT=demo-app  # conf 혼재(이전 전환 실패) 시 demo-app 기준으로 판별
+            else
+              CURRENT=$(echo "$REFS" | head -n1)
+            fi
             if [ "$CURRENT" = "demo-app" ]; then
               NEW_CONTAINER=demo-app-green; NEW_PORT=8889
             else
@@ -103,7 +108,12 @@ jobs:
           port: ${{ secrets.REMOTE_SSH_PORT }}
           timeout: 60s
           script: |
-            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf | head -n1 | tr -d '\r')
+            REFS=$(grep -rhPo 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/ | tr -d '\r' | sort -u)
+            if echo "$REFS" | grep -qx "demo-app" && echo "$REFS" | grep -qx "demo-app-green"; then
+              CURRENT=demo-app  # conf 혼재(이전 전환 실패) 시 demo-app 기준으로 판별
+            else
+              CURRENT=$(echo "$REFS" | head -n1)
+            fi
             if [ "$CURRENT" = "demo-app" ]; then
               NEW_CONTAINER=demo-app-green; NEW_PORT=8889
             else
@@ -153,7 +163,12 @@ jobs:
           port: ${{ secrets.REMOTE_SSH_PORT }}
           timeout: 60s
           script: |
-            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf | head -n1 | tr -d '\r')
+            REFS=$(grep -rhPo 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/ | tr -d '\r' | sort -u)
+            if echo "$REFS" | grep -qx "demo-app" && echo "$REFS" | grep -qx "demo-app-green"; then
+              CURRENT=demo-app  # conf 혼재(이전 전환 실패) 시 demo-app 기준으로 판별
+            else
+              CURRENT=$(echo "$REFS" | head -n1)
+            fi
             if [ "$CURRENT" = "demo-app" ]; then
               NEW_CONTAINER=demo-app-green; NEW_PORT=8889; OLD_CONTAINER=demo-app
             else
@@ -168,18 +183,22 @@ jobs:
               exit 1
             fi
 
-            # Nginx 설정 변경
-            sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$NEW_CONTAINER:8888;|" /home/dev/nginx/conf.d/default.conf
+            # Nginx 설정 변경 — proxy_pass가 있는 모든 conf 파일에 적용 (외부 vhost 포함)
+            CONF_FILES=$(grep -rlP 'proxy_pass http://[a-zA-Z0-9\-]+:8888;' /home/dev/nginx/)
+            echo "conf files: $CONF_FILES"
+            for f in $CONF_FILES; do
+              sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$NEW_CONTAINER:8888;|" "$f"
+            done
 
             # Nginx 설정 검증 후 reload — 실패 시 conf 원복하고 중단 (구 컨테이너 유지)
             if ! docker exec nginx-server nginx -t; then
               echo "nginx -t FAILED — reverting conf to $OLD_CONTAINER"
-              sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$OLD_CONTAINER:8888;|" /home/dev/nginx/conf.d/default.conf
+              for f in $(grep -rlP 'proxy_pass http://[a-zA-Z0-9\-]+:8888;' /home/dev/nginx/); do sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$OLD_CONTAINER:8888;|" "$f"; done
               exit 1
             fi
             if ! docker exec nginx-server nginx -s reload; then
               echo "nginx reload FAILED — reverting conf to $OLD_CONTAINER"
-              sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$OLD_CONTAINER:8888;|" /home/dev/nginx/conf.d/default.conf
+              for f in $(grep -rlP 'proxy_pass http://[a-zA-Z0-9\-]+:8888;' /home/dev/nginx/); do sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$OLD_CONTAINER:8888;|" "$f"; done
               docker exec nginx-server nginx -s reload || true
               exit 1
             fi
@@ -188,22 +207,24 @@ jobs:
             sleep 5
 
             # 전환 후 실제 서비스 확인 (exit 0 금지 — 아래 정리 단계까지 이어져야 함)
+            # localhost:80은 https 301을 주므로 참고만 하고, 최종 판정은 외부 경로 200으로 한다
             SWITCH_OK=0
-            for i in {1..5}; do
-              LIVE_STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/health || echo "000")
-              echo "Live check $i: $LIVE_STATUS"
-              if [ "$LIVE_STATUS" = "200" ]; then
+            for i in {1..8}; do
+              LOCAL_STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/health || echo "000")
+              EXT_STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 https://cokes1.com/health || echo "000")
+              echo "Live check $i: local=$LOCAL_STATUS external=$EXT_STATUS"
+              if [ "$EXT_STATUS" = "200" ]; then
                 SWITCH_OK=1
                 break
               fi
-              sleep 2
+              sleep 3
             done
             if [ "$SWITCH_OK" = "1" ]; then
               echo "Traffic switch successful"
             else
               # 전환 후 라이브가 죽었으면 구 컨테이너를 지우면 안 된다 — conf 원복 후 중단
               echo "Live check FAILED — rolling back conf to $OLD_CONTAINER and aborting"
-              sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$OLD_CONTAINER:8888;|" /home/dev/nginx/conf.d/default.conf
+              for f in $(grep -rlP 'proxy_pass http://[a-zA-Z0-9\-]+:8888;' /home/dev/nginx/); do sed -i "s|proxy_pass http://[a-zA-Z0-9\-]\+:8888;|proxy_pass http://$OLD_CONTAINER:8888;|" "$f"; done
               docker exec nginx-server nginx -s reload || true
               exit 1
             fi
