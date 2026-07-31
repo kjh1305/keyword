@@ -88,10 +88,12 @@ jobs:
             docker rm -f $NEW_CONTAINER 2>/dev/null || true
             # cpu-shares=512: 부팅 중 CPU 경합 시 서비스 중인 기존 컨테이너(1024)에 우선권.
             # JVM 기동 버스트가 라이브 트래픽을 굶겨 502를 내던 문제 방지. 전환 후 1024로 복구.
+            # 부팅 중에는 코어 4~7에 고정해 라이브 트래픽용 코어(0~3)를 보장. 전환 후 전체 코어로 복원.
             docker run -d \
               --name $NEW_CONTAINER \
               --restart unless-stopped \
               --cpu-shares=512 \
+              --cpuset-cpus=4-7 \
               --network app-network \
               -p $NEW_PORT:8888 \
               -e TZ=Asia/Seoul \
@@ -234,8 +236,8 @@ jobs:
             docker rm -f $OLD_CONTAINER 2>/dev/null || echo "Container $OLD_CONTAINER not found or already removed"
             echo "Old container cleanup completed"
 
-            # 부팅용으로 낮췄던 CPU 가중치를 원상 복구
-            docker update --cpu-shares=1024 $NEW_CONTAINER || true
+            # 부팅용으로 낮췄던 CPU 가중치·코어 고정을 원상 복구
+            docker update --cpu-shares=1024 --cpuset-cpus=0-7 $NEW_CONTAINER || true
 
             # 사용하지 않는 3일 이전 이미지 정리 (실행 중인 컨테이너의 이미지는 제외됨)
             docker image prune -af --filter "until=72h" || true
