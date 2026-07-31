@@ -92,6 +92,11 @@ jobs:
           timeout: 60s
           envs: GHCR_TOKEN,GITHUB_ACTOR,GITHUB_REPOSITORY,GITHUB_SHA,NEW_CONTAINER,NEW_PORT
           script: |
+            echo "=== Server snapshot (배포 전) ==="
+            nproc; free -m; uptime
+            docker ps --format 'table {{.Names}}\t{{.Status}}'
+            echo "================================"
+
             echo "$GHCR_TOKEN" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
             docker pull ghcr.io/$GITHUB_REPOSITORY:$GITHUB_SHA
             docker rm -f $NEW_CONTAINER 2>/dev/null || true
