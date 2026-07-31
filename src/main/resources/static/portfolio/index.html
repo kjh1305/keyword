@@ -839,8 +839,8 @@
             <!-- Brich Project 7 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">판매관리 2.0 &amp; 프론트엔드(React) — 풀스택 확장</h4>
-                    <p><strong>개요:</strong> 주문·배송·출고 통합 관리 메뉴(판매관리 2.0)와 React Admin Console 개발 (2025.12 ~ 2026.07)</p>
+                    <h4 class="card-title">판매관리 2.0 신규 개발 · 관리자(Admin) 기능 분리</h4>
+                    <p><strong>개요:</strong> 판매관리 1.0의 구조적 한계를 해결하는 신규 개발과, 레거시 단일 서비스에 뭉쳐 있던 관리자 기능의 분리 작업 (2025.12 ~ 진행 중)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
                         <span class="badge tech-stack">Spring AOP</span>
@@ -849,13 +849,14 @@
                     </p>
                     <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
                     <ul class="small">
-                        <li>주문 상태 전환 벌크 API, 세트 자재(SKU) 통합 매핑, 주문↔상품 매칭(판매자옵션 F-code)</li>
+                        <li><strong>판매관리 2.0 신규 개발:</strong> 기존 1.0은 주문↔상품 매칭이 필수라 매칭이 안 되면 주문 흐름이 막히는 구조 → <strong>매칭 없이도 주문을 생성하고 상품은 이후 별도 매칭·수정</strong>할 수 있게 재설계. 주문 상태 전환 벌크 API, 세트 자재(SKU) 통합 매핑, 판매자옵션(F-code) 매칭</li>
                         <li><strong>AOP(@Around) 기반 주문 API 감사 로그</strong> — 주문 API 전후 상태를 JSON 감사 로그화하여 관측성 확보</li>
-                        <li>React 화면(상태 전환·카운트·프로모션 UI) 개발</li>
+                        <li><strong>관리자 기능 분리 (진행 중):</strong> 레거시 한 서비스가 관리자·유저 기능을 전부 처리하던 구조에서, 마켓 연동 API 기반 주문·클레임·정산 조회, 정산·수수료, 상품 프로모션 등 내부 관리자 기능을 <strong>React Admin Console + 전용 API로 이전</strong></li>
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
-                        <li>백엔드 단일 역할에서 <strong>풀스택으로 전환</strong> — Admin Console 68 커밋 (2026.01 신규 착수)</li>
+                        <li>매칭 실패 시 주문 생성이 막히던 레거시 제약 제거</li>
+                        <li>Admin Console 68 커밋 (2026.01 착수, 관리자 기능 이전 계속 진행 중)</li>
                     </ul>
                 </div>
             </div>
