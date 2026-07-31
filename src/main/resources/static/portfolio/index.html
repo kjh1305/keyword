@@ -381,6 +381,34 @@
         }
         #scrollTopBtn i { font-size: 1.1rem; vertical-align: middle; }
 
+        /* ---------- Lightbox (screenshot zoom) ---------- */
+        .figure-img { cursor: zoom-in; }
+        #lightbox {
+            border: 0;
+            padding: 0;
+            background: transparent;
+            max-width: min(92vw, 1400px);
+            max-height: 92vh;
+            outline: none;
+        }
+        #lightbox::backdrop { background: rgba(17, 24, 22, 0.82); }
+        #lightbox img {
+            display: block;
+            max-width: min(92vw, 1400px);
+            max-height: 86vh;
+            width: auto;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+            cursor: zoom-out;
+        }
+        #lightbox figcaption {
+            color: #E8ECEA;
+            font-size: 13px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
         /* ---------- Responsive ---------- */
         @media (max-width: 991.98px) {
             html { scroll-padding-top: 74px; }
@@ -1301,6 +1329,14 @@
     <i class="bi bi-arrow-up"></i>
 </button>
 
+<!-- Lightbox: 스크린샷 클릭 확대 -->
+<dialog id="lightbox" aria-label="스크린샷 확대 보기">
+    <figure class="m-0">
+        <img src="" alt="">
+        <figcaption></figcaption>
+    </figure>
+</dialog>
+
 <!-- Bootstrap Bundle with Popper -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
@@ -1552,6 +1588,25 @@
             });
         });
     });
+
+    // --- Lightbox: 스크린샷 클릭 확대 ---
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox && typeof lightbox.showModal === 'function') {
+        const lbImg = lightbox.querySelector('img');
+        const lbCaption = lightbox.querySelector('figcaption');
+        document.addEventListener('click', (e) => {
+            const img = e.target.closest('.figure-img');
+            if (!img) return;
+            lbImg.src = img.src;
+            lbImg.alt = img.alt || '';
+            const cap = img.closest('figure')?.querySelector('figcaption');
+            lbCaption.textContent = cap ? cap.textContent.trim() : (img.alt || '');
+            lightbox.showModal();
+        });
+        // 배경·이미지 어디를 눌러도 닫힘 (ESC는 dialog 기본 동작)
+        lightbox.addEventListener('click', () => lightbox.close());
+        lightbox.addEventListener('close', () => { lbImg.src = ''; });
+    }
 
 </script>
 
