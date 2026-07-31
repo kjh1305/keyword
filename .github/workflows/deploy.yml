@@ -46,35 +46,10 @@ jobs:
   deploy-via-ssh:
     needs: build-and-push # 이미지 빌드 후 실행
     runs-on: ubuntu-latest
+    # NEW/OLD 판별은 각 SSH 스크립트가 서버의 nginx conf를 직접 읽어 수행한다.
+    # (구버전은 러너에서 ssh-action outputs.stdout으로 전달했는데, 이 출력이 항상 빈 값이라
+    #  매 배포가 NEW=demo-app 고정 → 라이브 컨테이너를 먼저 죽이는 중단 배포로 동작했음)
     steps:
-      - name: Determine current active container name
-        id: get-current
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.REMOTE_SSH_HOST }}
-          username: ${{ secrets.REMOTE_SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.REMOTE_SSH_PORT }}
-          timeout: 60s
-          script: grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf
-
-      - name: Set current container env
-        run: echo "CURRENT_CONTAINER=${{ steps.get-current.outputs.stdout }}" >> $GITHUB_ENV
-
-      - name: Set next port and container
-        run: |
-          if [ "${{ env.CURRENT_CONTAINER }}" = "demo-app" ]; then
-            echo "NEW_CONTAINER=demo-app-green" >> $GITHUB_ENV
-            echo "OLD_CONTAINER=demo-app" >> $GITHUB_ENV
-            echo "NEW_PORT=8889" >> $GITHUB_ENV
-            echo "OLD_PORT=8888" >> $GITHUB_ENV
-          else
-            echo "NEW_CONTAINER=demo-app" >> $GITHUB_ENV
-            echo "OLD_CONTAINER=demo-app-green" >> $GITHUB_ENV
-            echo "NEW_PORT=8888" >> $GITHUB_ENV
-            echo "OLD_PORT=8889" >> $GITHUB_ENV
-          fi
-
       - name: SSH into server and deploy new container
         uses: appleboy/ssh-action@v1.0.3
         env:
@@ -82,16 +57,22 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
-          NEW_CONTAINER: ${{ env.NEW_CONTAINER }}
-          NEW_PORT: ${{ env.NEW_PORT }}
         with:
           host: ${{ secrets.REMOTE_SSH_HOST }}
           username: ${{ secrets.REMOTE_SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.REMOTE_SSH_PORT }}
           timeout: 60s
-          envs: GHCR_TOKEN,GITHUB_ACTOR,GITHUB_REPOSITORY,GITHUB_SHA,NEW_CONTAINER,NEW_PORT
+          envs: GHCR_TOKEN,GITHUB_ACTOR,GITHUB_REPOSITORY,GITHUB_SHA
           script: |
+            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf)
+            if [ "$CURRENT" = "demo-app" ]; then
+              NEW_CONTAINER=demo-app-green; NEW_PORT=8889
+            else
+              NEW_CONTAINER=demo-app; NEW_PORT=8888
+            fi
+            echo "CURRENT=$CURRENT -> NEW=$NEW_CONTAINER ($NEW_PORT)"
+
             echo "=== Server snapshot (배포 전) ==="
             nproc; free -m; uptime
             docker ps --format 'table {{.Names}}\t{{.Status}}'
@@ -115,17 +96,21 @@ jobs:
 
       - name: new container check
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          NEW_CONTAINER: ${{ env.NEW_CONTAINER }}
-          NEW_PORT: ${{ env.NEW_PORT }}
         with:
           host: ${{ secrets.REMOTE_SSH_HOST }}
           username: ${{ secrets.REMOTE_SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.REMOTE_SSH_PORT }}
           timeout: 60s
-          envs: NEW_CONTAINER,NEW_PORT
           script: |
+            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf)
+            if [ "$CURRENT" = "demo-app" ]; then
+              NEW_CONTAINER=demo-app-green; NEW_PORT=8889
+            else
+              NEW_CONTAINER=demo-app; NEW_PORT=8888
+            fi
+            echo "CURRENT=$CURRENT -> checking NEW=$NEW_CONTAINER ($NEW_PORT)"
+
             for i in {1..30}; do
               sleep 5
               STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$NEW_PORT/health || echo "000")
@@ -161,36 +146,20 @@ jobs:
       # 간헐적 connect timeout으로 실패하며 구 컨테이너가 남는 문제 방지
       - name: Switch traffic and clean up old container
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          NEW_CONTAINER: ${{ env.NEW_CONTAINER }}
-          NEW_PORT: ${{ env.NEW_PORT }}
-          OLD_CONTAINER: ${{ env.OLD_CONTAINER }}
         with:
           host: ${{ secrets.REMOTE_SSH_HOST }}
           username: ${{ secrets.REMOTE_SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.REMOTE_SSH_PORT }}
           timeout: 60s
-          envs: NEW_CONTAINER,NEW_PORT,OLD_CONTAINER
           script: |
-            echo "=== Debug: NEW_CONTAINER=$NEW_CONTAINER, NEW_PORT=$NEW_PORT, OLD_CONTAINER=$OLD_CONTAINER ==="
-
-            # 환경변수 검증
-            if [ -z "$NEW_CONTAINER" ] || [ -z "$NEW_PORT" ] || [ -z "$OLD_CONTAINER" ]; then
-              echo "ERROR: Environment variables not set properly"
-              echo "Falling back to container detection..."
-              CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf)
-              if [ "$CURRENT" = "demo-app" ]; then
-                NEW_CONTAINER="demo-app-green"
-                NEW_PORT="8889"
-                OLD_CONTAINER="demo-app"
-              else
-                NEW_CONTAINER="demo-app"
-                NEW_PORT="8888"
-                OLD_CONTAINER="demo-app-green"
-              fi
-              echo "Detected: NEW_CONTAINER=$NEW_CONTAINER, NEW_PORT=$NEW_PORT, OLD_CONTAINER=$OLD_CONTAINER"
+            CURRENT=$(grep -Po 'proxy_pass http://\K[a-zA-Z0-9\-]+(?=:8888;)' /home/dev/nginx/conf.d/default.conf)
+            if [ "$CURRENT" = "demo-app" ]; then
+              NEW_CONTAINER=demo-app-green; NEW_PORT=8889; OLD_CONTAINER=demo-app
+            else
+              NEW_CONTAINER=demo-app; NEW_PORT=8888; OLD_CONTAINER=demo-app-green
             fi
+            echo "CURRENT=$CURRENT -> switching to NEW=$NEW_CONTAINER ($NEW_PORT), OLD=$OLD_CONTAINER"
 
             # 전환 전 새 컨테이너 최종 확인
             STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$NEW_PORT/health || echo "000")

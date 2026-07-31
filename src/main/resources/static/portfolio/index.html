@@ -827,7 +827,8 @@
                     <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
                     <ul class="small">
                         <li>주문수집/클레임수집 <strong>17종</strong>, 상품연동 <strong>8종</strong> 마이그레이션</li>
-                        <li>OrderAdapter/ApiDelegate 표준 패턴 정립, provider 단위 분기 라우팅</li>
+                        <li><strong>상품 연동 액션 세분화:</strong> 레거시는 상품 연동이 생성·업데이트·상태 업데이트로만 나뉘어 있던 구조적 문제를, 이전하며 <strong>생성·업데이트·상태·가격·재고 업데이트 등 액션 단위로 분리</strong> — 마켓↔비플로우 동기화(가격·판매상태)가 틀어지는 문제를 최소화</li>
+                        <li>마켓별 외부 API를 <strong>선언적 HTTP 클라이언트(HTTP Interface)</strong>로 정리, OrderAdapter/ApiDelegate 표준 패턴 정립, provider 단위 분기 라우팅</li>
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
