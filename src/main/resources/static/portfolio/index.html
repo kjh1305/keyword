@@ -792,23 +792,20 @@
             <!-- Brich Project 5 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">정산 엔진 &amp; 상품 2.0 가격 구조 리팩토링 (머니패스)</h4>
-                    <p><strong>개요:</strong> 주문 정산 계산 엔진과 상품 가격 2계층(마스터/마켓) 구조 재설계 (2025.10 ~ 2026.07)</p>
+                    <h4 class="card-title">정산 엔진 &amp; 상품 2.0 가격 구조 리팩토링</h4>
+                    <p><strong>개요:</strong> 주문 정산 계산 엔진과 상품 가격 구조 재설계 (2025.10 ~ 2026.07)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
                         <span class="badge tech-stack">PHP</span>
                         <span class="badge tech-stack">QueryDSL</span>
-                        <span class="badge tech-stack">BigDecimal</span>
                     </p>
                     <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
                     <ul class="small">
-                        <li>공급가·정산기준가·수수료율 재설계, 가격변경 히스토리, <strong>정산 계산 double → BigDecimal 전환</strong></li>
-                        <li>도서산간 배송비, 아이허브·애경 등 대형 입점사 특화 프로모션 가격 로직</li>
+                        <li><strong>공급가·정산기준가·수수료율을 상품별로 관리할 수 있게 구조 재설계</strong>, 가격 변경 히스토리 관리</li>
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
-                        <li>BigDecimal·정수 연산 전환으로 <strong>부동소수점 정산 오차 제거</strong>, 머니패스 보호 장치 다수 구현</li>
-                        <li>레거시-V2 이중 구현 계산식의 <strong>byte 패리티를 회귀 검증 체계로 상시 보장</strong></li>
+                        <li>레거시-V2 이중 구현 정산식의 <strong>결과 일치를 회귀 검증 체계로 상시 보장</strong></li>
                     </ul>
                 </div>
             </div>
