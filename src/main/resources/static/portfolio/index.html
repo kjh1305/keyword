@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Backend Developer | 경력기술서 &amp; 포트폴리오</title>
+    <meta name="description" content="5년의 실측 기록 · 1,305 commits · 464 PRs · 정산 대조 458만 건 불일치 0">
+    <link rel="icon" href="/portfolio/favicon.svg" type="image/svg+xml">
+
+    <!-- Open Graph (공유 미리보기) -->
+    <meta property="og:title" content="Backend Developer — 경력기술서 &amp; 포트폴리오">
+    <meta property="og:description" content="5년의 실측 기록 · 1,305 commits · 464 PRs · 정산 대조 458만 건 불일치 0">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cokes1.com/portfolio">
+    <meta property="og:image" content="https://cokes1.com/portfolio/images/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <!-- Optional: Bootstrap Icons -->
@@ -381,6 +393,15 @@
         }
         #scrollTopBtn i { font-size: 1.1rem; vertical-align: middle; }
 
+        /* ---------- Key metrics strip (card scan aid) ---------- */
+        .key-metrics {
+            font-family: var(--mono);
+            font-size: 11.5px;
+            letter-spacing: 0.02em;
+            color: var(--ledger);
+            margin: -2px 0 10px;
+        }
+
         /* ---------- Lightbox (screenshot zoom) ---------- */
         .figure-img { cursor: zoom-in; }
         #lightbox {
@@ -617,6 +638,7 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">관리형 프로모션(Managed Promotion) 신규 도메인 설계·구현 — 대표 프로젝트</h4>
+                    <p class="key-metrics">458만 건 대조 불일치 0 · 스냅샷 190만 · 6모듈 64파일</p>
                     <p><strong>개요:</strong> 본사가 브랜드/상품 단위로 할인 프로모션을 등록하면 20여 개 마켓에 가격을 자동 송출하고 주문 정산까지 일관 처리하는 신규 도메인을 백엔드 전 영역에서 설계·구현 (2025.11 ~ 운영·고도화 중, V2 백엔드 단독 설계 + 레거시 + React FE)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -673,6 +695,7 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">멀티마켓 연동 — 20개+ 마켓 상품/주문/클레임/CS</h4>
+                    <p class="key-metrics">20+ 채널 · 신규 온보딩 2 (퀸잇·큐텐)</p>
                     <p><strong>개요:</strong> 20여 개 국내외 오픈마켓을 상품연동·주문수집·클레임·CS까지 통합 연동. 단일 마켓 담당이 아닌 <strong>마켓 횡단 도메인 엔지니어링</strong> (2025.06 ~ 상시)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP</span>
@@ -701,6 +724,7 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">반품/교환 클레임 시스템 V2 전면 재구축</h4>
+                    <p class="key-metrics">비동기 Job 36종 · 커밋·PR 373건</p>
                     <p><strong>개요:</strong> 마켓마다 다른 클레임 상태머신을 통합한 반품/교환/취소 라이프사이클을 V2로 전면 재구축, 글로벌 포함 (2025.08 ~ 2026.07, 클레임 도메인 커밋·PR 373건)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP (Laravel)</span>
@@ -748,6 +772,7 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">레거시(PHP) → V2(Kotlin) 마이그레이션</h4>
+                    <p class="key-metrics">수집 17종 · 상품연동 8종 · 무중단</p>
                     <p><strong>개요:</strong> 마켓 연동·주문·정산 로직을 레거시 Laravel에서 V2 Kotlin 멀티모듈로 <strong>운영 무중단 점진 이전</strong> (2026.01 ~ 2026.07)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -794,6 +819,7 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">멀티마켓 운영 안정성 · 장애 대응 (상시)</h4>
+                    <p class="key-metrics">전체 커밋 28% 운영 대응</p>
                     <p><strong>개요:</strong> 20개+ 마켓은 API 규격·판매정책·클레임 체계가 수시로 변경 — 전체 커밋의 <strong>28%(365건)가 운영·버그 대응</strong>일 만큼 신규 개발만큼 상시 운영이 중요한 환경</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -821,6 +847,7 @@
             <div class="card project mb-0">
                 <div class="card-body">
                     <h4 class="card-title">AI 활용 개발 환경 구축 (2026.01 ~)</h4>
+                    <p class="key-metrics">에이전트 6종 · 스킬 33 · 메모리 114 · +28.5%</p>
                     <p><strong>개요:</strong> AI(Claude Code)를 개발에 적극 도입 — 단순 코드 자동완성을 넘어 <strong>멀티 저장소 개발을 위한 AI 활용 환경(에이전트·스킬·메모리·훅)을 직접 구축·운영</strong></p>
                     <p class="mb-2"><strong>직접 구축한 AI 개발 인프라 (실측):</strong></p>
                     <ul class="small">
