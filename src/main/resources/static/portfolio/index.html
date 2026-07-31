@@ -898,8 +898,13 @@
 
             <div class="card project mb-0">
                 <div class="card-body">
-                    <h4 class="card-title">이커머스 셀러용 판매 자동화 SaaS</h4>
-                    <p><strong>개요:</strong> 30개+ 마켓·쇼핑몰을 API/크롤링으로 연동하고 구독 유료화·판매 전 과정(상품 수집·등록~주문·배송·CS)을 자동화하는 SaaS 및 자사 판매 운영 시스템 개발</p>
+                    <h4 class="card-title">오너클랜 판매 지원 서비스 개발 — 다잡아 · 다팔자 · 키워드 추천</h4>
+                    <p class="github-link small mb-3">
+                        <strong><i class="bi bi-link-45deg"></i> Service:</strong>
+                        <a href="https://ownerclan.com/V2/info_page/coupang_winner.php" target="_blank">다잡아</a> |
+                        <a href="https://ownerclan.com/V2/info_page/dafalza2.php" target="_blank" class="ms-1">다팔자</a>
+                    </p>
+                    <p><strong>개요:</strong> 도매 플랫폼 오너클랜과 계약해 셀러용 판매 지원 서비스를 개발·유지보수. 쿠팡·네이버 스마트스토어·지마켓·옥션·11번가·롯데온·티몬·토스·카카오쇼핑·GS SHOP·홈플러스·SSG·현대몰 등을 API/크롤링으로 연동해 상품 등록부터 주문·배송·CS까지 자동화</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Java</span>
                         <span class="badge tech-stack">Spring Boot</span>
@@ -913,12 +918,13 @@
                     </p>
                     <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
                     <ul class="small">
-                        <li><strong>다잡아(쿠팡 위너 서비스):</strong> 구독 기반 유료화 API 설계·구현(적립금 차감 과금, 매출·로그 통계), Selenium 자동화를 쿠팡 내부 API 호출로 전환해 안정성 확보</li>
+                        <li><strong>다잡아(쿠팡 위너 최적화 서비스):</strong> 서비스 전체를 <strong>단독 설계·개발</strong> — 사용자·과금·매출/로그 통계 API를 관리자·클라이언트·배치 세 환경이 함께 쓰는 구조로 설계</li>
+                        <li><strong>다팔자(Electron 데스크톱):</strong> 상품 대량 등록·상태 동기화, GS SHOP·TOSS 신규 마켓 연동, 주문·CS 관리 개발</li>
                         <li><strong>판매 프로세스 자동화:</strong> 상품 수집·등록, 주문 처리, 배송 연동, CS 수집 배치 시스템 설계·개발 주도, 카테고리 자동 매칭</li>
                         <li><strong>종합몰 상품 등록 자동화:</strong> 토스·카카오·홈플러스·GS SHOP·SSG·현대몰 등 API/크롤링 연동</li>
-                        <li><strong>다팔자(Electron 데스크톱):</strong> GS SHOP·TOSS 신규 마켓 연동, 주문·CS 관리 기능 개발</li>
                         <li><strong>키워드 추천 고도화:</strong> 단건→엑셀 대량 처리 확장, 아키텍처 재설계로 불필요한 Redis·RabbitMQ 제거</li>
-                        <li><strong>인프라:</strong> GitLab CI/CD 파이프라인 구축, PM2 도입, 매크로 관리자/에이전트 분리, Redis 기반 수집 작업 상태 관리(중단 시 복구)</li>
+                        <li><strong>수집·자동화 도구 재설계:</strong> 상품 크롤링·조회 자동화 프로그램에 Redis 작업 상태 관리(중단 시 복구)와 관리자/실행 에이전트 분리 적용</li>
+                        <li><strong>배포·운영:</strong> GitLab CI/CD 파이프라인 구축, PM2 도입</li>
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
