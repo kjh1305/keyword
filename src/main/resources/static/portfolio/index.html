@@ -1693,13 +1693,12 @@
         if (!section || !cardsEl) return;
 
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        const daysAgo = iso => {
-            if (!iso) return '';
-            const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
-            const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+        const daysAgo = d => {
+            if (!d) return '';
+            const diff = Math.floor((Date.now() - new Date(d + 'T00:00:00').getTime()) / 86400000);
             if (diff <= 0) return '오늘';
             if (diff < 30) return diff + '일 전';
-            return d.toISOString().slice(0, 10);
+            return d;
         };
 
         fetch('/api/portfolio/learning')
@@ -1722,7 +1721,7 @@
                                      aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="진도율">
                                     <div class="progress-bar ${done ? 'bg-success' : ''}" style="width:${pct}%"></div>
                                 </div>
-                                <p class="small text-muted mb-2">진도 ${pct}% · ${c.completeCount ?? 0}/${c.lectureCount ?? 0}강 · 최근 학습 ${daysAgo(c.accessedAt)}</p>
+                                <p class="small text-muted mb-2">진도 ${pct}% · ${c.completeCount ?? 0}/${c.lectureCount ?? 0}강 · 최근 학습 ${daysAgo(c.accessedDate)}</p>
                                 <p class="mb-0 mt-auto">${cats}</p>
                             </div>
                         </div>
@@ -1732,7 +1731,7 @@
                 const synced = items[0]?.syncedAt;
                 if (synced) {
                     document.getElementById('learning-synced').textContent =
-                        '(마지막 동기화: ' + daysAgo(synced) + ')';
+                        '(마지막 동기화: ' + synced + ')';
                 }
                 section.classList.remove('d-none');
                 document.querySelectorAll('.learning-nav-item').forEach(el => el.classList.remove('d-none'));

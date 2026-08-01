@@ -13,7 +13,9 @@ public class PortfolioLearningController {
     private final LearningStatusRepository learningStatusRepository;
 
     @GetMapping("/api/portfolio/learning")
-    public List<LearningStatus> learning() {
-        return learningStatusRepository.findAllByOrderByAccessedAtDesc();
+    public List<LearningStatusResponse> learning() {
+        return learningStatusRepository.findAllByOrderByAccessedAtDesc().stream()
+                .map(LearningStatusResponse::from)
+                .toList();
     }
 }
