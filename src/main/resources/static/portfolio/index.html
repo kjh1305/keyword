@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Backend Developer | 경력기술서 &amp; 포트폴리오</title>
-    <meta name="description" content="이커머스 정산·과금 백엔드 개발자 — 1,305 commits · 464 PRs · 정산 대조 458만 건 불일치 0">
+    <meta name="description" content="이커머스 정산·과금 백엔드 개발자 — 정산 대조 458만 건 불일치 0 · 20+ 마켓 연동 · 구독·정산·프로모션">
     <link rel="icon" href="/portfolio/favicon.svg" type="image/svg+xml">
 
     <!-- Open Graph (공유 미리보기) -->
     <meta property="og:title" content="Backend Developer — 경력기술서 &amp; 포트폴리오">
-    <meta property="og:description" content="이커머스 정산·과금 백엔드 개발자 — 1,305 commits · 464 PRs · 정산 대조 458만 건 불일치 0">
+    <meta property="og:description" content="이커머스 정산·과금 백엔드 개발자 — 정산 대조 458만 건 불일치 0 · 20+ 마켓 연동 · 구독·정산·프로모션">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://cokes1.com/portfolio">
     <meta property="og:image" content="https://cokes1.com/portfolio/images/og.png">
@@ -204,6 +204,31 @@
             color: var(--ink-soft);
             margin-bottom: 0;
         }
+
+        /* ---------- Project card: metric line + collapsible detail ---------- */
+        .metric-line {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--ledger);
+            margin-bottom: 10px;
+        }
+        .proj-more > summary {
+            cursor: pointer;
+            list-style: none;
+            display: inline-block;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--ink-soft);
+            border: 1px solid var(--line-strong);
+            border-radius: 999px;
+            padding: 3px 14px;
+            user-select: none;
+        }
+        .proj-more > summary::-webkit-details-marker { display: none; }
+        .proj-more > summary:hover { color: var(--ledger); border-color: var(--ledger); }
+        .proj-more > summary::before { content: "자세히 보기 ▾"; }
+        .proj-more[open] > summary::before { content: "접기 ▴"; }
+        .proj-more[open] > summary { margin-bottom: 14px; }
         .ledger {
             width: 100%;
             border-collapse: collapse;
@@ -547,9 +572,6 @@
             <a class="nav-link sub-nav-link" href="#exp-playdev">플레이뎁</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link sub-nav-link" href="#exp-last1mile">라스트일마일</a>
-        </li>
-        <li class="nav-item">
             <a class="nav-link sub-nav-link" href="#exp-smc">더에스엠씨홀딩스</a>
         </li>
         <li class="nav-item mt-3">
@@ -585,9 +607,6 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link sub-nav-link" href="#exp-playdev">플레이뎁</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link sub-nav-link" href="#exp-last1mile">라스트일마일</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link sub-nav-link" href="#exp-smc">더에스엠씨홀딩스</a>
@@ -674,6 +693,8 @@
                 <div class="card-body">
                     <h4 class="card-title">AI 활용 개발 환경 구축 (2026.01 ~)</h4>
                     <p><strong>개요:</strong> AI(Claude Code)를 개발에 적극 도입 — 단순 코드 자동완성을 넘어 <strong>멀티 저장소 개발을 위한 AI 활용 환경(에이전트·스킬·메모리·훅)을 직접 구축·운영</strong></p>
+                    <p class="metric-line">에이전트 6종 · 스킬 33종 · 지식 메모리 114건 · 자동화 훅 28개</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p class="mb-2"><strong>직접 구축한 AI 개발 환경:</strong></p>
                     <ul class="small">
                         <li><strong>도메인 전문 에이전트 6종 + 오케스트레이터 2:</strong> 저장소별 전문 에이전트 + 작업 분배·통합 오케스트레이터 → 병렬 멀티 에이전트 개발</li>
@@ -689,7 +710,6 @@
                                 <tr><th style="width:26%"></th><th>도입 전 (~2025.12)</th><th>도입 후 (2026.01~)</th></tr>
                             </thead>
                             <tbody>
-                                <tr><td>월평균 커밋</td><td>81.6건</td><td><strong>104.9건 (+28.5%)</strong></td></tr>
                                 <tr><td>조사 결과 관리</td><td>개인 메모로 휘발</td><td><strong>팀 공유 지식 그래프에 114건 정리</strong></td></tr>
                                 <tr><td>손익 감사</td><td>이슈 발생 시 수동 조사</td><td><strong>조사 방법을 도구로 만들어 매일 09시 자동 실행</strong></td></tr>
                                 <tr><td>담당 범위</td><td>백엔드 중심</td><td><strong>저장소 7개 · 멀티 언어 · 풀스택(React)</strong></td></tr>
@@ -704,14 +724,17 @@
                     </ul>
                     <p class="small mb-2"><strong>현재 진행 중:</strong> 팀 공통 목표가 <strong>서버 비용 절감과 에러율 감소</strong>(CS 축소·안정적 서비스)로 잡히면서, AI를 활용한 유지보수에 집중하고 있습니다 — 에러·CS 유발 지점을 추적해 선제 수정하고, 비용을 만드는 비효율 쿼리·작업을 찾아 줄이는 방식입니다.</p>
                     <p class="small mb-0">AI를 빠르게 쓰는 것보다 <strong>틀린 결과를 걸러내는 체계를 만드는 것</strong>이 실제 생산성을 결정한다고 봅니다. 위 가드들은 전부 직접 겪은 실패에서 나왔습니다.</p>
+                    </details>
                 </div>
             </div>
 
-            <!-- Brich Project 1 -->
+            <!-- Brich Project 1: 프로모션 도메인 (2.0 → 3.0) -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">관리형 프로모션(프로모션 3.0) 설계·구현</h4>
-                    <p><strong>개요:</strong> 본사가 브랜드/상품 단위로 할인 프로모션을 등록하면 20여 개 마켓에 가격을 자동 송출하고 주문 정산까지 일관 처리하는 기능을 백엔드 전 영역에서 설계·구현 (2025.11 ~ 운영·고도화 중, V2 백엔드 단독 설계 + 레거시 + React FE). 프로모션 2.0은 진행 중 상품 가격이 변동되면 안 돼 가격 수정이 막히는 제약이 있었는데, 3.0은 <strong>재계산 통합 로직으로 프로모션 단위에서 상품가격·정산기준가·수수료를 상품 단위로 제어</strong>해 할인뿐 아니라 판매가 자체를 조정할 수 있게 확장한 것</p>
+                    <h4 class="card-title">프로모션 도메인 신규 구축 — 기간형(2.0) → 관리형(3.0)</h4>
+                    <p><strong>개요:</strong> 브랜드/상품 단위 할인을 등록하면 20여 개 마켓에 가격을 자동 송출하고 주문 정산까지 일관 처리하는 프로모션 도메인을 백엔드 전 영역에서 설계·구현 (2025.11 ~ 운영·고도화 중). 기간형 가격 프로모션(2.0)을 먼저 구축하고, 그 제약을 풀어 관리형(3.0)으로 확장</p>
+                    <p class="metric-line">실적용 첫 달 535건 등록 · 송출 스냅샷 약 190만 건 · 실데이터 458만 건 대조 불일치 0</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
                         <span class="badge tech-stack">Spring Boot</span>
@@ -720,9 +743,15 @@
                         <span class="badge tech-stack">Quartz</span>
                         <span class="badge tech-stack">QueryDSL</span>
                         <span class="badge tech-stack">React</span>
-                        <span class="badge tech-stack">PHP</span>
+                        <span class="badge tech-stack">PHP (Laravel)</span>
+                        <span class="badge tech-stack">MySQL</span>
                     </p>
-                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <p class="mb-2"><strong>1단계 — 기간형 프로모션(2.0) 신규 구축 (레거시, 2025.11 ~ 2026.04):</strong></p>
+                    <ul class="small">
+                        <li>기존 1.0은 마켓에 걸어둔 할인에 내부 정산을 맞추는 내부 관리 기능이라 마켓·내부 양쪽을 따로 수정해야 했음 → 프로모션 세팅에 따라 <strong>외부 마켓 가격을 직접 수정·송출</strong>해 이중 작업 제거. 엑셀 업로드/다운로드/템플릿, 스케줄러 기반 시작·종료, 기간 중복 체크, 상태 흐름(시작/중지/재시작/연장/종료) 구현</li>
+                        <li>마켓별 상이한 할인 규격(쿠팡·SSG·카카오스타일 최종가 1원 절사, 11번가 할인 타입, 지마켓·옥션 정액) 흡수. 등록 상품이 0건이면 전체 롤백, 상품 삭제 시 외부 채널 가격을 복구하는 동기화 Job으로 <strong>마켓과 내부 가격이 어긋나는 상황을 방지</strong> (운영 약 9,200건 처리)</li>
+                    </ul>
+                    <p class="mb-2"><strong>2단계 — 관리형(3.0)으로 확장 (V2 백엔드 단독 설계 + React FE):</strong> 2.0은 진행 중에는 상품 가격이 변동되면 안 돼 가격 수정이 막히는 제약이 있었음 → <strong>재계산 통합 로직으로 상품가격·정산기준가·수수료를 상품 단위로 제어</strong>해 할인뿐 아니라 판매가 자체를 조정할 수 있게 확장</p>
                     <ul class="small">
                         <li>주문 시점 가격을 언제든 재현할 수 있도록 상품×프로모션 조합의 <strong>계산 결과를 확정 저장(스냅샷)</strong>하고, 대기→진행→만료 상태 흐름과 <strong>브랜드 설정이 소속 상품 전체에 자동 반영</strong>되는 구조 설계</li>
                         <li>프로모션 시작·종료를 스케줄러가 직접 처리하던 방식에서 <strong>메시지 큐(Kafka) 이벤트 방식으로 재설계</strong> — 월초 자정에 104만 건이 한꺼번에 몰리는 가격 송출을 속도 조절로 안정 처리</li>
@@ -739,28 +768,7 @@
                         <li>운영 실적: 실적용 첫 달(2026.07) 한 달간 <strong>프로모션 535건 등록, 약 190만 건 송출 스냅샷</strong> 생성·처리</li>
                         <li>MD 1명이 여러 브랜드의 상품 가격·할인을 <strong>대량으로 편리하게 관리</strong>할 수 있게 됨</li>
                     </ul>
-                </div>
-            </div>
-
-            <!-- Brich Project 2 -->
-            <div class="card project mb-4">
-                <div class="card-body">
-                    <h4 class="card-title">프로모션 2.0 — 기간형 가격 프로모션 시스템 신규 구축</h4>
-                    <p><strong>개요:</strong> 엑셀로 대량 등록한 상품에 기간형 할인을 적용해 10여 개 마켓에 동시 송출하는 가격 프로모션 시스템 신규 구축 (2025.11 ~ 2026.04). 이후 이 시스템의 제약을 푼 확장판이 위의 <strong>관리형 프로모션(3.0)</strong></p>
-                    <p><strong>기술 스택:</strong>
-                        <span class="badge tech-stack">PHP (Laravel)</span>
-                        <span class="badge tech-stack">MySQL</span>
-                        <span class="badge tech-stack">스케줄러</span>
-                    </p>
-                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                    <ul class="small">
-                        <li><strong>1.0 → 2.0 (신규 구축):</strong> 기존 1.0은 마켓에 걸어둔 할인에 내부 정산을 맞추는 내부 관리 기능이라 마켓·내부 양쪽을 따로 수정해야 했음 → 2.0부터 프로모션 세팅에 따라 <strong>외부 마켓 가격을 직접 수정·송출</strong>해 이중 작업 제거. 엑셀 업로드/다운로드/템플릿, 스케줄러 기반 시작·종료, 기간 중복 체크, 마켓별 할인 DTO 송출, 상태 흐름(시작/중지/재시작/연장/종료) 구현</li>
-                    </ul>
-                    <p class="mb-2"><strong>성과:</strong></p>
-                    <ul class="small">
-                        <li>마켓별 상이한 할인 규격(쿠팡·SSG·카카오스타일 최종가 1원 절사, 11번가 할인 타입, 지마켓·옥션 정액) 흡수</li>
-                        <li>등록 상품이 0건이면 전체 롤백, 상품 삭제 시 외부 채널 가격을 복구하는 동기화 Job 생성 — <strong>마켓과 내부 가격이 어긋나는 상황을 방지</strong> (운영 약 9,200건 처리)</li>
-                    </ul>
+                    </details>
                 </div>
             </div>
 
@@ -769,6 +777,8 @@
                 <div class="card-body">
                     <h4 class="card-title">멀티마켓 연동 — 20개+ 마켓 상품/주문/클레임/CS</h4>
                     <p><strong>개요:</strong> 20여 개 국내외 오픈마켓을 상품연동·주문수집·클레임·CS까지 통합 연동하고, 신규 마켓 온보딩을 담당 (2025.06 ~ 상시)</p>
+                    <p class="metric-line">신규 마켓 2개(퀸잇·큐텐) 단독 온보딩 · 20+ 채널 통합 연동</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP</span>
                         <span class="badge tech-stack">Kotlin</span>
@@ -789,6 +799,7 @@
                         <li>신규 마켓 2개 온보딩으로 판매 채널 확장</li>
                         <li>마켓별 상이한 API(XML/JSON·상태코드·페이지네이션·인증)를 <strong>MarketClient 팩토리 + 어댑터 패턴으로 통일</strong></li>
                     </ul>
+                    </details>
                 </div>
             </div>
 
@@ -796,7 +807,10 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">반품/교환 클레임 시스템 V2 전면 재구축</h4>
-                    <p><strong>개요:</strong> 이커머스 통합 플랫폼에서 CS가 가장 많이 생기는 곳이 클레임입니다. 주문과 클레임이 <strong>따로 수집돼 매칭되는 구조</strong>라 취소가 접수돼도 출고가 먼저 나가 회수로 이어지는 등 상태 꼬임이 잦고, 클레임 배송비를 정산에 반영할지 판단이 조건마다 달라 수작업 CS가 많았습니다. 이 반품/교환/취소 전 과정을 V2로 전면 재구축했습니다 (글로벌 포함, 2025.08 ~ 2026.07)</p>
+                    <p><strong>개요:</strong> 주문과 클레임이 <strong>따로 수집돼 매칭되는 구조</strong>라 상태 꼬임과 수작업 CS가 잦던 반품/교환/취소 전 과정을 V2로 전면 재구축 (글로벌 포함, 2025.08 ~ 2026.07)</p>
+                    <p class="metric-line">반품 배송비 자동 계산 · 비동기 Job 36개 통합 · 클레임 문의·CS 감소</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
+                    <p class="small">이커머스 통합 플랫폼에서 CS가 가장 많이 생기는 곳이 클레임입니다. 취소가 접수돼도 출고가 먼저 나가 회수로 이어지는 등 상태 꼬임이 잦고, 클레임 배송비를 정산에 반영할지 판단이 조건마다 달라 수작업 CS가 많았습니다.</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP (Laravel)</span>
                         <span class="badge tech-stack">Kotlin</span>
@@ -813,6 +827,7 @@
                         <li>반품 배송비 자동 계산과 상태 전이 일관화로 <strong>클레임 관련 문의·CS 감소</strong></li>
                         <li>마켓마다 다른 클레임 상태 체계를 <strong>36개 비동기 Job</strong>으로 나눠 처리하도록 통합, 교환 재배송이 중복 생성되지 않게 트랜잭션으로 보호</li>
                     </ul>
+                    </details>
                 </div>
             </div>
 
@@ -821,6 +836,8 @@
                 <div class="card-body">
                     <h4 class="card-title">정산 엔진 &amp; 상품 2.0 가격 구조 리팩토링</h4>
                     <p><strong>개요:</strong> 주문 정산 계산 엔진과 상품 가격 구조 재설계 (2025.10 ~ 2026.07)</p>
+                    <p class="metric-line">공급가·정산기준가·수수료율 상품 단위 관리 · 레거시·V2 회귀 검증 상시화</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
                         <span class="badge tech-stack">PHP</span>
@@ -834,6 +851,7 @@
                     <ul class="small">
                         <li>레거시-V2 이중 구현 정산식의 <strong>결과 일치를 회귀 검증 체계로 상시 보장</strong></li>
                     </ul>
+                    </details>
                 </div>
             </div>
 
@@ -842,6 +860,8 @@
                 <div class="card-body">
                     <h4 class="card-title">레거시(PHP) → V2(Kotlin) 마이그레이션</h4>
                     <p><strong>개요:</strong> 마켓 연동·주문·정산 로직을 레거시 Laravel에서 V2 Kotlin 멀티모듈로 <strong>운영 무중단 점진 이전</strong> (2026.01 ~ 2026.07)</p>
+                    <p class="metric-line">주문/클레임 수집 17종 · 상품 연동 8종 이전 · 무중단 운영 유지</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
                         <span class="badge tech-stack">Spring Boot</span>
@@ -855,8 +875,9 @@
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
-                        <li>마켓 17종의 상이한 API를 통일된 어댑터로 이전 — 커밋 중심축이 레거시(2025 하반기 381) → V2(2026 상반기 420)로 이동</li>
+                        <li>마켓 17종의 상이한 API를 통일된 어댑터로 이전 — 개발 중심축을 레거시에서 V2로 전환</li>
                     </ul>
+                    </details>
                 </div>
             </div>
 
@@ -865,6 +886,8 @@
                 <div class="card-body">
                     <h4 class="card-title">판매관리 2.0 신규 개발 · 관리자(Admin) 기능 분리</h4>
                     <p><strong>개요:</strong> 판매관리 1.0의 구조적 한계를 해결하는 신규 개발과, 레거시 단일 서비스에 뭉쳐 있던 관리자 기능의 분리 작업 (2025.12 ~ 진행 중)</p>
+                    <p class="metric-line">주문·상품 매칭 제약 제거 · AOP 주문 감사 로그 · React Admin Console 분리 진행 중</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
                         <span class="badge tech-stack">Spring AOP</span>
@@ -880,8 +903,9 @@
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
                         <li>매칭 실패 시 주문 생성이 막히던 레거시 제약 제거</li>
-                        <li>Admin Console 68 커밋 (2026.01 착수, 관리자 기능 이전 계속 진행 중)</li>
+                        <li>레거시에 뭉쳐 있던 내부 관리자 기능을 전용 콘솔로 이전 중 (2026.01 착수)</li>
                     </ul>
+                    </details>
                 </div>
             </div>
 
@@ -889,7 +913,9 @@
             <div class="card project mb-0">
                 <div class="card-body">
                     <h4 class="card-title">멀티마켓 운영 안정성 · 장애 대응 (상시)</h4>
-                    <p><strong>개요:</strong> 20개+ 마켓은 API 규격·판매정책·클레임 체계가 수시로 변경 — 전체 커밋의 <strong>28%(365건)가 운영·버그 대응</strong>일 만큼 신규 개발만큼 상시 운영이 중요한 환경</p>
+                    <p><strong>개요:</strong> 20개+ 마켓은 API 규격·판매정책·클레임 체계가 수시로 변경 — <strong>업무의 30%가량이 운영·버그 대응</strong>일 만큼 신규 개발만큼 상시 운영이 중요한 환경</p>
+                    <p class="metric-line">Kafka·Quartz·빌드 캐시 장애 근본원인 규명 · 20+ 마켓 무중단 운영 유지</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
                         <span class="badge tech-stack">PHP</span>
@@ -909,6 +935,7 @@
                     <ul class="small">
                         <li>20+ 마켓 주문·정산·클레임 흐름의 <strong>무중단 운영 유지</strong></li>
                     </ul>
+                    </details>
                 </div>
             </div>
         </div>
@@ -917,7 +944,7 @@
         <div id="exp-playdev" class="experience-item mb-4 pb-4 border-bottom">
             <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-2">
                 <h3 class="fs-5 fw-semibold mb-1 mb-sm-0">플레이뎁 (Playdev) · 백엔드 개발자</h3>
-                <span class="text-muted small">2022.06 ~ 2025.05</span>
+                <span class="text-muted small">2021.08 ~ 2025.05 <span class="nw">(라스트일마일 → 플레이뎁 이관)</span></span>
             </div>
 
             <div class="card project mb-0">
@@ -928,7 +955,7 @@
                         <a href="https://ownerclan.com/V2/info_page/coupang_winner.php" target="_blank">다잡아</a> |
                         <a href="https://ownerclan.com/V2/info_page/dafalza2.php" target="_blank" class="ms-1">다팔자</a>
                     </p>
-                    <p><strong>개요:</strong> 도매 플랫폼 오너클랜과 계약해 셀러용 판매 지원 서비스를 개발·유지보수. 쿠팡·네이버 스마트스토어·지마켓·옥션·11번가·롯데온·티몬·토스·카카오쇼핑·GS SHOP·홈플러스·SSG·현대몰 등을 API/크롤링으로 연동해 상품 등록부터 주문·배송·CS까지 자동화</p>
+                    <p><strong>개요:</strong> 도매 플랫폼 오너클랜과 계약해 셀러용 판매 지원 서비스를 개발·유지보수. 쿠팡·네이버 스마트스토어·지마켓·옥션·11번가·롯데온·티몬·토스·카카오쇼핑·GS SHOP·홈플러스·SSG·현대몰 등을 API/크롤링으로 연동해 상품 등록부터 주문·배송·CS까지 자동화. <span class="text-muted">(주)라스트일마일에서 시작한 프로젝트가 2022.06 플레이뎁으로 이관되어 동일 프로젝트를 연속 수행 — 두 회사 경력을 하나로 묶어 표기</span></p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Java</span>
                         <span class="badge tech-stack">Spring Boot</span>
@@ -959,15 +986,6 @@
                     </ul>
                 </div>
             </div>
-        </div>
-
-        <!-- Last1mile -->
-        <div id="exp-last1mile" class="experience-item mb-4 pb-4 border-bottom">
-            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-2">
-                <h3 class="fs-5 fw-semibold mb-1 mb-sm-0">(주)라스트일마일 · 백엔드 개발자</h3>
-                <span class="text-muted small">2021.08 ~ 2022.06</span>
-            </div>
-            <p class="text-muted fst-italic small mb-0"><em>이커머스 판매 자동화 프로젝트의 백엔드 개발 담당. 해당 프로젝트가 플레이뎁으로 이관되어 동일 프로젝트를 연속 수행 (상세 내용은 상단 플레이뎁 경력 참조)</em></p>
         </div>
 
         <!-- The SMC Holdings -->
@@ -1405,13 +1423,10 @@
         <p class="section-eyebrow">LEARNING · SYNCED DAILY VIA INFLEARN MCP</p>
         <h2 class="section-title h3">학습 기록</h2>
         <p class="text-muted small mb-4">
-            <i class="bi bi-arrow-repeat"></i> 인프런 MCP 연동으로 수강 데이터가 매일 자동 수집·갱신됩니다.
+            <i class="bi bi-arrow-repeat"></i> 인프런 MCP 연동으로 수강 데이터가 매일 자동 수집·갱신되며, 주요 과정만 선별해 표시합니다.
             <span id="learning-synced"></span>
         </p>
         <div id="learning-cards" class="row g-3"></div>
-        <div id="learning-more-wrap" class="text-center mt-3 d-none">
-            <button id="learning-more" type="button" class="btn btn-outline-secondary btn-sm">전체 보기</button>
-        </div>
     </section>
 
     <footer class="mt-5 pt-4 border-top text-center text-muted small">
@@ -1706,57 +1721,35 @@
 
     // --- 학습 기록: /api/portfolio/learning 조회 후 렌더링 (데이터 없으면 섹션 숨김 유지) ---
     (function loadLearning() {
-        const MAX_CARDS = 9;
+        const MAX_CARDS = 4;
         const section = document.getElementById('learning');
         const cardsEl = document.getElementById('learning-cards');
         if (!section || !cardsEl) return;
 
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        const daysAgo = d => {
-            if (!d) return '';
-            const diff = Math.floor((Date.now() - new Date(d + 'T00:00:00').getTime()) / 86400000);
-            if (diff <= 0) return '오늘';
-            if (diff < 30) return diff + '일 전';
-            return d;
-        };
 
         fetch('/api/portfolio/learning')
             .then(res => res.ok ? res.json() : Promise.reject())
             .then(list => {
                 if (!Array.isArray(list) || list.length === 0) return;
-                const renderCards = items => items.map(c => {
-                    const pct = Math.min(100, Math.round(parseFloat(c.progress) || 0));
-                    const done = pct >= 100;
+                const curated = list.slice()
+                    .sort((a, b) => (parseFloat(b.progress) || 0) - (parseFloat(a.progress) || 0))
+                    .slice(0, MAX_CARDS);
+                cardsEl.innerHTML = curated.map(c => {
+                    const done = (parseFloat(c.progress) || 0) >= 100;
                     const cats = (c.categories || '').split(',').filter(Boolean).slice(0, 3)
                         .map(t => `<span class="badge tech-stack">${esc(t.trim())}</span>`).join(' ');
                     return `
-                    <div class="col-md-6 col-lg-4 d-flex">
+                    <div class="col-md-6 col-lg-3 d-flex">
                         <div class="card project w-100 mb-0">
                             <div class="card-body d-flex flex-column">
                                 <h6 class="fw-semibold small mb-2">${esc(c.courseTitle)}
                                     ${done ? '<span class="badge bg-success ms-1">완강</span>' : ''}</h6>
-                                <div class="progress mb-2" style="height:6px" role="progressbar"
-                                     aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="진도율">
-                                    <div class="progress-bar ${done ? 'bg-success' : ''}" style="width:${pct}%"></div>
-                                </div>
-                                <p class="small text-muted mb-2">진도 ${pct}% · ${c.completeCount ?? 0}/${c.lectureCount ?? 0}강 · 최근 학습 ${daysAgo(c.accessedDate)}</p>
                                 <p class="mb-0 mt-auto">${cats}</p>
                             </div>
                         </div>
                     </div>`;
                 }).join('');
-
-                cardsEl.innerHTML = renderCards(list.slice(0, MAX_CARDS));
-                if (list.length > MAX_CARDS) {
-                    const wrap = document.getElementById('learning-more-wrap');
-                    const btn = document.getElementById('learning-more');
-                    btn.textContent = '전체 ' + list.length + '개 보기';
-                    wrap.classList.remove('d-none');
-                    btn.onclick = () => {
-                        cardsEl.innerHTML = renderCards(list);
-                        wrap.classList.add('d-none');
-                    };
-                }
 
                 const synced = list[0]?.syncedAt;
                 if (synced) {
