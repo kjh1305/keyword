@@ -689,9 +689,9 @@
             <!-- Brich Project 1 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">관리형 프로모션(Managed Promotion) 신규 도메인 설계·구현 — 대표 프로젝트</h4>
+                    <h4 class="card-title">관리형 프로모션(프로모션 3.0) 신규 도메인 설계·구현 — 대표 프로젝트</h4>
                     <p class="key-metrics">458만 건 대조 불일치 0 · 스냅샷 190만 · 6모듈 64파일</p>
-                    <p><strong>개요:</strong> 본사가 브랜드/상품 단위로 할인 프로모션을 등록하면 20여 개 마켓에 가격을 자동 송출하고 주문 정산까지 일관 처리하는 신규 도메인을 백엔드 전 영역에서 설계·구현 (2025.11 ~ 운영·고도화 중, V2 백엔드 단독 설계 + 레거시 + React FE)</p>
+                    <p><strong>개요:</strong> 본사가 브랜드/상품 단위로 할인 프로모션을 등록하면 20여 개 마켓에 가격을 자동 송출하고 주문 정산까지 일관 처리하는 신규 도메인을 백엔드 전 영역에서 설계·구현 (2025.11 ~ 운영·고도화 중, V2 백엔드 단독 설계 + 레거시 + React FE). 프로모션 2.0은 진행 중 상품 가격이 변동되면 안 돼 가격 수정이 막히는 제약이 있었는데, 3.0은 <strong>재계산 로직으로 프로모션 단위에서 상품가격·정산기준가·수수료를 상품 단위로 제어</strong>해 할인뿐 아니라 판매가 자체를 조정할 수 있게 확장한 것</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
                         <span class="badge tech-stack">Spring Boot</span>
@@ -716,6 +716,7 @@
                         <li>레거시↔V2 정산 1원 분기 + 음수 옵션 DB 크래시를 "실효가 단일 base + 정수 연산 + 2단 가드"로 근본 해결 — <strong>실데이터 458만 건 원공식 대조 + 333만 조합 불일치 0건</strong> 검증</li>
                         <li>V2/레거시/프론트 3개 저장소의 가격 계산식을 byte 단위로 정합하여 정산 신뢰성 확보</li>
                         <li>운영 실적(prod 실측): 누적 <strong>535건 프로모션 등록, 약 190만 건 송출 스냅샷</strong> 생성·처리</li>
+                        <li>MD 1명이 여러 브랜드의 상품 가격·할인을 <strong>대량으로 편리하게 관리</strong>할 수 있게 됨</li>
                     </ul>
                 </div>
             </div>
@@ -723,8 +724,8 @@
             <!-- Brich Project 2 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">프로모션 2.0 / 3.0 — 기간형 가격 프로모션 시스템 신규 구축·확장</h4>
-                    <p><strong>개요:</strong> 엑셀로 대량 등록한 상품에 기간형 할인을 적용해 10여 개 마켓에 동시 송출하는 가격 프로모션 시스템을 신규 구축(2.0)하고, 상품 단위 가격 제어로 확장(3.0) (2025.11 ~)</p>
+                    <h4 class="card-title">프로모션 2.0 (PLD) — 기간형 가격 프로모션 시스템 신규 구축</h4>
+                    <p><strong>개요:</strong> 엑셀로 대량 등록한 상품에 기간형 할인을 적용해 10여 개 마켓에 동시 송출하는 가격 프로모션 시스템 신규 구축 (2025.11 ~ 2026.04). 이후 이 시스템의 제약을 푼 확장판이 위의 <strong>관리형 프로모션(3.0)</strong></p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP (Laravel)</span>
                         <span class="badge tech-stack">MySQL</span>
@@ -733,11 +734,9 @@
                     <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
                     <ul class="small">
                         <li><strong>1.0 → 2.0 (신규 구축):</strong> 기존 1.0은 마켓에 걸어둔 할인에 내부 정산을 맞추는 내부 관리 기능이라 마켓·내부 양쪽을 따로 수정해야 했음 → 2.0부터 프로모션 세팅에 따라 <strong>외부 마켓 가격을 직접 수정·송출</strong>해 이중 작업 제거. 엑셀 업로드/다운로드/템플릿, 스케줄러 기반 시작·종료, 기간 중복 체크, 마켓별 할인 DTO 송출, status 라이프사이클(시작/중지/재시작/연장/종료)</li>
-                        <li><strong>2.0 → 3.0 (확장):</strong> 2.0은 프로모션 중 가격이 변동되면 안 돼 상품 가격 수정이 막히는 제약이 있었음 → 재계산 로직으로 <strong>프로모션 단위에서 상품가격·정산기준가·수수료를 상품 단위로 제어</strong>. 할인만이 아니라 판매가 자체를 조정할 수 있고, 브랜드·상품별 대량 관리 가능</li>
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
-                        <li>MD 1명이 여러 브랜드의 상품 가격·할인을 <strong>대량으로 편리하게 관리</strong>할 수 있게 됨</li>
                         <li>마켓별 상이한 할인 규격(쿠팡·SSG·카카오스타일 최종가 1원 절사, 11번가 할인 타입, 지마켓·옥션 정액) 흡수</li>
                         <li>등록 상품 0건 시 전체 롤백, 상품 삭제 시 외부 채널 가격 복구 동기화 Job 생성으로 <strong>데이터 정합성 강화</strong> — 운영 약 9,200건 처리</li>
                     </ul>
