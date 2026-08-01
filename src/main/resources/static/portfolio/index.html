@@ -393,15 +393,6 @@
         }
         #scrollTopBtn i { font-size: 1.1rem; vertical-align: middle; }
 
-        /* ---------- Key metrics strip (card scan aid) ---------- */
-        .key-metrics {
-            font-family: var(--mono);
-            font-size: 11.5px;
-            letter-spacing: 0.02em;
-            color: var(--ledger);
-            margin: -2px 0 10px;
-        }
-
         /* ---------- Lightbox (screenshot zoom) ---------- */
         .figure-img { cursor: zoom-in; }
         #lightbox {
@@ -651,7 +642,6 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">AI 활용 개발 환경 구축 (2026.01 ~)</h4>
-                    <p class="key-metrics">에이전트 6종 · 스킬 33 · 메모리 114 · +28.5%</p>
                     <p><strong>개요:</strong> AI(Claude Code)를 개발에 적극 도입 — 단순 코드 자동완성을 넘어 <strong>멀티 저장소 개발을 위한 AI 활용 환경(에이전트·스킬·메모리·훅)을 직접 구축·운영</strong></p>
                     <p class="mb-2"><strong>직접 구축한 AI 개발 인프라 (실측):</strong></p>
                     <ul class="small">
@@ -690,7 +680,6 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">관리형 프로모션(프로모션 3.0) 설계·구현</h4>
-                    <p class="key-metrics">458만 건 대조 불일치 0 · 스냅샷 190만 · 6모듈 64파일</p>
                     <p><strong>개요:</strong> 본사가 브랜드/상품 단위로 할인 프로모션을 등록하면 20여 개 마켓에 가격을 자동 송출하고 주문 정산까지 일관 처리하는 기능을 백엔드 전 영역에서 설계·구현 (2025.11 ~ 운영·고도화 중, V2 백엔드 단독 설계 + 레거시 + React FE). 프로모션 2.0은 진행 중 상품 가격이 변동되면 안 돼 가격 수정이 막히는 제약이 있었는데, 3.0은 <strong>재계산 통합 로직으로 프로모션 단위에서 상품가격·정산기준가·수수료를 상품 단위로 제어</strong>해 할인뿐 아니라 판매가 자체를 조정할 수 있게 확장한 것</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -748,7 +737,6 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">멀티마켓 연동 — 20개+ 마켓 상품/주문/클레임/CS</h4>
-                    <p class="key-metrics">20+ 채널 · 신규 온보딩 2 (퀸잇·큐텐)</p>
                     <p><strong>개요:</strong> 20여 개 국내외 오픈마켓을 상품연동·주문수집·클레임·CS까지 통합 연동하고, 신규 마켓 온보딩을 담당 (2025.06 ~ 상시)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP</span>
@@ -777,7 +765,6 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">반품/교환 클레임 시스템 V2 전면 재구축</h4>
-                    <p class="key-metrics">비동기 Job 36종 · 커밋·PR 373건</p>
                     <p><strong>개요:</strong> 이커머스 통합 플랫폼에서 CS가 가장 많이 생기는 곳이 클레임입니다. 주문과 클레임이 <strong>따로 수집돼 매칭되는 구조</strong>라 취소가 접수돼도 출고가 먼저 나가 회수로 이어지는 등 상태 꼬임이 잦고, 클레임 배송비를 정산에 반영할지 판단이 조건마다 달라 수작업 CS가 많았습니다. 이 반품/교환/취소 라이프사이클을 V2로 전면 재구축했습니다 (글로벌 포함, 2025.08 ~ 2026.07)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP (Laravel)</span>
@@ -823,7 +810,6 @@
             <div class="card project mb-4">
                 <div class="card-body">
                     <h4 class="card-title">레거시(PHP) → V2(Kotlin) 마이그레이션</h4>
-                    <p class="key-metrics">수집 17종 · 상품연동 8종 · 무중단</p>
                     <p><strong>개요:</strong> 마켓 연동·주문·정산 로직을 레거시 Laravel에서 V2 Kotlin 멀티모듈로 <strong>운영 무중단 점진 이전</strong> (2026.01 ~ 2026.07)</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -872,7 +858,6 @@
             <div class="card project mb-0">
                 <div class="card-body">
                     <h4 class="card-title">멀티마켓 운영 안정성 · 장애 대응 (상시)</h4>
-                    <p class="key-metrics">전체 커밋 28% 운영 대응</p>
                     <p><strong>개요:</strong> 20개+ 마켓은 API 규격·판매정책·클레임 체계가 수시로 변경 — 전체 커밋의 <strong>28%(365건)가 운영·버그 대응</strong>일 만큼 신규 개발만큼 상시 운영이 중요한 환경</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
