@@ -1393,6 +1393,9 @@
             <span id="learning-synced"></span>
         </p>
         <div id="learning-cards" class="row g-3"></div>
+        <div id="learning-more-wrap" class="text-center mt-3 d-none">
+            <button id="learning-more" type="button" class="btn btn-outline-secondary btn-sm">전체 보기</button>
+        </div>
     </section>
 
     <footer class="mt-5 pt-4 border-top text-center text-muted small">
@@ -1705,8 +1708,7 @@
             .then(res => res.ok ? res.json() : Promise.reject())
             .then(list => {
                 if (!Array.isArray(list) || list.length === 0) return;
-                const items = list.slice(0, MAX_CARDS);
-                cardsEl.innerHTML = items.map(c => {
+                const renderCards = items => items.map(c => {
                     const pct = Math.min(100, Math.round(parseFloat(c.progress) || 0));
                     const done = pct >= 100;
                     const cats = (c.categories || '').split(',').filter(Boolean).slice(0, 3)
@@ -1728,7 +1730,19 @@
                     </div>`;
                 }).join('');
 
-                const synced = items[0]?.syncedAt;
+                cardsEl.innerHTML = renderCards(list.slice(0, MAX_CARDS));
+                if (list.length > MAX_CARDS) {
+                    const wrap = document.getElementById('learning-more-wrap');
+                    const btn = document.getElementById('learning-more');
+                    btn.textContent = '전체 ' + list.length + '개 보기';
+                    wrap.classList.remove('d-none');
+                    btn.onclick = () => {
+                        cardsEl.innerHTML = renderCards(list);
+                        wrap.classList.add('d-none');
+                    };
+                }
+
+                const synced = list[0]?.syncedAt;
                 if (synced) {
                     document.getElementById('learning-synced').textContent =
                         '(마지막 동기화: ' + synced + ')';
