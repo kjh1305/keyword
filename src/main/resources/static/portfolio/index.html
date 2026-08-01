@@ -827,7 +827,7 @@
                 <div class="card-body">
                     <h4 class="card-title">반품/교환 클레임 시스템 V2 전면 재구축</h4>
                     <p><strong>개요:</strong> 주문과 클레임이 <strong>따로 수집돼 매칭되는 구조</strong>라 상태 꼬임과 수작업 CS가 잦던 반품/교환/취소 전 과정을 V2로 전면 재구축 (글로벌 포함, 2025.08 ~ 2026.07)</p>
-                    <p class="metric-line">반품 배송비 자동 계산 · 비동기 Job 36개 통합 · 클레임 문의·CS 감소</p>
+                    <p class="metric-line">반품 배송비 자동 계산 · 주문·클레임 상태 흐름 통합 · 클레임 문의·CS 감소</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p class="small">이커머스 통합 플랫폼에서 CS가 가장 많이 생기는 곳이 클레임입니다. 취소가 접수돼도 출고가 먼저 나가 회수로 이어지는 등 상태 꼬임이 잦고, 클레임 배송비를 정산에 반영할지 판단이 조건마다 달라 수작업 CS가 많았습니다.</p>
                     <p><strong>기술 스택:</strong>
@@ -844,7 +844,7 @@
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
                         <li>반품 배송비 자동 계산과 상태 전이 일관화로 <strong>클레임 관련 문의·CS 감소</strong></li>
-                        <li>마켓마다 다른 클레임 상태 체계를 <strong>36개 비동기 Job</strong>으로 나눠 처리하도록 통합, 교환 재배송이 중복 생성되지 않게 트랜잭션으로 보호</li>
+                        <li>마켓마다 다른 클레임 상태 체계를 비동기 작업으로 나눠 일관 처리하도록 통합, 교환 재배송이 중복 생성되지 않게 트랜잭션으로 보호</li>
                     </ul>
                     </details>
                 </div>
