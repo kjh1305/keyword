@@ -816,7 +816,7 @@
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
                         <li>신규 마켓 2개 온보딩으로 판매 채널 확장</li>
-                        <li>마켓별 상이한 API(XML/JSON·상태코드·페이지네이션·인증)를 <strong>MarketClient 팩토리 + 어댑터 패턴으로 통일</strong></li>
+                        <li>마켓별 상이한 API(XML/JSON·상태코드·페이지네이션·인증)를 <strong>팩토리 + 어댑터 패턴으로 통일</strong></li>
                     </ul>
                     </details>
                 </div>
@@ -890,7 +890,7 @@
                     <ul class="small">
                         <li>주문수집/클레임수집 <strong>17종</strong>, 상품연동 <strong>8종</strong> 마이그레이션</li>
                         <li><strong>상품 연동 액션 세분화:</strong> 레거시는 상품 연동이 생성·업데이트·상태 업데이트로만 나뉘어 있던 구조적 문제를, 이전하며 <strong>생성·업데이트·상태·가격·재고 업데이트 등 액션 단위로 분리</strong> — 마켓↔비플로우 동기화(가격·판매상태)가 틀어지는 문제를 최소화</li>
-                        <li>마켓별 외부 API를 <strong>선언적 HTTP 클라이언트(HTTP Interface)</strong>로 정리, OrderAdapter/ApiDelegate 표준 패턴 정립, provider 단위 분기 라우팅</li>
+                        <li>마켓별 외부 API를 <strong>선언적 HTTP 클라이언트(HTTP Interface)</strong>로 정리, 주문 처리에 어댑터·델리게이트 표준 패턴 정립, 마켓 단위 분기 라우팅</li>
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
@@ -905,7 +905,7 @@
                 <div class="card-body">
                     <h4 class="card-title">판매관리 2.0 신규 개발 · 관리자(Admin) 기능 분리</h4>
                     <p><strong>개요:</strong> 판매관리 1.0의 구조적 한계를 해결하는 신규 개발과, 레거시 단일 서비스에 뭉쳐 있던 관리자 기능의 분리 작업 (2025.12 ~ 진행 중)</p>
-                    <p class="metric-line">주문·상품 매칭 제약 제거 · AOP 주문 감사 로그 · React Admin Console 분리 진행 중</p>
+                    <p class="metric-line">주문·상품 매칭 제약 제거 · AOP 주문 감사 로그 · 관리자 화면 분리 진행 중</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -915,9 +915,9 @@
                     </p>
                     <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
                     <ul class="small">
-                        <li><strong>판매관리 2.0 신규 개발:</strong> 기존 1.0은 주문↔상품 매칭이 필수라 매칭이 안 되면 주문 흐름이 막히는 구조 → <strong>매칭 없이도 주문을 생성하고 상품은 이후 별도 매칭·수정</strong>할 수 있게 재설계. 주문 상태 전환 벌크 API, 세트 자재(SKU) 통합 매핑, 판매자옵션(F-code) 매칭</li>
+                        <li><strong>판매관리 2.0 신규 개발:</strong> 기존 1.0은 주문↔상품 매칭이 필수라 매칭이 안 되면 주문 흐름이 막히는 구조 → <strong>매칭 없이도 주문을 생성하고 상품은 이후 별도 매칭·수정</strong>할 수 있게 재설계. 주문 상태 전환 벌크 API, 세트 자재(SKU) 통합 매핑, 판매자 옵션 매칭</li>
                         <li><strong>AOP(@Around) 기반 주문 API 감사 로그</strong> — 주문 API 호출 전후 상태를 JSON 로그로 남겨 문제 추적이 쉽게 만듦</li>
-                        <li><strong>관리자 기능 분리 (진행 중):</strong> 레거시 한 서비스가 관리자·유저 기능을 전부 처리하던 구조에서, 마켓 연동 API 기반 주문·클레임·정산 조회, 정산·수수료, 상품 프로모션 등 내부 관리자 기능을 <strong>React Admin Console + 전용 API로 이전</strong></li>
+                        <li><strong>관리자 기능 분리 (진행 중):</strong> 레거시 한 서비스가 관리자·유저 기능을 전부 처리하던 구조에서, 마켓 연동 API 기반 주문·클레임·정산 조회, 정산·수수료, 상품 프로모션 등 내부 관리자 기능을 <strong>React 기반 관리자 화면 + 전용 API로 이전</strong></li>
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
