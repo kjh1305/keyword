@@ -695,7 +695,7 @@
                     <p class="mb-2"><strong>가드로 막은 사례:</strong></p>
                     <ul class="small">
                         <li><strong>운영 DB 사고 차단:</strong> 무거운 쿼리 실행 전 EXPLAIN 확인을 강제하는 훅이 <strong>425만 행 스캔 쿼리를 실행 전에 중단</strong></li>
-                        <li><strong>AI 오진 차단:</strong> 진단 작업에서 근거 조회 없이 결론을 내면 출력을 차단 — 그럴듯한 추측이 검증 없이 통과하는 것을 방지</li>
+                        <li><strong>AI 오진 차단:</strong> 진단 작업에서 근거 조회 없이 결론을 내면 출력을 차단 — 그럴듯한 추측이 검증 없이 통과하지 못하게 막음</li>
                         <li><strong>허위 손실 판별:</strong> 이중 할인 감사 자동화가 장부상 역마진 40,014원 중 허위(매핑 결함·이중 차감 착시)를 걸러 <strong>실손 12,161원만 분리</strong></li>
                     </ul>
                     <p class="metric-line">지식 그래프 114건 팀 공유 · 손익 감사 매일 09시 자동 실행</p>
@@ -731,8 +731,8 @@
                     <p class="mb-2"><strong>장애 진단·복구 (근본원인 분석 사례):</strong></p>
                     <ul class="small">
                         <li><strong>Kafka 컨슈머 영구 리밸런싱:</strong> 클레임 1,147건 적체의 근본원인이 max.poll.interval 초과 → LeaveGroup 무한 반복임을 규명, 유발 버그 2건까지 추적</li>
-                        <li><strong>Quartz 롤링배포 충돌:</strong> 트리거 ERROR 영구 박제의 원인(isClustered=false + JDBC JobStore 공유)을 규명하고 무겹침 배포 절차로 재발 방지</li>
-                        <li><strong>Gradle build cache stale로 인한 sealed class 직렬화 오류:</strong> Kafka 발행이 막혀 스냅샷이 stuck되는 문제 규명, javap 검증법과 배포 절차 확립</li>
+                        <li><strong>Quartz 롤링배포 충돌:</strong> 배포할 때마다 예약 작업 트리거가 오류 상태로 굳는 원인(isClustered=false + JDBC JobStore 공유)을 찾아내고, 신·구 버전이 겹쳐 뜨지 않게 배포 절차를 바꿔 재발 방지</li>
+                        <li><strong>빌드 캐시 오염으로 인한 직렬화 오류:</strong> Gradle 빌드 캐시가 옛 클래스를 복원해 Kafka 발행이 막히고 스냅샷 처리가 멈추는 문제를 찾아내고, 배포 산출물을 javap로 직접 확인하는 절차를 만듦</li>
                         <li>마켓 API v1 종료 → v2 전환 대응, 주문 중복수집 방지, 클레임 수집·컨버터 오류 수정 등 상시 대응</li>
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
@@ -808,7 +808,7 @@
                     <ul class="small">
                         <li><strong>신규 마켓 온보딩:</strong> 퀸잇(라포랩스)·큐텐(Qoo10)을 상품·출고·반품/교환·CS·정산까지 <strong>처음부터 끝까지 단독 구축</strong></li>
                         <li>마켓별 클레임 매핑(귀책사유·회수수거방법·배송비 처리조건)을 공통 enum으로 정규화·표준화</li>
-                        <li><strong>AI 활용 자동 매핑:</strong> 오래전 개발된 레거시 연동에서 수작업이던 카테고리·정보고시 매핑을, 마켓에서 수집한 정보를 비플로우 테이블·매핑 조건에 따라 <strong>AI가 자동 매핑</strong>하도록 개발. AI 활용 상세이미지는 개발 진행 중</li>
+                        <li><strong>AI 활용 자동 매핑:</strong> 오래전부터 수작업이던 마켓 카테고리·상품정보고시 매핑을, 마켓에서 수집한 정보를 기준으로 <strong>AI가 자동으로 매핑</strong>하도록 개발 (상세이미지 자동화는 진행 중)</li>
                         <li>다룬 마켓: 퀸잇 · 카카오스타일(지그재그·포스티) · 큐텐 · SSG · 롯데온 · 지마켓/옥션(ESM·글로벌) · 11번가 · 네이버스마트스토어(플러스스토어) · 쿠팡(글로벌) · GS샵 · 카페24 · CJ온스타일 · 알리익스프레스 · 에이블리 · 토스 · 테무 · 사방넷 · 무신사 · 하프클럽 · 홈앤쇼핑 등</li>
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
@@ -853,7 +853,7 @@
                 <div class="card-body">
                     <h4 class="card-title">정산 엔진 &amp; 상품 2.0 가격 구조 리팩토링</h4>
                     <p><strong>개요:</strong> 주문 정산 계산 엔진과 상품 가격 구조 재설계 (2025.10 ~ 2026.07)</p>
-                    <p class="metric-line">공급가·정산기준가·수수료율 상품 단위 관리 · 레거시·V2 회귀 검증 상시 운영</p>
+                    <p class="metric-line">공급가·정산기준가·수수료율 상품 단위 관리 · 레거시·V2 정산액 일치 상시 검증</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -866,7 +866,7 @@
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
-                        <li>레거시-V2 이중 구현 정산식의 <strong>결과 일치를 회귀 검증 체계로 상시 보장</strong></li>
+                        <li>정산 로직을 바꿀 때마다 레거시와 V2가 <strong>같은 지급액을 내는지 실데이터 대조로 확인</strong>하는 검증을 정착</li>
                     </ul>
                     </details>
                 </div>
@@ -888,7 +888,7 @@
                     <ul class="small">
                         <li>주문수집/클레임수집 <strong>17종</strong>, 상품연동 <strong>8종</strong> 마이그레이션</li>
                         <li><strong>상품 연동 액션 세분화:</strong> 레거시는 상품 연동이 생성·업데이트·상태 업데이트로만 나뉘어 있던 구조적 문제를, 이전하며 <strong>생성·업데이트·상태·가격·재고 업데이트 등 액션 단위로 분리</strong> — 마켓↔비플로우 동기화(가격·판매상태)가 틀어지는 문제를 최소화</li>
-                        <li>마켓별 외부 API를 <strong>선언적 HTTP 클라이언트(HTTP Interface)</strong>로 정리, 주문 처리에 어댑터·델리게이트 표준 패턴 정립, 마켓 단위 분기 라우팅</li>
+                        <li>마켓별 외부 API 호출을 <strong>선언적 HTTP 클라이언트(HTTP Interface)</strong>로 정리하고, 주문 처리는 어댑터·델리게이트 패턴으로 표준화해 마켓 단위로 분기</li>
                     </ul>
                     <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
