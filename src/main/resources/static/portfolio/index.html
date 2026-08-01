@@ -539,6 +539,9 @@
         <li class="nav-item">
             <a class="nav-link sub-nav-link" href="#archive">아카이브 (~2021)</a>
         </li>
+        <li class="nav-item mt-3 d-none learning-nav-item">
+            <a class="nav-link" href="#learning"><i class="bi bi-mortarboard-fill"></i>학습 기록</a>
+        </li>
     </ul>
 </div>
 
@@ -575,6 +578,9 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link sub-nav-link" href="#archive">아카이브 (~2021)</a>
+                </li>
+                <li class="nav-item d-none learning-nav-item">
+                    <a class="nav-link" href="#learning"><i class="bi bi-mortarboard-fill"></i>학습 기록</a>
                 </li>
             </ul>
         </div>
@@ -1378,6 +1384,17 @@
         </details>
     </section>
 
+    <!-- Learning Section: 데이터가 있을 때만 JS가 노출 -->
+    <section id="learning" class="section mb-5 d-none">
+        <p class="section-eyebrow">LEARNING · SYNCED DAILY VIA CLAUDE CODE + INFLEARN MCP</p>
+        <h2 class="section-title h3">학습 기록</h2>
+        <p class="text-muted small mb-4">
+            <i class="bi bi-arrow-repeat"></i> 인프런 MCP + Claude Code(headless)를 서버 cron으로 돌려 수강 데이터를 매일 자동 수집·적재하는 파이프라인으로 갱신됩니다.
+            <span id="learning-synced"></span>
+        </p>
+        <div id="learning-cards" class="row g-3"></div>
+    </section>
+
     <footer class="mt-5 pt-4 border-top text-center text-muted small">
         <p class="mb-0">읽어주셔서 감사합니다.</p>
     </footer>
@@ -1667,6 +1684,61 @@
         lightbox.addEventListener('click', () => lightbox.close());
         lightbox.addEventListener('close', () => { lbImg.src = ''; });
     }
+
+    // --- 학습 기록: /api/portfolio/learning 조회 후 렌더링 (데이터 없으면 섹션 숨김 유지) ---
+    (function loadLearning() {
+        const MAX_CARDS = 9;
+        const section = document.getElementById('learning');
+        const cardsEl = document.getElementById('learning-cards');
+        if (!section || !cardsEl) return;
+
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const daysAgo = iso => {
+            if (!iso) return '';
+            const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+            const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+            if (diff <= 0) return '오늘';
+            if (diff < 30) return diff + '일 전';
+            return d.toISOString().slice(0, 10);
+        };
+
+        fetch('/api/portfolio/learning')
+            .then(res => res.ok ? res.json() : Promise.reject())
+            .then(list => {
+                if (!Array.isArray(list) || list.length === 0) return;
+                const items = list.slice(0, MAX_CARDS);
+                cardsEl.innerHTML = items.map(c => {
+                    const pct = Math.min(100, Math.round(parseFloat(c.progress) || 0));
+                    const done = pct >= 100;
+                    const cats = (c.categories || '').split(',').filter(Boolean).slice(0, 3)
+                        .map(t => `<span class="badge tech-stack">${esc(t.trim())}</span>`).join(' ');
+                    return `
+                    <div class="col-md-6 col-lg-4 d-flex">
+                        <div class="card project w-100 mb-0">
+                            <div class="card-body d-flex flex-column">
+                                <h6 class="fw-semibold small mb-2">${esc(c.courseTitle)}
+                                    ${done ? '<span class="badge bg-success ms-1">완강</span>' : ''}</h6>
+                                <div class="progress mb-2" style="height:6px" role="progressbar"
+                                     aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="진도율">
+                                    <div class="progress-bar ${done ? 'bg-success' : ''}" style="width:${pct}%"></div>
+                                </div>
+                                <p class="small text-muted mb-2">진도 ${pct}% · ${c.completeCount ?? 0}/${c.lectureCount ?? 0}강 · 최근 학습 ${daysAgo(c.accessedAt)}</p>
+                                <p class="mb-0 mt-auto">${cats}</p>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+
+                const synced = items[0]?.syncedAt;
+                if (synced) {
+                    document.getElementById('learning-synced').textContent =
+                        '(마지막 동기화: ' + daysAgo(synced) + ')';
+                }
+                section.classList.remove('d-none');
+                document.querySelectorAll('.learning-nav-item').forEach(el => el.classList.remove('d-none'));
+            })
+            .catch(() => { /* 데이터 없으면 섹션 미노출 */ });
+    })();
 
 </script>
 
