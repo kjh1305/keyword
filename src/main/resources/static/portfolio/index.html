@@ -664,17 +664,17 @@
         <p class="doc-sub">이커머스 도메인에서 5년을 보낸 백엔드 개발자입니다. 지금은 통합판매 플랫폼 비플로우(B-Flow)를 개발하고 있습니다.</p>
         <div class="doc-statement">
             <p class="statement-lead">코드를 작성하는 시간보다 분석하고 검증하는 시간이 더 깁니다.</p>
-            <p class="statement-body">로직을 바꾸기 전에 그 값이 어디서 와서 무엇을 의미하는지 데이터로 먼저 추적하고, 바꾼 뒤에는 실데이터 대조로 확인합니다 — 정산 로직 458만 건 대조 불일치 0건. 활성 경로는 코드가 아니라 DB 실측으로 확정합니다.</p>
+            <p class="statement-body">로직을 바꾸기 전에 그 값이 어디서 와서 무엇을 의미하는지 데이터로 먼저 추적하고, 바꾼 뒤에는 실데이터 대조로 확인합니다.</p>
         </div>
         <table class="ledger" aria-label="핵심 지표 요약">
             <tbody>
             <tr>
                 <td class="k">SETTLEMENT</td>
-                <td class="v">정산 엔진 레거시·V2 정합성 — 실데이터 458만 건 대조 <em>불일치 0</em> · 주문·상품 단위 정산</td>
+                <td class="v">주문·상품 단위 정산 · 레거시·V2 정산 엔진이 <em>같은 지급액</em>을 내도록 정합성 유지</td>
             </tr>
             <tr>
                 <td class="k">PRICING</td>
-                <td class="v">프로모션 도메인 설계·개발 · 가격 손실 <em>약 306만 원 규명·차단</em> · 손익 감사 자동화</td>
+                <td class="v">프로모션 도메인 설계·개발 · 마켓 가격 자동 반영 · 가격 손실 감사 자동화</td>
             </tr>
             <tr>
                 <td class="k">MIGRATION</td>
@@ -687,10 +687,6 @@
             <tr>
                 <td class="k">BILLING</td>
                 <td class="v">구독 플랜 v3 개편 — PG 정기결제·후불 과금 · 플랜↔수수료 연계</td>
-            </tr>
-            <tr>
-                <td class="k">EVIDENCE</td>
-                <td class="v">저장소 6개 · 커밋 <span class="num" data-n="1259">1,259</span> · PR <span class="num" data-n="464">464</span> (머지 436) · V2 저장소 커밋의 20% 기여</td>
             </tr>
             <tr>
                 <td class="k">STACK</td>
@@ -718,20 +714,18 @@
 
             <p class="small mb-3">
                 멀티채널 커머스 통합 SaaS <strong>B-Flow</strong> — 20개+ 국내외 오픈마켓의 상품·주문·클레임·정산을 단일 플랫폼으로 통합.<br>
-                운영 규모는 연동상품 약 <strong>2,160만 건</strong> · 누적 주문 약 <strong>700만 건</strong> · 입점 셀러 약 <strong>9,300곳</strong>이고,
-                운영 DB는 32 vCPU / 128GB에 동시 커넥션 <strong>1,100+</strong> 수준으로 상시 운영됩니다.
-                여기서 <strong>PHP 레거시와 Kotlin V2가 같은 DB를 공유하며 점진 이전 중</strong>이고,
-                저는 두 시스템이 같은 값을 내야 하는 <strong>정산·가격 영역을 양쪽에서</strong> 담당합니다.<br>
-                <span class="text-muted">기여 실측치: 저장소 6개 · 커밋 1,259 · PR 464(머지 436) — V2 저장소 전체 커밋의 20%(543/2,704)가 제 커밋입니다</span>
+                운영 규모는 연동상품 약 <strong>2,160만 건</strong> · 누적 주문 약 <strong>700만 건</strong> · 입점 셀러 약 <strong>9,300곳</strong>입니다.
+                여기서 <strong>PHP 레거시와 Kotlin 신규 시스템(V2)이 같은 DB를 공유하며 점진 이전 중</strong>이고,
+                저는 두 시스템이 같은 값을 내야 하는 <strong>정산·가격 영역을 양쪽에서</strong> 담당합니다.
             </p>
 
             <!-- Brich 1: 송출 가격 손실 규명 (최상단 — 가장 강한 R) -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">송출 가격 결함 규명 — 약 306만 원 손실 차단 · 상시 감사 자동화</h4>
+                    <h4 class="card-title">마켓 이중 할인 가격 결함 규명 — 손실 차단 · 상시 감사 자동화</h4>
                     <p class="small mb-1"><span class="star-tag">S</span>일부 마켓에서 판매가 자리에 최종 할인가가 들어가, 마켓이 그 위에 <strong>또 할인</strong>을 얹고 있었습니다. 같은 방지 규칙이 마켓별 구현체에 복제돼 있다가 4개 마켓에서만 누락된 구조였습니다. 조용히 돈이 새는 문제라 아무도 눈치채지 못하고 있었습니다.</p>
                     <p class="small mb-2"><span class="star-tag">T</span>어디서 얼마나 새고 있는지 확정하고, 재발을 막아야 했습니다.</p>
-                    <p class="metric-line">약 306만 원 손실 규명·차단 · 영향 상품 90,696개 전수 조사 · 손익 감사 매일 09시 자동 실행</p>
+                    <p class="metric-line">영향 상품 90,696개 전수 조사 · 4개 마켓 이중 할인 차단 · 손익 감사 매일 자동 실행</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p class="mb-2"><span class="star-tag">A</span><strong>주요 작업:</strong></p>
                     <ul class="small">
@@ -742,9 +736,9 @@
                     </ul>
                     <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
                     <ul class="small">
-                        <li><strong>약 306만 원 규모의 손실을 규명·차단</strong> — 방치 시 재발·누적되는 지속 손실이었음</li>
-                        <li>부수 성과: 홈앤쇼핑 가격 구조 최초 규명 — 화면 할인율이 min(기획전 기본 + (마진율 − 11), 15%)이고 <strong>15% 상한</strong>이 존재, 상한 초과로 <strong>미전달되던 할인 약 240만 원</strong>을 확인</li>
-                        <li>일회성 조사를 <strong>상시 감사 체계로 전환</strong> — 자동 감사가 실제로 잡아낸 사례: 장부상 역마진 40,014원 중 28,000원가량이 허위(주문 매핑 결함·이중 차감 착시)임을 판별하고 <strong>진짜 손실 12,161원만 분리</strong></li>
+                        <li><strong>조용히 새던 이중 할인 손실을 규명하고 전 마켓에서 차단</strong> — 방치하면 계속 누적되는 문제였음</li>
+                        <li>부수 성과: 특정 마켓의 할인 정책에 <strong>상한이 존재</strong>한다는 사실을 처음 규명 — 상한 때문에 셀러에게 전달되지 않던 할인이 있음을 확인</li>
+                        <li>일회성 조사를 <strong>상시 감사 체계로 전환</strong> — 장부상 손실처럼 보이던 건에서 허위(주문 매핑 결함·이중 차감 착시)를 걸러내고 <strong>진짜 손실만 분리</strong>하는 것까지 자동화</li>
                     </ul>
                     <p class="small fst-italic mb-0">손실을 찾는 것보다, 손실처럼 보이는 것과 진짜 손실을 구분하는 것이 운영 판단의 질을 결정했습니다.</p>
                     </details>
@@ -754,10 +748,10 @@
             <!-- Brich 2: 정산 엔진 이중 구현 정합성 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">정산 엔진 이중 구현 정합성 — 458만 건 대조 불일치 0 (2025.10 ~ 2026.07)</h4>
+                    <h4 class="card-title">정산 엔진 정합성 — 어느 시스템에서 계산해도 같은 지급액 (2025.10 ~ 2026.07)</h4>
                     <p class="small mb-1"><span class="star-tag">S</span>정산은 (정상가 + 옵션가 − 판매자할인 − 프로모션할인) × 수량 × (1 − 수수료율)로 셀러 지급액을 확정합니다. 점진 이전 중이라 <strong>같은 계산식이 PHP와 Kotlin 두 곳에 존재</strong>했고, 두 구현이 서로 다른 값을 내고 있었습니다.</p>
                     <p class="small mb-2"><span class="star-tag">T</span>두 언어의 계산 결과를 일치시키고, 다시는 갈라지지 않도록 검증 절차까지 만들어야 했습니다.</p>
-                    <p class="metric-line">실데이터 458만 건 대조 · 레거시↔V2 333만 건 비교 → 불일치 0건 · 주문 생성 실패 위험 사전 차단</p>
+                    <p class="metric-line">실데이터 458만 건으로 검증해 계산 결과 완전 일치 · 주문 생성 실패 위험 사전 차단</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -778,8 +772,8 @@
                     </ul>
                     <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
                     <ul class="small">
-                        <li>신규 로직 ↔ 원래 공식 <strong>458만 건</strong> 대조, 레거시 ↔ V2 <strong>333만 건</strong> 비교 — <strong>불일치 0건</strong></li>
-                        <li>실데이터에 음수 옵션이 <strong>3,156건(최소 −180,000원)</strong> 존재 — <strong>언제든 주문 생성이 실패할 수 있던 상태를 사전 차단</strong></li>
+                        <li>수정한 로직을 실데이터 <strong>458만 건</strong>으로, 레거시와 신규 시스템을 <strong>333만 건</strong>으로 비교해 <strong>계산 결과가 모두 일치</strong>함을 확인</li>
+                        <li>실데이터에 음수 옵션가가 <strong>3,156건</strong> 존재 — <strong>언제든 주문 생성이 실패할 수 있던 상태를 사전에 차단</strong></li>
                         <li>이후 정산 변경 시 <strong>실데이터 대량 대조를 상시 절차로 정착</strong> — 어느 시스템에서 처리해도 같은 지급액</li>
                     </ul>
                     </details>
@@ -839,7 +833,7 @@
                     <h4 class="card-title">레거시(PHP) → V2(Kotlin) 마이그레이션 — 무중단 점진 이전 (2026.01 ~ 2026.07)</h4>
                     <p class="small mb-1"><span class="star-tag">S</span>Laravel 모놀리식에서 Kotlin 멀티모듈로 이전 중이며, 두 시스템이 <strong>같은 DB를 공유</strong>합니다. 운영을 멈출 수 없습니다.</p>
                     <p class="small mb-2"><span class="star-tag">T</span>운영을 멈추지 않고 도메인 단위로 이전하되, 문제가 생겨도 영향 범위가 좁게 갇히도록 해야 했습니다.</p>
-                    <p class="metric-line">주문/클레임 수집 17종 · 상품 연동 8종 이전 · 레거시:V2 커밋 비중 381:121 → 229:420 역전</p>
+                    <p class="metric-line">주문/클레임 수집 17종 · 상품 연동 8종 이전 · 무중단 운영 유지</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -855,8 +849,7 @@
                     </ul>
                     <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
                     <ul class="small">
-                        <li>무중단 운영 유지</li>
-                        <li>개발 중심이 V2로 넘어온 것이 데이터로 확인됨 — 커밋 비중이 <strong>2025년 하반기 레거시 381 : V2 121</strong>에서 <strong>2026년 상반기 229 : 420</strong>으로 역전</li>
+                        <li>운영을 멈추지 않고 이전을 진행하며, 신규 개발의 중심을 레거시에서 V2로 전환</li>
                     </ul>
                     </details>
                 </div>
@@ -945,7 +938,7 @@
                     <ul class="small">
                         <li>신규 마켓 <strong>2개(퀸잇·큐텐)를 상품·출고·반품/교환·CS·정산까지 단독 온보딩</strong> — 판매 채널 확장</li>
                         <li>마켓마다 다른 API(XML/JSON·상태코드·페이지네이션·인증)를 <strong>팩토리 + 어댑터 패턴으로 통일</strong></li>
-                        <li>수집 전담 서비스 71 커밋 · Python 수집 서비스 14 PR 기여, 해외 마켓 <strong>환율 계산</strong> 담당</li>
+                        <li>주력 저장소 외에 Python·NestJS 수집 서비스에도 직접 기여, 해외 마켓 <strong>환율 계산</strong> 담당</li>
                     </ul>
                     </details>
                 </div>
@@ -957,7 +950,7 @@
                     <h4 class="card-title">반품/교환 클레임 시스템 V2 전면 재구축 (글로벌 포함, 2025.08 ~ 2026.07)</h4>
                     <p class="small mb-1"><span class="star-tag">S</span>이커머스 통합 플랫폼에서 CS가 가장 많이 생기는 곳이 클레임입니다. 주문과 클레임이 <strong>따로 수집돼 매칭되는 구조</strong>라 취소가 접수돼도 출고가 먼저 나가 회수로 이어지는 상태 꼬임이 잦았고, 클레임 배송비를 정산에 반영할지 판단이 조건마다 달라 수작업 CS가 많았습니다.</p>
                     <p class="small mb-2"><span class="star-tag">T</span>반품/교환/취소 전 과정을 V2로 재구축해 배송비 계산과 상태 전이를 자동화해야 했습니다.</p>
-                    <p class="metric-line">마켓별 클레임 상태 체계를 공통 enum으로 정규화 · 비동기 Job 36종 분산 처리 · 관련 커밋·PR 373건</p>
+                    <p class="metric-line">반품 배송비 자동 계산 · 마켓마다 다른 클레임 상태 체계 통합 · 클레임 문의·CS 감소</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP (Laravel)</span>
@@ -1013,7 +1006,7 @@
                     <h4 class="card-title">AI 협업 체계 구축 — 틀린 결과를 걸러내는 구조 (2026.01 ~)</h4>
                     <p class="small mb-1"><span class="star-tag">S</span>팀에 Claude Code 환경이 도입됐지만, 제 담당 범위(저장소 7개·멀티 언어)에서 <strong>AI가 틀리는 방식이 반복</strong>됐습니다. 코드 생성 속도보다 <strong>틀린 결과를 걸러내는 일</strong>이 병목이었습니다.</p>
                     <p class="small mb-2"><span class="star-tag">T</span>같은 실패가 <strong>반복되지 않는 구조</strong>를 만들어야 했습니다.</p>
-                    <p class="metric-line">월평균 커밋 81.6 → 104.9건 (+28.5%) · 손익 감사 매일 09시 자동 실행 · React 프론트까지 담당 확장</p>
+                    <p class="metric-line">오진·운영 DB 사고를 막는 가드 훅 · 손익 감사 매일 자동 실행 · React 프론트까지 담당 확장</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p class="mb-2"><span class="star-tag">A</span><strong>겪은 문제 4가지와 대응:</strong></p>
                     <ul class="small">
@@ -1025,9 +1018,8 @@
                     <p class="small mb-2">산출물: 가드 훅 4종 · 도메인 전문 에이전트 6종 + 오케스트레이터 2 · 도메인 스킬 12종 · 지식 그래프 114건 · 코드 규칙 209개 · 7개 저장소 통합 개발 가이드</p>
                     <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
                     <ul class="small">
-                        <li><strong>비즈니스 임팩트로 연결</strong> — 이중 할인 감사(맨 위 306만 원 건)를 일회성 조사로 끝내지 않고 <strong>자동화 도구로 만들어 매일 실행</strong> — 사람이 기억해야 하던 점검을 시스템이 대신 수행</li>
-                        <li>월평균 커밋 <strong>81.6 → 104.9건 (+28.5%)</strong></li>
-                        <li>처리량보다 의미 있는 변화는 <strong>담당 범위 확장</strong> — 백엔드만 하던 상태에서 <strong>React 프론트까지</strong> (프론트 저장소 68커밋)</li>
+                        <li><strong>비즈니스 임팩트로 연결</strong> — 맨 위 카드의 이중 할인 감사를 일회성 조사로 끝내지 않고 <strong>자동화 도구로 만들어 매일 실행</strong> — 사람이 기억해야 하던 점검을 시스템이 대신 수행</li>
+                        <li>도구를 정비한 뒤 작업 처리 속도가 눈에 띄게 빨라졌고, <strong>담당 범위가 백엔드에서 React 프론트까지 확장</strong></li>
                     </ul>
                     <p class="small fst-italic mb-2">AI를 빠르게 쓰는 것보다 틀린 결과를 걸러내는 체계를 만드는 것이 실제 생산성을 결정합니다. 위 가드는 전부 직접 겪은 실패에서 나왔습니다.</p>
                     <p class="small mb-0"><strong>현재 진행 중:</strong> 팀 공통 목표가 <strong>서버 비용 절감과 에러율 감소</strong>(CS 축소·안정적 서비스)로 잡히면서, AI를 활용한 유지보수에 집중하고 있습니다 — 에러·CS 유발 지점을 추적해 선제 수정하고, 비용을 만드는 비효율 쿼리·작업을 찾아 줄이는 방식입니다.</p>
