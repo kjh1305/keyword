@@ -427,6 +427,31 @@
             margin-top: 6px;
         }
 
+        /* ---------- STAR tags ---------- */
+        .star-tag {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1.7;
+            color: var(--ledger);
+            background: var(--ledger-tint);
+            border-radius: 3px;
+            padding: 0 6px;
+            margin-right: 7px;
+            letter-spacing: 0.06em;
+            vertical-align: 1px;
+        }
+        .statement-proof {
+            margin: 12px 0 0;
+            padding-left: 18px;
+            font-size: 12.5px;
+            color: var(--ink-soft);
+        }
+        .statement-proof li { margin-bottom: 4px; }
+        .statement-proof li::marker { color: var(--ledger); }
+        .statement-proof em { font-style: normal; color: var(--ledger); font-weight: 600; }
+
         /* ---------- Footer ---------- */
         footer {
             border-top: 1px solid var(--line) !important;
@@ -650,24 +675,37 @@
         <div class="doc-statement">
             <p class="statement-lead">코드를 작성하는 시간보다 분석하고 검증하는 시간이 더 깁니다.</p>
             <p class="statement-body">로직을 바꾸기 전에 그 값이 어디서 와서 무엇을 의미하는지 데이터로 먼저 추적하고, 바꾼 뒤에는 실데이터 대조로 확인합니다.</p>
+            <ul class="statement-proof">
+                <li><strong>변경 전</strong> — 그 값이 어디서 오고 무엇을 의미하는지 데이터로 먼저 확정합니다. 이 단계를 건너뛰면 컴파일도 되고 테스트도 통과하는데 금액이 틀립니다.</li>
+                <li><strong>변경 후</strong> — 대량 실데이터 검증을 병행합니다: 정산 로직 458만 건 대조 <em>불일치 0건</em>. 음수 옵션가 3,156건처럼 실데이터 조합에서만 드러나는 엣지 케이스가 실제로 있었습니다.</li>
+                <li><strong>활성 경로 확정</strong> — "코드에 구현이 있다 ≠ 그 경로가 활성이다". 수집 경로가 5개 서비스에 분산돼 있어 코드만 보면 4개 마켓에서 판단을 그르칩니다. DB 실측으로만 확정합니다.</li>
+            </ul>
         </div>
         <table class="ledger" aria-label="핵심 지표 요약">
             <tbody>
             <tr>
-                <td class="k">BILLING · SETTLEMENT</td>
-                <td class="v">구독 플랜 개편 · 주문·상품 단위 정산</td>
+                <td class="k">SETTLEMENT</td>
+                <td class="v">정산 엔진 레거시·V2 정합성 — 실데이터 458만 건 대조 <em>불일치 0</em> · 주문·상품 단위 정산</td>
             </tr>
             <tr>
                 <td class="k">PRICING</td>
-                <td class="v">프로모션 도메인 설계·개발 · 마켓 가격 자동 반영 · 가격 손실 감사 자동화</td>
+                <td class="v">프로모션 도메인 설계·개발 · 가격 손실 <em>약 306만 원 규명·차단</em> · 손익 감사 자동화</td>
+            </tr>
+            <tr>
+                <td class="k">MIGRATION</td>
+                <td class="v">상품·주문·클레임·출고·정산·CS — PHP 레거시 → Kotlin V2 무중단 이전</td>
             </tr>
             <tr>
                 <td class="k">MARKETS</td>
                 <td class="v">국내·글로벌 마켓 연동 (20+ 채널) · <em>아이허브 · 애경</em> 등 대형 입점사 맞춤 개발</td>
             </tr>
             <tr>
-                <td class="k">MIGRATION</td>
-                <td class="v">상품·주문·클레임·출고·정산·CS — PHP 레거시 → Kotlin V2 이전</td>
+                <td class="k">BILLING</td>
+                <td class="v">구독 플랜 v3 개편 — PG 정기결제·후불 과금 · 플랜↔수수료 연계</td>
+            </tr>
+            <tr>
+                <td class="k">EVIDENCE</td>
+                <td class="v">저장소 6개 · 커밋 <span class="num" data-n="1259">1,259</span> · PR <span class="num" data-n="464">464</span> (머지 436) · V2 커밋 지분 20%</td>
             </tr>
             <tr>
                 <td class="k">STACK</td>
@@ -683,7 +721,7 @@
 
     <!-- Experience Section -->
     <section id="experience" class="section mb-5">
-        <p class="section-eyebrow">EXPERIENCE · 4 COMPANIES · 2021 —</p>
+        <p class="section-eyebrow">EXPERIENCE · 3 COMPANIES · 2021 —</p>
         <h2 class="section-title h3">경력 사항 <span class="total-career">총 경력 5년+</span></h2>
 
         <!-- Brich -->
@@ -694,80 +732,88 @@
             </div>
 
             <p class="small mb-3">
-                멀티채널 커머스 통합 SaaS <strong>B-Flow</strong> — 20개+ 국내외 오픈마켓의 상품·주문·클레임·정산을 단일 플랫폼으로 통합.
-                레거시(PHP/Laravel)와 V2(Kotlin/Spring Boot 멀티모듈 MSA) <strong>양쪽에서 설계·구현</strong>하며,
-                정산 정확성·대량 가격 송출·레거시 → V2 마이그레이션처럼 틀리면 바로 매출에 영향이 가는 영역을 담당.<br>
-                <span class="text-muted">플랫폼 규모: 마켓 20+ 채널 · 연동상품 약 2,160만 · 누적 주문 약 700만 · 입점 셀러 약 9,300</span>
+                멀티채널 커머스 통합 SaaS <strong>B-Flow</strong> — 20개+ 국내외 오픈마켓의 상품·주문·클레임·정산을 단일 플랫폼으로 통합.<br>
+                제가 다루는 판은 이렇습니다. 연동상품 약 <strong>2,160만 건</strong> · 누적 주문 약 <strong>700만 건</strong> · 입점 셀러 약 <strong>9,300</strong> —
+                운영 DB는 32 vCPU / 128GB에 동시 커넥션 <strong>1,100+</strong> 로 상시 운영됩니다.
+                여기서 <strong>PHP 레거시와 Kotlin V2가 같은 DB를 공유하며 점진 이전 중</strong>이고,
+                저는 두 시스템이 같은 값을 내야 하는 <strong>정산·가격 영역을 양쪽에서</strong> 담당합니다.<br>
+                <span class="text-muted">실측 기여: 저장소 6개 · 커밋 1,259 · PR 464(머지 436) — V2 저장소는 전체 커밋의 20%(543/2,704)</span>
             </p>
 
-            <!-- Brich Project 0: AI (최상단) -->
+            <!-- Brich 1: 송출 가격 손실 규명 (최상단 — 가장 강한 R) -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">AI 활용 — 틀린 결과를 걸러내는 개발 체계 (2026.01 ~)</h4>
-                    <p><strong>개요:</strong> AI(Claude Code)를 빠르게 쓰는 것보다 <strong>틀린 결과를 걸러내는 체계를 만드는 것</strong>이 실제 생산성을 결정한다고 봅니다. 아래 가드는 전부 직접 겪은 실패에서 나왔습니다.</p>
-                    <p class="mb-2"><strong>가드로 막은 사례:</strong></p>
-                    <ul class="small">
-                        <li><strong>운영 DB 사고 차단:</strong> 무거운 쿼리 실행 전 EXPLAIN 확인을 강제하는 훅이 <strong>425만 행 스캔 쿼리를 실행 전에 중단</strong></li>
-                        <li><strong>AI 오진 차단:</strong> 진단 작업에서 근거 조회 없이 결론을 내면 출력을 차단 — 그럴듯한 추측이 검증 없이 통과하지 못하게 막음</li>
-                        <li><strong>허위 손실 판별:</strong> 이중 할인 감사 자동화가 장부상 역마진 40,014원 중 허위(매핑 결함·이중 차감 착시)를 걸러 <strong>실손 12,161원만 분리</strong></li>
-                    </ul>
-                    <p class="metric-line">지식 그래프 114건 팀 공유 · 손익 감사 매일 09시 자동 실행</p>
+                    <h4 class="card-title">송출 가격 결함 규명 — 약 306만 원 손실 차단 · 상시 감사 자동화</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>일부 마켓에서 판매가 자리에 최종 할인가가 들어가, 마켓이 그 위에 <strong>또 할인</strong>을 얹고 있었습니다. 같은 방지 규칙이 마켓별 구현체에 복제돼 있다가 4개 마켓에서만 누락된 구조 — 조용히 돈이 새는 종류라 아무도 인지하지 못한 상태였습니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>"어디서 얼마나 새고 있는가"를 확정하고, 재발을 막을 것.</p>
+                    <p class="metric-line">약 306만 원 손실 규명·차단 · 영향 상품 90,696개 전수 조사 · 손익 감사 매일 09시 자동 실행</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
-                    <p class="mb-2"><strong>직접 구축한 AI 개발 환경:</strong></p>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>행동:</strong></p>
                     <ul class="small">
-                        <li><strong>도메인 전문 에이전트 6종 + 오케스트레이터 2:</strong> 저장소별 전문 에이전트 + 작업 분배·통합 오케스트레이터 → 병렬 멀티 에이전트 개발</li>
-                        <li><strong>커스텀 스킬 33종:</strong> E2E 테스트(Playwright), API 문서, PR 워크플로, 코드리뷰, 정산 감사 등 반복 작업 자동화</li>
-                        <li><strong>지식 메모리 114건:</strong> 마켓별 연동 함정·정산 정책·장애 패턴을 지식 그래프에 정리해 팀이 다시 꺼내 쓰게 함 — 같은 실수 반복 방지</li>
-                        <li><strong>자동화 훅 28개:</strong> 운영 DB 사고 방지(무거운 쿼리 EXPLAIN 강제), 근거 없는 결론 차단 등</li>
-                        <li>7개 저장소 통합 개발 가이드 + 4개 도메인 209개 코드 규칙 체계화, 조사·설계 문서 157건 축적</li>
+                        <li>운영 DB <strong>전수 조사</strong>로 영향 범위 산출 — 영향 상품 <strong>90,696개</strong>, 노출 기간 주문 1,086건 중 실제 노출 <strong>909건</strong></li>
+                        <li>4개 마켓 송출 데이터에 방지 분기를 추가해 정상가 복원 배포</li>
+                        <li><strong>전 마켓 전수 대조</strong>로 나머지 마켓의 정상 여부까지 확정해 영향 범위를 종결</li>
+                        <li>조사에서 그치지 않고 <strong>방법론을 재사용 가능한 도구로 만들어 매일 09시 자동 실행</strong></li>
                     </ul>
-                    <p class="small mb-0"><strong>현재 진행 중:</strong> 팀 공통 목표가 <strong>서버 비용 절감과 에러율 감소</strong>(CS 축소·안정적 서비스)로 잡히면서, AI를 활용한 유지보수에 집중하고 있습니다 — 에러·CS 유발 지점을 추적해 선제 수정하고, 비용을 만드는 비효율 쿼리·작업을 찾아 줄이는 방식입니다.</p>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
+                    <ul class="small">
+                        <li><strong>약 306만 원 규모의 손실을 규명·차단</strong> — 방치 시 재발·누적되는 지속 손실이었음</li>
+                        <li>부수 성과: 홈앤쇼핑 가격 구조 최초 규명 — 화면 할인율이 min(기획전 기본 + (마진율 − 11), 15%)이고 <strong>15% 상한</strong>이 존재, 상한 초과로 <strong>미전달되던 할인 약 240만 원</strong>을 확인</li>
+                        <li>일회성 조사를 <strong>상시 감사 체계로 전환</strong> — 작동 실적: 장부상 역마진 40,014원 중 28,000원가량이 허위(주문 매핑 결함·이중 차감 착시)임을 판별하고 <strong>진짜 손실 12,161원만 분리</strong></li>
+                    </ul>
+                    <p class="small fst-italic mb-0">손실을 찾는 것보다, 손실처럼 보이는 것과 진짜 손실을 구분하는 것이 운영 판단의 질을 결정했습니다.</p>
                     </details>
                 </div>
             </div>
 
-            <!-- Brich Project: 운영 안정성 (AI 가드와 앞뒤 관계 — 사고를 막는 것과 터진 걸 진단하는 것) -->
+            <!-- Brich 2: 정산 엔진 이중 구현 정합성 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">멀티마켓 운영 안정성 · 장애 대응 (상시)</h4>
-                    <p><strong>개요:</strong> 20개+ 마켓은 API 규격·판매정책·클레임 체계가 수시로 변경 — <strong>업무의 30%가량이 운영·버그 대응</strong>일 만큼, 신규 개발 못지않게 상시 운영이 중요한 환경</p>
-                    <p class="metric-line">Kafka·Quartz·빌드 캐시 장애 근본원인 규명 · 20+ 마켓 무중단 운영 유지</p>
+                    <h4 class="card-title">정산 엔진 이중 구현 정합성 — 458만 건 대조 불일치 0 (2025.10 ~ 2026.07)</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>정산은 (정상가 + 옵션가 − 판매자할인 − 프로모션할인) × 수량 × (1 − 수수료율)로 셀러 지급액을 확정합니다. 점진 이전 중이라 <strong>같은 계산식이 PHP와 Kotlin 두 곳에 존재</strong>했고, 두 구현이 서로 다른 값을 내고 있었습니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>두 언어의 계산 결과를 일치시키고, 다시 갈라지지 않는 검증 절차를 만들 것.</p>
+                    <p class="metric-line">실데이터 458만 건 대조 · 레거시↔V2 333만 건 비교 → 불일치 0건 · 주문 생성 실패 위험 사전 차단</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
-                        <span class="badge tech-stack">PHP</span>
-                        <span class="badge tech-stack">Kafka</span>
-                        <span class="badge tech-stack">Quartz</span>
+                        <span class="badge tech-stack">PHP (Laravel)</span>
+                        <span class="badge tech-stack">QueryDSL</span>
                         <span class="badge tech-stack">MySQL</span>
-                        <span class="badge tech-stack">AWS ECS</span>
                     </p>
-                    <p class="mb-2"><strong>장애 진단·복구 (근본원인 분석 사례):</strong></p>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>원인 규명과 조치:</strong> 원인은 상품 정산기준가와 옵션가를 <strong>각각 올림한 뒤 합산</strong>한 데 있었습니다. 원 공식은 둘을 먼저 합친 실효가에 수수료를 한 번 적용하는 것 — 여기서 증상 두 개가 나왔습니다.</p>
                     <ul class="small">
-                        <li><strong>Kafka 컨슈머 영구 리밸런싱:</strong> 클레임 1,147건 적체의 근본원인이 max.poll.interval 초과 → LeaveGroup 무한 반복임을 규명, 유발 버그 2건까지 추적</li>
-                        <li><strong>Quartz 롤링배포 충돌:</strong> 배포할 때마다 예약 작업 트리거가 오류 상태로 굳는 원인(isClustered=false + JDBC JobStore 공유)을 찾아내고, 신·구 버전이 겹쳐 뜨지 않게 배포 절차를 바꿔 재발 방지</li>
-                        <li><strong>빌드 캐시 오염으로 인한 직렬화 오류:</strong> Gradle 빌드 캐시가 옛 클래스를 복원해 Kafka 발행이 막히고 스냅샷 처리가 멈추는 문제를 찾아내고, 배포 산출물을 javap로 직접 확인하는 절차를 만듦</li>
-                        <li>마켓 API v1 종료 → v2 전환 대응, 주문 중복수집 방지, 클레임 수집·컨버터 오류 수정 등 상시 대응</li>
+                        <li>양수 옵션 → 올림 2회 + PHP 부동소수점 오차로 <strong>1원 차이</strong></li>
+                        <li>음수 옵션 → 계산값이 음수인데 컬럼이 unsigned라 <strong>INSERT 실패 → 주문 생성 트랜잭션 전체 롤백</strong></li>
                     </ul>
-                    <p class="mb-2"><strong>성과:</strong></p>
                     <ul class="small">
-                        <li>20+ 마켓 주문·정산·클레임 흐름의 <strong>무중단 운영 유지</strong></li>
+                        <li><strong>공식 복귀</strong> — 실효가 합산 후 수수료 1회 적용으로 양쪽 동시 수정</li>
+                        <li><strong>정수 연산 통일</strong> — 부동소수점 제거, 정수 나눗셈 헬퍼로 두 언어가 동일 연산 수행</li>
+                        <li><strong>레이어별 정책 분리 (핵심 판단)</strong> — 운영자 입력 지점은 <strong>거부(422)</strong>, 자동 인입 지점은 <strong>0 보정</strong>. 처음엔 런타임 예외를 던졌지만, V2의 주문 인입은 메시지 큐 컨슈머를 경유하므로 예외가 나면 컨슈머가 막혀 다른 주문까지 적체됩니다. <strong>거부해도 되는 곳과 거부하면 안 되는 곳을 나눴습니다.</strong></li>
+                        <li>공급가·정산기준가·수수료율을 <strong>상품 단위로 관리</strong>하도록 구조 재설계, 가격 변경 히스토리 관리</li>
+                    </ul>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
+                    <ul class="small">
+                        <li>신규 로직 ↔ 원 공식 <strong>458만 건</strong> 대조, 레거시 ↔ V2 <strong>333만 건</strong> 비교 → <strong>불일치 0건</strong></li>
+                        <li>실데이터에 음수 옵션이 <strong>3,156건(최소 −180,000원)</strong> 존재 — <strong>언제든 주문 생성이 실패할 수 있던 상태를 사전 차단</strong></li>
+                        <li>이후 정산 변경 시 <strong>실데이터 대량 대조를 상시 절차로 정착</strong> — 어느 시스템에서 처리해도 같은 지급액</li>
                     </ul>
                     </details>
                 </div>
             </div>
 
-            <!-- Brich Project 1: 프로모션 도메인 (2.0 → 3.0) -->
+            <!-- Brich 3: 프로모션 도메인 (2.0 → 3.0) -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">프로모션 도메인 신규 구축 — 기간형(2.0) → 관리형(3.0)</h4>
-                    <p><strong>개요:</strong> 브랜드/상품 단위 할인을 등록하면 20여 개 마켓에 가격을 자동 송출하고 주문 정산까지 일관 처리하는 프로모션 도메인을 백엔드 전 영역에서 설계·구현 (2025.11 ~ 운영·고도화 중). 기간형 가격 프로모션(2.0)을 먼저 구축하고, 그 제약을 풀어 관리형(3.0)으로 확장</p>
-                    <p class="mb-2"><strong>설계 판단:</strong></p>
+                    <h4 class="card-title">관리형 프로모션 도메인 신규 구축 — 기간형(2.0) → 관리형(3.0) (2025.11 ~)</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>본사가 브랜드/상품 단위로 할인을 등록하면 20여 개 마켓에 가격을 자동 송출하고 정산까지 일관 처리해야 했습니다. 기존에 없던 도메인이라 설계부터 시작했습니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>"주문이 들어온 시점에 이 상품 가격이 얼마였는가"를 언제든 재현 가능하게 만들 것 — 프로모션 정의만 저장하면 그 사이 정가가 바뀔 때 역산이 불가능합니다.</p>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>설계 판단 3가지:</strong></p>
                     <ul class="small">
-                        <li>이미 도입돼 있던 <strong>Kafka를 걷어내고 AWS SQS FIFO로 교체</strong> — 스트림 처리·이벤트 재소비 없이 "순서 보장 작업 큐"로만 쓰고 있었으므로, 순서·중복 제거를 지원하는 SQS FIFO로 기능 손실 없이 인프라 비용을 줄일 수 있다고 판단하고 실행</li>
-                        <li>주문 시점 가격을 언제든 재현할 수 있도록 상품×프로모션 조합의 <strong>계산 결과를 확정 저장(스냅샷)</strong> — 주문·정산·송출이 그 한 곳만 읽는 단일 기준</li>
-                        <li>여러 서버가 동시에 상품을 프로모션에 편입하며 생기던 중복·누락을 락이나 유니크 제약이 아니라 <strong>FIFO 단일 순차 경로로 해결</strong> — 경합 자체가 생기지 않는 구조를 선택</li>
+                        <li><strong>스냅샷 단일 진실 공급원</strong> — 상품 × 프로모션 조합마다 계산 결과(정상가·할인·최종가·정산기준가)를 확정 저장하고, 주문·정산·송출이 전부 이 한 곳만 읽게 함. 대가로 스냅샷이 <strong>약 190만 건</strong> 규모가 되어 상태 전이 처리량이 병목이 됨 — <strong>알고 선택한 트레이드오프</strong></li>
+                        <li><strong>처리량 제한을 올릴 수 있었지만 올리지 않음</strong> — 월초 자정에 대기 <strong>104만 건</strong>이 단일 시각에 몰려 전량 반영에 약 17.5시간. 먼저 측정: RDS는 프로비저닝 12,000 IOPS 중 <strong>1~3%만 사용</strong>, 쓰기 지연 1ms — 병목은 자원이 아니라 우리가 설정한 제한 자체였고 올리면 즉시 빨라지는 상황. 그럼에도 큐를 <strong>전 도메인이 공유</strong>하므로 올리면 다른 도메인이 경합을 부담 → 대량 등록은 순차 적용을 수용하고 즉시성이 필요한 건만 선별 상향</li>
+                        <li><strong>마켓 송출 형식 전환</strong> — 최종가를 절대값으로 보내자 셀러 즉시할인 꺼짐·정수 할인율 재계산 오차·이중 할인(실측 6,710원 → 5,703원)이 발생 → <strong>"정가 + 할인율 + 최종가" 동시 전송</strong>으로 바꾸고, 정률 재계산 마켓은 <strong>정액 할인으로 전환</strong>해 마켓의 라운딩과 무관하게 최종가가 나오게 함</li>
                     </ul>
-                    <p class="metric-line">실적용 첫 달 535건 등록 · 송출 스냅샷 약 190만 건 · 실데이터 458만 건 대조 불일치 0</p>
+                    <p class="metric-line">누적 535건 등록 · 송출 스냅샷 약 190만 건 · 단일 시각 104만 건 전이를 타 도메인 영향 없이 소화</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -788,26 +834,112 @@
                     <p class="mb-2"><strong>2단계 — 관리형(3.0)으로 확장 (V2 백엔드 단독 설계 + React FE):</strong> 2.0은 진행 중에는 상품 가격이 변동되면 안 돼 가격 수정이 막히는 제약이 있었음 → <strong>재계산 통합 로직으로 상품가격·정산기준가·수수료를 상품 단위로 제어</strong>해 할인뿐 아니라 판매가 자체를 조정할 수 있게 확장</p>
                     <ul class="small">
                         <li>스냅샷은 대기→진행→만료 상태 흐름과 <strong>브랜드 설정이 소속 상품 전체에 자동 반영</strong>되는 구조로 설계 (새 상품이 등록되면 자동으로 프로모션에 편입)</li>
-                        <li>프로모션 시작·종료를 스케줄러가 직접 처리하던 방식에서 <strong>메시지 큐 이벤트 방식으로 재설계</strong> — 월초 자정에 104만 건이 한꺼번에 몰리는 가격 송출을 속도 조절로 안정 처리</li>
+                        <li>상태 전이를 <strong>스케줄러 직접 처리에서 이벤트 발행·소비 분리로 재설계</strong> (2026.06) — 이후 팀에서 진행한 Kafka → AWS SQS FIFO 전환 논의에 참여했고(스트림 처리·이벤트 재소비 없이 "순서 보장 작업 큐"로만 쓰고 있어 기능 손실 없이 비용 절감 가능), 전환 후 전이·편입 경로를 FIFO 그룹·중복 제거 창에 맞춰 재구현 — 월초 자정에 몰리는 대량 가격 송출을 속도 조절로 안정 처리</li>
                         <li>프로모션 가격이 다른 가격 설정보다 <strong>우선 적용되어 마켓에 송출되는 규칙</strong>을 구현하고, 진행 중인 프로모션을 수정하면 바뀐 가격이 마켓에 자동으로 재송출되게 처리</li>
                         <li>관리자용 정상가 일괄 수정 기능(엑셀 미리보기, 할인율 역산 근거 표시)과 React 관리자 화면(등록/조회/수정, 셀 단위 편집·엑셀 업로드·이력) 구현</li>
                     </ul>
-                    <p class="mb-2"><strong>성과:</strong></p>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
                     <ul class="small">
-                        <li>레거시와 신규가 같은 주문을 1원씩 다르게 정산하던 문제와 음수 옵션가로 주문 저장이 실패하던 문제를 계산 공식 재설계(하나의 기준 가격 + 정수 연산 + 이중 안전장치)로 해결 — <strong>어느 시스템에서 처리해도 같은 지급액</strong>이 나오게 됨</li>
-                        <li>백엔드(레거시·신규)와 프론트 세 곳에 흩어져 있던 가격 계산식을 <strong>어디서 계산해도 같은 값이 나오게 맞춤</strong></li>
-                        <li>MD 1명이 여러 브랜드의 상품 가격·할인을 <strong>대량으로 관리</strong>할 수 있게 됨</li>
+                        <li>6개 모듈 <strong>64개 소스 파일</strong> 규모의 신규 도메인을 설계·구현 — 누적 <strong>535건</strong> 프로모션 등록, 약 <strong>190만 건</strong> 송출 스냅샷 처리</li>
+                        <li>단일 시각 <strong>104만 건</strong> 전이를 <strong>다른 도메인 영향 없이</strong> 소화</li>
+                        <li>백엔드(레거시·V2)와 프론트 세 곳에 흩어져 있던 가격 계산식을 <strong>어디서 계산해도 같은 값이 나오게 맞춤</strong> — MD 1명이 여러 브랜드의 가격·할인을 대량 관리</li>
                     </ul>
                     </details>
                 </div>
             </div>
 
-            <!-- Brich Project 3 -->
+            <!-- Brich 4: 레거시 → V2 마이그레이션 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">멀티마켓 연동 — 20개+ 마켓 상품/주문/클레임/CS</h4>
-                    <p><strong>개요:</strong> 20여 개 국내외 오픈마켓을 상품연동·주문수집·클레임·CS까지 통합 연동하고, 신규 마켓 온보딩을 담당 (2025.06 ~ 상시)</p>
-                    <p class="metric-line">신규 마켓 2개(퀸잇·큐텐) 단독 온보딩 · 20+ 채널 통합 연동</p>
+                    <h4 class="card-title">레거시(PHP) → V2(Kotlin) 마이그레이션 — 중심축 역전 (2026.01 ~ 2026.07)</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>Laravel 모놀리식에서 Kotlin 멀티모듈로 이전 중이며, 두 시스템이 <strong>같은 DB를 공유</strong>합니다. 운영을 멈출 수 없습니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>무중단으로 도메인 단위 이전을 진행하되, 위험을 격리할 것.</p>
+                    <p class="metric-line">주문/클레임 수집 17종 · 상품 연동 8종 이전 · 중심축 역전: 2025 하반기 381:121 → 2026 상반기 229:420</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
+                    <p><strong>기술 스택:</strong>
+                        <span class="badge tech-stack">Kotlin</span>
+                        <span class="badge tech-stack">Spring Boot</span>
+                        <span class="badge tech-stack">PHP</span>
+                    </p>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>행동:</strong></p>
+                    <ul class="small">
+                        <li>주문·클레임 수집 <strong>17종</strong>, 상품 연동 <strong>8종</strong> 이전 — OrderAdapter / ApiDelegate <strong>표준 패턴 정립</strong>, 마켓별 외부 API 호출은 선언적 HTTP 클라이언트(HTTP Interface)로 정리</li>
+                        <li><strong>입점사 단위 라우팅으로 위험 격리</strong>(카나리) — 문제가 생겨도 영향 범위를 입점사 단위로 한정</li>
+                        <li><strong>상품 연동 액션 세분화:</strong> 생성·업데이트·상태 변경으로만 나뉘어 있던 연동을 <strong>생성·상태·가격·재고 등 액션 단위로 분리</strong> — 마켓과 B-Flow의 가격·판매상태 불일치를 줄임</li>
+                        <li>가장 어려웠던 건 "어느 경로가 실제로 도는지 확정하는 일" — 주문 테이블의 calculation_version='v2'는 <strong>레거시 코드가 세팅</strong>합니다. "신규 정산식으로 계산됨"이지 "신규 시스템이 생성함"이 아니라서, 이를 모르고 V2만 고치면 <strong>대부분의 주문에 반영되지 않습니다</strong></li>
+                    </ul>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
+                    <ul class="small">
+                        <li>무중단 운영 유지</li>
+                        <li>중심축 이동이 데이터로 확인됨: 커밋 비중 <strong>2025년 하반기 레거시 381 : V2 121 → 2026년 상반기 레거시 229 : V2 420</strong> (역전)</li>
+                    </ul>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Brich 5: 장애 대응 — 근본 원인 규명 -->
+            <div class="card project mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">장애 대응 — 표면 증상이 아니라 근본 원인까지 (상시)</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>20개+ 마켓은 API 규격·판매정책·클레임 체계가 수시로 변경 — 업무의 30%가량이 운영·버그 대응일 만큼 상시 운영이 중요한 환경입니다. 어느 날 클레임 <strong>1,147건</strong>이 큐에 적체됐고, 표면 증상은 "큐가 안 빠짐"이었습니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>표면이 아니라 실제 원인을 확정할 것.</p>
+                    <p class="metric-line">클레임 1,147건 적체 근본 원인 규명 · Quartz 롤링배포 충돌 · 빌드 캐시 직렬화 오류 · 20+ 마켓 무중단 운영</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
+                    <p><strong>기술 스택:</strong>
+                        <span class="badge tech-stack">Kotlin</span>
+                        <span class="badge tech-stack">PHP</span>
+                        <span class="badge tech-stack">Kafka</span>
+                        <span class="badge tech-stack">Quartz</span>
+                        <span class="badge tech-stack">MySQL</span>
+                        <span class="badge tech-stack">AWS ECS</span>
+                    </p>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>근본 원인 분석 사례:</strong></p>
+                    <ul class="small">
+                        <li><strong>클레임 큐 적체:</strong> 실패한 메시지가 반복 재전달되며 뒤를 막고 있었음 — <strong>이미 성공한 건이 5분 간격으로 106회 재처리된 로그</strong>가 결정적 증거. 유발 결함 2건까지 추적(복사 주문의 확정 시각 누락으로 인한 무한 재시도, 초 단위 없는 날짜 파싱 예외로 인한 수집 롤백). 처리 상태를 running으로 마킹한 뒤 <strong>복구 로직이 없어</strong> 하나가 갇히면 같은 채널 전체가 막히는 구조까지 규명</li>
+                        <li><strong>Quartz 롤링배포 충돌:</strong> 배포할 때마다 예약 작업 트리거가 오류 상태로 굳는 원인(isClustered=false + JDBC JobStore 공유 → ClassNotFound → 트리거 ERROR 영구 고착)을 찾아내고, 신·구 버전이 겹쳐 뜨지 않게 배포 절차를 바꿔 재발 방지</li>
+                        <li><strong>빌드 캐시 오염 직렬화 오류:</strong> sealed class 하위 추가가 캐시에 가려 허용 목록이 갱신되지 않아 Kafka 발행이 막히던 문제를 규명, 배포 산출물을 javap로 직접 확인하는 절차를 만듦</li>
+                        <li>마켓 API v1 종료 → v2 전환 대응, 주문 중복수집 방지, 클레임 수집·컨버터 오류 수정 등 상시 대응</li>
+                    </ul>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
+                    <ul class="small">
+                        <li>적체 해소 + 유발 결함 2건 제거 + 복구 경로 부재를 구조적 결함으로 문서화</li>
+                        <li>원칙 도출: <strong>순서 보장 큐에서 한 메시지의 무한 재시도는 곧 그룹 전체의 정지</strong></li>
+                        <li>20+ 마켓 주문·정산·클레임 흐름의 <strong>무중단 운영 유지</strong></li>
+                    </ul>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Brich 6: 데이터 오염 규명·복원 -->
+            <div class="card project mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">데이터 오염 규명 및 복원 — 약 9만 건</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>마켓 상품의 연동 상태가 의도치 않게 변경되고 있었습니다. 표면 증상은 "상품이 마켓에서 내려감" — 셀러 매출에 직결되는 문제입니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>유발 경로를 전부 찾아 차단하고, 이미 오염된 데이터를 복원할 것.</p>
+                    <p class="metric-line">약 9만 건 오염 확인·복원 · 관리자 지정 정산기준가 덮어쓰기 차단 (머니패스 보호 장치 신설)</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>행동:</strong></p>
+                    <ul class="small">
+                        <li>원인은 <strong>상태 전이 규칙이 여러 코드에 복제된 구조</strong> — 유발 지점이 한 곳이 아니라 마스터 상품 수정 시 자식 상태 변경, 특정 마켓 상품 등록 경로 등 여러 곳. 하나씩 차단하고 잔존 데이터를 복원</li>
+                        <li>병행해서 <strong>마켓별로 관리자가 지정한 정산기준가가 마스터 상품 수정 시 덮어써지던 문제</strong>를 차단 — 조용히 금액이 바뀌는 종류라 발견이 늦으면 정산에 그대로 반영됨</li>
+                    </ul>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
+                    <ul class="small">
+                        <li><strong>약 9만 건 규모의 오염</strong>을 확인·복원</li>
+                        <li>머니패스 보호 장치 신설 — 관리자 지정 정산기준가 덮어쓰기 차단</li>
+                        <li>정산은 <strong>잘못된 데이터가 이미 쌓인 상태에서 고쳐야</strong> 하므로, 코드 수정과 데이터 복원을 항상 한 쌍으로 진행하는 원칙 정착</li>
+                    </ul>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Brich 7: 마켓 연동 통합 -->
+            <div class="card project mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">멀티마켓 연동 통합 — 20개+ 마켓 상품/주문/클레임/CS (2025.06 ~ 상시)</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>마켓마다 인증 방식, 응답 포맷(XML/JSON), 상태 코드, 수수료 규칙, 할인 표현이 전부 다릅니다. 이 차이를 조건 분기로 흡수하면 송출 코드가 붕괴합니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>마켓 추가가 <strong>반복 가능한 절차</strong>가 되게 만들 것.</p>
+                    <p class="metric-line">20+ 채널 통합 연동 · 신규 마켓 2개(퀸잇·큐텐) 상품부터 정산까지 단독 온보딩</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP</span>
@@ -817,106 +949,57 @@
                         <span class="badge tech-stack">Java</span>
                         <span class="badge tech-stack">Feign</span>
                     </p>
-                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>구조와 원칙:</strong></p>
                     <ul class="small">
-                        <li><strong>신규 마켓 온보딩:</strong> 퀸잇(라포랩스)·큐텐(Qoo10)을 상품·출고·반품/교환·CS·정산까지 <strong>처음부터 끝까지 단독 구축</strong></li>
-                        <li>마켓별 클레임 매핑(귀책사유·회수수거방법·배송비 처리조건)을 공통 enum으로 표준화</li>
-                        <li><strong>AI 활용 자동 매핑:</strong> 오래전부터 수작업이던 마켓 카테고리·상품정보고시 매핑을, 마켓에서 수집한 정보를 기준으로 <strong>AI가 자동으로 매핑</strong>하도록 개발 (상세이미지 자동화는 진행 중)</li>
+                        <li><strong>팩토리 3종 분리</strong> — 인증(Account) / API 호출(Client) / 응답 변환(Mapper). 동작 차이는 플래그로 선언(승인 확인 필요 여부, 임시 상품 선생성, 이미지 생성 등)하고 오케스트레이션 코드는 마켓을 모르는 상태로 유지</li>
+                        <li><strong>운영 원칙 — "코드에 구현이 있다 ≠ 그 경로가 활성이다":</strong> 수집 경로가 5개 서비스(Kotlin·PHP·Python·NestJS·Java)에 분산돼 있어 코드만 보면 4개 마켓에서 판단을 그르침(지마켓은 전용 변환기가 있지만 실제로는 통합 변환기로 수집). 활성 경로는 반드시 <strong>DB의 버전·소스타입·원본 응답으로 확정</strong>하는 절차를 세움</li>
+                        <li><strong>AI 활용 자동 매핑:</strong> 수작업이던 마켓 카테고리·상품정보고시 매핑을 마켓 수집 정보 기준으로 자동 매핑하도록 개발 (상세이미지 자동화는 진행 중)</li>
                         <li>다룬 마켓: 퀸잇 · 카카오스타일(지그재그·포스티) · 큐텐 · SSG · 롯데온 · 지마켓/옥션(ESM·글로벌) · 11번가 · 네이버스마트스토어(플러스스토어) · 쿠팡(글로벌) · GS샵 · 카페24 · CJ온스타일 · 알리익스프레스 · 에이블리 · 토스 · 테무 · 사방넷 · 무신사 · 하프클럽 · 홈앤쇼핑 등</li>
                     </ul>
-                    <p class="mb-2"><strong>성과:</strong></p>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
                     <ul class="small">
-                        <li>신규 마켓 2개 온보딩으로 판매 채널 확장</li>
+                        <li>신규 마켓 <strong>2개(퀸잇·큐텐)를 상품·출고·반품/교환·CS·정산까지 단독 온보딩</strong> — 판매 채널 확장</li>
                         <li>마켓마다 다른 API(XML/JSON·상태코드·페이지네이션·인증)를 <strong>팩토리 + 어댑터 패턴으로 통일</strong></li>
+                        <li>수집 전담 서비스 71커밋 · Python 수집 서비스 14 PR 기여, 해외 마켓 <strong>환율 계산</strong> 담당</li>
                     </ul>
                     </details>
                 </div>
             </div>
 
-            <!-- Brich Project 4 -->
+            <!-- Brich 8: 반품/교환 클레임 V2 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">반품/교환 클레임 시스템 V2 전면 재구축</h4>
-                    <p><strong>개요:</strong> 주문과 클레임이 <strong>따로 수집돼 매칭되는 구조</strong>라 상태 꼬임과 수작업 CS가 잦던 반품/교환/취소 전 과정을 V2로 전면 재구축 (글로벌 포함, 2025.08 ~ 2026.07)</p>
-                    <p class="metric-line">반품 배송비 자동 계산 · 주문·클레임 상태 흐름 통합 · 클레임 문의·CS 감소</p>
+                    <h4 class="card-title">반품/교환 클레임 시스템 V2 전면 재구축 (글로벌 포함, 2025.08 ~ 2026.07)</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>이커머스 통합 플랫폼에서 CS가 가장 많이 생기는 곳이 클레임입니다. 주문과 클레임이 <strong>따로 수집돼 매칭되는 구조</strong>라 취소가 접수돼도 출고가 먼저 나가 회수로 이어지는 상태 꼬임이 잦았고, 클레임 배송비를 정산에 반영할지 판단이 조건마다 달라 수작업 CS가 많았습니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>반품/교환/취소 전 과정을 V2로 재구축해 배송비 계산과 상태 전이를 자동화할 것.</p>
+                    <p class="metric-line">마켓별 상태머신 공통 enum 정규화 · 36개 비동기 Job 기반 디스패치 · 관련 커밋·PR 373건</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
-                    <p class="small">이커머스 통합 플랫폼에서 CS가 가장 많이 생기는 곳이 클레임입니다. 취소가 접수돼도 출고가 먼저 나가 회수로 이어지는 등 상태 꼬임이 잦고, 클레임 배송비를 정산에 반영할지 판단이 조건마다 달라 수작업 CS가 많았습니다.</p>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">PHP (Laravel)</span>
                         <span class="badge tech-stack">Kotlin</span>
                         <span class="badge tech-stack">비동기 Job</span>
                     </p>
-                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>행동:</strong></p>
                     <ul class="small">
                         <li><strong>클레임 조건 매핑 구조 설계:</strong> 회수조건·귀책여부·배송비 지출조건·배송방법(유료/무료)·조건부 배송타입을 매핑 가능한 구조로 잡고, 클레임 수집 시 자동 매핑되어 <strong>반품 배송비가 자동 계산·적용</strong>되게 구축</li>
-                        <li><strong>주문↔클레임 상태 전이 통합:</strong> 분리 수집·매칭 구조에서 생기던 상태 꼬임(취소 접수 후 출고 등)이 일관되게 전이되도록 통합 구조 설계</li>
-                        <li>반품/교환 리스트·검색·엑셀 V2, 교환 재배송 생성 로직 재설계, 수거완료/회수완료 상태 전이, 강제 반품·교환 완료 처리</li>
+                        <li><strong>주문↔클레임 상태 전이 통합:</strong> 분리 수집·매칭 구조에서 생기던 상태 꼬임(취소 접수 후 출고 등)이 일관되게 전이되도록 통합 구조 설계 — 마켓마다 다른 클레임 상태 체계를 공통 enum으로 정규화하고 <strong>36개 비동기 Job</strong>으로 나눠 일관 처리</li>
+                        <li>반품/교환 리스트·검색·엑셀 V2, 교환 재배송 생성 로직 재설계(중복 생성 트랜잭션 보호), 수거완료/회수완료 상태 전이, 강제 반품·교환 완료 처리</li>
                     </ul>
-                    <p class="mb-2"><strong>성과:</strong></p>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
                     <ul class="small">
                         <li>반품 배송비 자동 계산과 상태 전이 일관화로 <strong>클레임 관련 문의·CS 감소</strong></li>
-                        <li>마켓마다 다른 클레임 상태 체계를 비동기 작업으로 나눠 일관 처리하도록 통합, 교환 재배송이 중복 생성되지 않게 트랜잭션으로 보호</li>
                     </ul>
                     </details>
                 </div>
             </div>
 
-            <!-- Brich Project 5 -->
+            <!-- Brich 9: 판매관리 2.0 · 관리자 분리 -->
             <div class="card project mb-4">
                 <div class="card-body">
-                    <h4 class="card-title">정산 엔진 &amp; 상품 2.0 가격 구조 리팩토링</h4>
-                    <p><strong>개요:</strong> 주문 정산 계산 엔진과 상품 가격 구조 재설계 (2025.10 ~ 2026.07)</p>
-                    <p class="metric-line">공급가·정산기준가·수수료율 상품 단위 관리 · 레거시·V2 정산액 일치 상시 검증</p>
-                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
-                    <p><strong>기술 스택:</strong>
-                        <span class="badge tech-stack">Kotlin</span>
-                        <span class="badge tech-stack">PHP</span>
-                        <span class="badge tech-stack">QueryDSL</span>
-                    </p>
-                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                    <ul class="small">
-                        <li><strong>공급가·정산기준가·수수료율을 상품별로 관리할 수 있게 구조 재설계</strong>, 가격 변경 히스토리 관리</li>
-                    </ul>
-                    <p class="mb-2"><strong>성과:</strong></p>
-                    <ul class="small">
-                        <li>정산 로직을 바꿀 때마다 레거시와 V2가 <strong>같은 지급액을 내는지 실데이터 대조로 확인</strong>하는 절차를 만들어 유지 중</li>
-                    </ul>
-                    </details>
-                </div>
-            </div>
-
-            <!-- Brich Project 6 -->
-            <div class="card project mb-4">
-                <div class="card-body">
-                    <h4 class="card-title">레거시(PHP) → V2(Kotlin) 마이그레이션</h4>
-                    <p><strong>개요:</strong> 마켓 연동·주문·정산 로직을 레거시 Laravel에서 V2 Kotlin 멀티모듈로 <strong>운영 무중단 점진 이전</strong> (2026.01 ~ 2026.07)</p>
-                    <p class="metric-line">주문/클레임 수집 17종 · 상품 연동 8종 이전 · 무중단 운영 유지</p>
-                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
-                    <p><strong>기술 스택:</strong>
-                        <span class="badge tech-stack">Kotlin</span>
-                        <span class="badge tech-stack">Spring Boot</span>
-                        <span class="badge tech-stack">PHP</span>
-                    </p>
-                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
-                    <ul class="small">
-                        <li>주문수집/클레임수집 <strong>17종</strong>, 상품연동 <strong>8종</strong> 마이그레이션</li>
-                        <li><strong>상품 연동 액션 세분화:</strong> 레거시에서 생성·업데이트·상태 변경으로만 나뉘어 있던 상품 연동을 이전하면서 <strong>생성·상태·가격·재고 등 액션 단위로 분리</strong> — 마켓과 B-Flow의 가격·판매상태가 어긋나는 문제를 줄임</li>
-                        <li>마켓별 외부 API 호출을 <strong>선언적 HTTP 클라이언트(HTTP Interface)</strong>로 정리하고, 주문 처리는 어댑터·델리게이트 패턴으로 표준화해 마켓 단위로 분기</li>
-                    </ul>
-                    <p class="mb-2"><strong>성과:</strong></p>
-                    <ul class="small">
-                        <li>마켓 17종의 제각각인 API를 통일된 어댑터 구조로 옮겨, 개발 중심을 레거시에서 V2로 전환</li>
-                    </ul>
-                    </details>
-                </div>
-            </div>
-
-            <!-- Brich Project 7 -->
-            <div class="card project mb-0">
-                <div class="card-body">
-                    <h4 class="card-title">판매관리 2.0 신규 개발 · 관리자(Admin) 기능 분리</h4>
-                    <p><strong>개요:</strong> 판매관리 1.0의 구조적 한계를 해결하는 신규 개발과, 레거시 단일 서비스에 뭉쳐 있던 관리자 기능의 분리 작업 (2025.12 ~ 진행 중)</p>
-                    <p class="metric-line">주문·상품 매칭 제약 제거 · AOP 주문 감사 로그 · 관리자 화면 분리 진행 중</p>
+                    <h4 class="card-title">판매관리 2.0 신규 개발 · 관리자(Admin) 기능 분리 (2025.12 ~ 진행 중)</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>판매관리 1.0은 주문↔상품 매칭이 필수라 매칭이 안 되면 주문 흐름이 막히는 구조였고, 레거시 한 서비스가 관리자·유저 기능을 전부 처리하고 있었습니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>매칭 없이도 주문이 흐르는 구조로 재설계하고, 내부 관리자 기능을 분리할 것.</p>
+                    <p class="metric-line">주문·상품 매칭 제약 제거 · AOP 주문 감사 로그 · React 관리자 화면 분리 진행 중</p>
                     <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
                     <p><strong>기술 스택:</strong>
                         <span class="badge tech-stack">Kotlin</span>
@@ -924,16 +1007,68 @@
                         <span class="badge tech-stack">React 19</span>
                         <span class="badge tech-stack">TypeScript</span>
                     </p>
-                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>행동:</strong></p>
                     <ul class="small">
-                        <li><strong>판매관리 2.0 신규 개발:</strong> 기존 1.0은 주문↔상품 매칭이 필수라 매칭이 안 되면 주문 흐름이 막히는 구조 → <strong>매칭 없이도 주문을 생성하고 상품은 이후 별도 매칭·수정</strong>할 수 있게 재설계. 주문 상태 전환 벌크 API, 세트 자재(SKU) 통합 매핑, 판매자 옵션 매칭</li>
+                        <li><strong>판매관리 2.0 신규 개발:</strong> <strong>매칭 없이도 주문을 생성하고 상품은 이후 별도 매칭·수정</strong>할 수 있게 재설계. 주문 상태 전환 벌크 API, 세트 자재(SKU) 통합 매핑, 판매자 옵션 매칭</li>
                         <li><strong>AOP(@Around) 기반 주문 API 감사 로그</strong> — 주문 API 호출 전후 상태를 JSON 로그로 남겨 문제 추적을 쉽게 함</li>
-                        <li><strong>관리자 기능 분리 (진행 중):</strong> 레거시 한 서비스가 관리자·유저 기능을 전부 처리하던 구조에서, 마켓 연동 API 기반 주문·클레임·정산 조회, 정산·수수료, 상품 프로모션 등 내부 관리자 기능을 <strong>React 기반 관리자 화면 + 전용 API로 이전</strong></li>
+                        <li><strong>관리자 기능 분리 (진행 중):</strong> 마켓 연동 API 기반 주문·클레임·정산 조회, 정산·수수료, 상품 프로모션 등 내부 관리자 기능을 <strong>React 기반 관리자 화면 + 전용 API로 이전</strong></li>
                     </ul>
-                    <p class="mb-2"><strong>성과:</strong></p>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
                     <ul class="small">
                         <li>매칭 실패 시 주문 생성이 막히던 레거시 제약 제거</li>
                         <li>레거시에 뭉쳐 있던 내부 관리자 기능을 전용 관리자 화면으로 이전 중 (2026.01 착수)</li>
+                    </ul>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Brich 10: AI 협업 체계 (수단 — 1~9번이 이 수단으로 만든 결과) -->
+            <div class="card project mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">AI 협업 체계 구축 — 틀린 결과를 걸러내는 구조 (2026.01 ~)</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>팀에 Claude Code 환경이 도입됐지만, 제 담당 범위(저장소 7개·멀티 언어)에서 <strong>AI가 틀리는 방식이 반복</strong>됐습니다. 코드 생성 속도보다 <strong>틀린 결과를 걸러내는 일</strong>이 병목이었습니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>겪은 실패를 <strong>재발하지 않는 구조</strong>로 바꿀 것.</p>
+                    <p class="metric-line">월평균 커밋 81.6 → 104.9건 (+28.5%) · 손익 감사 매일 09시 자동 실행 · React 프론트까지 담당 확장</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>겪은 문제 4가지와 대응:</strong></p>
+                    <ul class="small">
+                        <li><strong>근거 없이 원인을 단정</strong> (정산 분석 중 코드·DB 확인 없이 결론 → 오진) → 진단 작업에서 결론 어휘를 쓰는데 근거 조회가 0회이고 인용도 없으면 <strong>출력을 차단하는 훅</strong>. 규칙이 긴 컨텍스트 뒤로 밀리는 문제는 진단형 요청 감지 시 <strong>재주입하는 훅</strong>으로 보완</li>
+                        <li><strong>운영 DB에 무거운 쿼리</strong> (수백만 행 비인덱스 쿼리는 곧 장애) → 실행 전 <strong>실행계획(EXPLAIN) 확인 강제</strong> — 실제로 <strong>425만 행 스캔을 실행 전에 차단</strong></li>
+                        <li><strong>불필요한 주석 대량 생성</strong> → 편집 시점에 주석 밀도·유형을 검사해 차단하되, <strong>의도적 재시도는 통과</strong>시켜 필요한 제약 주석은 보존</li>
+                        <li><strong>같은 실수 반복</strong> (마켓 함정·장애 패턴을 매번 재조사) → 조사 결과를 <strong>팀 공유 지식 그래프에 자산화</strong> — 재조사에 반나절 걸리던 것을 검색 가능하게</li>
+                    </ul>
+                    <p class="small mb-2">산출물: 가드 훅 4종 · 도메인 전문 에이전트 6종 + 오케스트레이터 2 · 도메인 스킬 12종 · 지식 그래프 114건 · 코드 규칙 209개 · 7개 저장소 통합 개발 가이드</p>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
+                    <ul class="small">
+                        <li><strong>비즈니스 임팩트로 연결</strong> — 이중 할인 감사(상단 306만 원 건)를 일회성 조사로 끝내지 않고 <strong>스킬로 만들어 매일 자동 실행</strong>: 사람이 기억해야 하던 점검을 시스템이 수행</li>
+                        <li>월평균 커밋 <strong>81.6 → 104.9건 (+28.5%)</strong></li>
+                        <li>처리량보다 의미 있는 변화는 <strong>담당 범위 확장</strong> — 백엔드만 하던 상태에서 <strong>React 프론트까지</strong> (프론트 저장소 68커밋)</li>
+                    </ul>
+                    <p class="small fst-italic mb-2">AI를 빠르게 쓰는 것보다 틀린 결과를 걸러내는 체계를 만드는 것이 실제 생산성을 결정합니다. 위 가드는 전부 직접 겪은 실패에서 나왔습니다.</p>
+                    <p class="small mb-0"><strong>현재 진행 중:</strong> 팀 공통 목표가 <strong>서버 비용 절감과 에러율 감소</strong>(CS 축소·안정적 서비스)로 잡히면서, AI를 활용한 유지보수에 집중하고 있습니다 — 에러·CS 유발 지점을 추적해 선제 수정하고, 비용을 만드는 비효율 쿼리·작업을 찾아 줄이는 방식입니다.</p>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Brich 11: 구독 요금제 v3 -->
+            <div class="card project mb-0">
+                <div class="card-body">
+                    <h4 class="card-title">구독 요금제 체계 개편 (플랜 v3) — 과금·정산 전 구간</h4>
+                    <p class="small mb-1"><span class="star-tag">S</span>B-Flow는 셀러가 요금제를 구독해 쓰는 SaaS로, <strong>PG 정기결제(나이스페이) 자동 갱신</strong>과 <strong>후불 결제</strong> 두 방식이 있습니다. 요금제 체계를 v3로 개편해야 했는데, 자동 연장이 <strong>30일 고정으로 하드코딩</strong>돼 있어 새 체계를 수용할 수 없었습니다.</p>
+                    <p class="small mb-2"><span class="star-tag">T</span>백엔드와 관리자 화면을 담당해 새 요금제 체계를 수용 가능하게 만들 것.</p>
+                    <p class="metric-line">30일 고정 제약 해소 · 과금(구독)과 정산(지급) 전 구간 담당</p>
+                    <details class="proj-more"><summary aria-label="상세 내용 펼치기"></summary>
+                    <p class="mb-2"><span class="star-tag">A</span><strong>행동:</strong></p>
+                    <ul class="small">
+                        <li>갱신 로직을 <strong>플랜 정의 기반</strong>으로 전환</li>
+                        <li><strong>플랜 기간과 구독 기간 분리</strong> — 무료 플랜 도입으로 "요금제 유효 기간"과 "구독 생존 기간"이 달라짐. 뭉쳐 있던 개념을 분리해 무료 전환·유료 복귀 시 기간 계산이 어긋나지 않게 함</li>
+                        <li>후불 결제 설정·조회, 결제 이력 조회 API·관리자 화면</li>
+                        <li><strong>플랜 ↔ 수수료 연계</strong> — 어떤 요금제를 쓰는지가 정산 수수료율에 영향을 주므로 수수료 조회 로직을 개편 체계에 맞게 수정</li>
+                    </ul>
+                    <p class="mb-2"><span class="star-tag">R</span><strong>결과:</strong></p>
+                    <ul class="small">
+                        <li>요금제 체계 확장이 가능한 구조로 전환 (30일 고정 제약 해소)</li>
+                        <li><strong>구독료를 받는 쪽(과금)과 셀러에게 지급하는 쪽(정산)을 모두 담당</strong> — 유료화 흐름 전 구간 경험</li>
                     </ul>
                     </details>
                 </div>
@@ -970,22 +1105,14 @@
                         <span class="badge tech-stack">Vue.js</span>
                         <span class="badge tech-stack">Electron</span>
                     </p>
-                    <p class="mb-2"><strong>주요 역할 및 기여:</strong></p>
+                    <p class="mb-2"><strong>주요 프로젝트 — S(상황) → A(행동) → R(결과):</strong></p>
                     <ul class="small">
-                        <li><strong>다잡아(쿠팡 위너 최적화 서비스):</strong> 서비스 전체를 <strong>단독 설계·개발</strong> — 사용자·과금·매출/로그 통계 API를 관리자·클라이언트·배치 세 환경이 함께 쓰는 구조로 설계</li>
+                        <li><strong>판매 프로세스 자동화</strong><br><span class="star-tag">S</span>상품 등록부터 CS까지 온라인 판매 전 과정이 수작업이었고, 상품 상태가 마켓과 어긋나 주문이 취소되는 일이 반복<br><span class="star-tag">A</span>Python/FastAPI 배치 시스템 설계·개발 주도, GitLab CI/CD로 수동 배포 자동화, PM2 안정 실행 + 실시간 로그 모니터링, 외부 API 데이터 분석 기반 카테고리 자동 매칭<br><span class="star-tag">R</span>상태 불일치로 인한 주문 취소율 <strong>75% 감소</strong> · 수작업 <strong>87% 단축(4시간 → 30분)</strong></li>
+                        <li><strong>종합몰 상품 등록 자동화</strong><br><span class="star-tag">S</span>토스·카카오·홈플러스·GS SHOP·SSG·현대몰·AKMALL 등 종합몰은 담당자가 <strong>건당 5분씩 수작업</strong>으로 등록<br><span class="star-tag">A</span>마켓별 상품 관리를 API·크롤링 기반으로 개발, 등록·상태·가격 변경사항 동기화 프로세스 구축<br><span class="star-tag">R</span>종합몰 매출 <strong>3배 증가</strong> · 상품 등록 <strong>5분 → 2~10초</strong>(약 30~150배) · 품절 취소율 감소</li>
+                        <li><strong>다잡아 — 쿠팡 위너 로직 안정화 (단독 설계·개발)</strong><br><span class="star-tag">S</span>위너(최저가 노출) 확보 로직이 Selenium 브라우저 자동화로 동작 — 대상 사이트가 바뀔 때마다 깨지고 리소스 과다<br><span class="star-tag">A</span>쿠팡 내부 API 호출로 전환해 브라우저 의존 제거, 사용자·과금·통계 API는 관리자·클라이언트·배치 세 환경이 함께 쓰는 RESTful로 설계<br><span class="star-tag">R</span>위너 상품 생성 속도 <strong>10배 개선(5시간 → 30분)</strong> · 사이트 변경에 깨지던 취약점 제거</li>
+                        <li><strong>키워드 추천 아키텍처 재설계</strong><br><span class="star-tag">S</span>단건 처리만 가능했고, 실제로 쓰이지 않는 Redis·RabbitMQ가 아키텍처에 포함<br><span class="star-tag">A</span>엑셀 업로드 기반 대량 처리로 확장, 파일 처리를 클라이언트로 이전하고 백엔드는 순수 JSON만 처리, 필요 없던 컴포넌트 제거<br><span class="star-tag">R</span>대량 일괄 추출로 사용자 작업 시간 단축 + <strong>운영 복잡도 감소</strong></li>
+                        <li><strong>매크로(수집·자동화 도구) 안정성 개선</strong><br><span class="star-tag">S</span>리소스 과부하로 PC당 동시 실행이 5개로 제한되고 그마저 다운<br><span class="star-tag">A</span>관리자와 실행 에이전트를 분리하고 Selenium 서버를 별도 분리, Redis 작업 상태 관리(중단 시 복구) 적용<br><span class="star-tag">R</span>동시 실행 제약 완화 · 다운 문제 해소</li>
                         <li><strong>다팔자(Electron 데스크톱):</strong> 상품 대량 등록·상태 동기화, GS SHOP·TOSS 신규 마켓 연동, 주문·CS 관리 개발</li>
-                        <li><strong>판매 프로세스 자동화:</strong> 상품 수집·등록, 주문 처리, 배송 연동, CS 수집 배치 시스템 설계·개발 주도, 카테고리 자동 매칭</li>
-                        <li><strong>종합몰 상품 등록 자동화:</strong> 토스·카카오·홈플러스·GS SHOP·SSG·현대몰 등 API/크롤링 연동</li>
-                        <li><strong>키워드 추천 고도화:</strong> 단건→엑셀 대량 처리 확장, 아키텍처 재설계로 불필요한 Redis·RabbitMQ 제거</li>
-                        <li><strong>수집·자동화 도구 재설계:</strong> 상품 크롤링·조회 자동화 프로그램에 Redis 작업 상태 관리(중단 시 복구)와 관리자/실행 에이전트 분리 적용</li>
-                        <li><strong>배포·운영:</strong> GitLab CI/CD 파이프라인 구축, PM2 도입</li>
-                    </ul>
-                    <p class="mb-2"><strong>성과:</strong></p>
-                    <ul class="small">
-                        <li>상품 상태를 통합 조회·동기화해, 상태 불일치로 생기던 주문 취소율 <strong>75% 감소</strong></li>
-                        <li>등록·주문·CS 자동화로 수작업 <strong>87% 단축</strong>(4시간→30분), 상품 등록 5분→<strong>2~10초</strong></li>
-                        <li>종합몰 연동 확대와 대량 등록 지원으로 종합몰 매출 <strong>3배 증가</strong></li>
-                        <li>다잡아 처리 구조 재설계로 위너 상품 생성 속도 <strong>10배 개선</strong>(5시간→30분)</li>
                     </ul>
                     </details>
                 </div>
@@ -1032,6 +1159,7 @@
                 <p class="github-link small mb-3">
                     <strong><i class="bi bi-github"></i> Source:</strong>
                     <a href="https://github.com/kjh1305/keyword" target="_blank">kjh1305/keyword</a>
+                    <span class="text-muted">— 키워드 분석으로 시작한 리포를 재고 관리 시스템으로 확장 (리포명은 초기 프로젝트명)</span>
                 </p>
                 <hr>
                 <h6 class="fw-semibold small">상세 내용</h6>
